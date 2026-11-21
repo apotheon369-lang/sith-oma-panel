@@ -1,0 +1,5130 @@
+face "sith command deck" {
+  meta { owl: 22; description: "Sith Command Deck & Obsidian Feed: radical-simplicity card-after-card vertical deck with S/M/L cards, Markdown & first-class Tables, and Screen Forge." }
+  requires { pacman: ["python", "btop"] }
+  page: 0
+  order: 0
+  statusBar: false
+  padding: 0
+
+  // ---------------- SOURCES ----------------
+  // Shared theme switch (set from the infernal face pill): "infernal" or "future"
+  source uiCfg = file("~/.config/omalauncher/ui-mode.json") json optional
+  let futOn = (uiCfg.mode ?? "infernal") == "future"
+  let uiFont = futOn ? "~/.local/share/fonts/RussoOne-Regular.ttf" : "~/.local/share/fonts/GrenzeGotisch.ttf"
+  source now   = clock every 30s
+  source bat   = android.battery
+  source sys   = android.system every 20s
+  source modes = android.modes
+  source vol   = android.volume
+  source d     = android.drawer
+  source panel = cmd("python3 ~/.local/share/omalauncher/synth-pads/sith_panel.py scan") every 10m json timeout 20s
+  source ecoCfg = file("~/.config/omalauncher/eco-mode.json") json
+  source animCfg = file("~/.config/omalauncher/animations.json") json
+
+  // ---------------- THEMES & PALETTES ----------------
+  let themes = [
+    { id: "crimson", name: "SITH BLOOD",    col: (futOn ? #11d1ff : #ff1133), dark: (futOn ? #021d24 : #240206), hot: (futOn ? #66d1ff : #ff6677), ghost: (futOn ? #00758f : #8f0018) },
+    { id: "toxic",   name: "SCARLET VEIN",  col: (futOn ? #22d1ff : #ff2233), dark: (futOn ? #01191f : #1f0104), hot: (futOn ? #77d1ff : #ff7788), ghost: (futOn ? #0096b8 : #b8001f) },
+    { id: "plasma",  name: "OBSIDIAN RED",  col: (futOn ? #00a7cc : #cc001f), dark: (futOn ? #000e12 : #120002), hot: (futOn ? #55d1ff : #ff5566), ghost: (futOn ? #004b5c : #5c0011) },
+    { id: "glitch",  name: "EMBER CRIMSON", col: (futOn ? #00bce6 : #e60026), dark: (futOn ? #03222a : #2a0308), hot: (futOn ? #6ed1ff : #ff6e7f), ghost: (futOn ? #007d99 : #99001a) },
+    { id: "amber",   name: "DARK CARNAGE",  col: (futOn ? #0096b8 : #b8001f), dark: (futOn ? #01151a : #1a0104), hot: (futOn ? #4dd1ff : #ff4d61), ghost: (futOn ? #005e73 : #730014) },
+    { id: "void",    name: "VOID ABYSS",    col: (futOn ? #00758f : #8f0018), dark: (futOn ? #000608 : #080001), hot: (futOn ? #44d1ff : #ff4455), ghost: (futOn ? #00323d : #3d000a) }
+  ]
+
+  // ---------------- STATE ----------------
+  // Screen Customization Forge (Theme & Backdrop Style — animations live in animations.json)
+  state themeIdx        = 0 persist
+  state shaderMode      = "plasma" persist
+
+  // Simple Card Editor State
+  state editId          = 0
+  state noteTitle       = ""
+  state noteBody        = ""
+  state noteSize        = "md" persist   // "sm" | "md" | "lg"
+  state noteFont        = "sans" persist // "sans" | "mono" | "serif"
+  state noteBodySz      = 14 persist
+  state noteWeight      = 600 persist
+  state noteAlign       = "start" persist
+  state noteColorIdx    = 0 persist
+  state notePinned      = false
+  state noteAccentBar   = true persist
+  state noteBorderStyle = "hairline" persist // "hairline" | "bold" | "none"
+  state nextNoteId      = 4 persist
+
+  // Table Builder State
+  state tblTargetMode   = "newCard"
+  state tblCardTitle    = "Task Tracker"
+  state tblPresetId     = "tasks"
+  state tblHeaders      = ["Task", "Status", "Priority"]
+  state tblRows         = [
+    ["Design UI", "Done", "High"],
+    ["Build Tables", "WIP", "High"],
+    ["Polish Perf", "Todo", "Med"]
+  ]
+  state tblEditRow      = -1
+  state tblEditCol      = 0
+  state tblCellDraft    = "Task"
+
+  // Card-After-Card Feed Notes
+  state holocronNotes   = [
+    {
+      id: 1,
+      size: "md",
+      title: "SITH COMMAND DECK",
+      text: "Clean **card-after-card** deck with ==S / M / L== cards and tables.\n- [x] Simple vertical feed\n- [ ] Tap checkboxes directly\n- [ ] Tap ✎ to edit or resize",
+      font: "sans",
+      bodySz: 14,
+      fontWeight: 600,
+      align: "start",
+      colorIdx: 0,
+      pinned: true,
+      accentBar: true,
+      borderStyle: "hairline",
+      time: "NOW"
+    },
+    {
+      id: 2,
+      size: "md",
+      title: "SYSTEM BENCHMARKS",
+      text: "| Module | Frame | Status |\n| --- | --- | --- |\n| Feed UI | 1.1ms | READY |\n| Tables | 0.3ms | LIVE |\n| Shader | 0.3ms | OPT |",
+      font: "mono",
+      bodySz: 13.5,
+      fontWeight: 600,
+      align: "start",
+      colorIdx: 8,
+      pinned: false,
+      accentBar: true,
+      borderStyle: "hairline",
+      time: "TABLE"
+    }
+  ] persist
+
+  // Screen Multiplexing & Sith Lyfe Control
+  state screenMode      = "sith"
+  state tab             = "customize" persist
+  state forgeReq        = 0   // bumped by 00-infernal via owl-send → opens the Forge
+  // Obsidian Markdown editor + Canvas board (tiles as card markers)
+  state deckView   = "feed" persist   // "feed" | "canvas"
+  state mdCopied   = ""
+  state mdFold     = []
+  state edMode     = "edit"
+  state edFont     = 14.5 persist
+  state edPrev     = ""
+  state edCanUndo  = false
+  state edCallMenu = false
+  state edClearArm = false
+  state cvZoom     = 1.0 persist
+  state cvPanX     = 0 persist
+  state cvPanY     = 0 persist
+  state cvSel      = 0
+  state cvGest     = ""
+  state cvHit      = 0
+  state cvOnHandle = false
+  state cvSX       = 0
+  state cvSY       = 0
+  state cvP0X      = 0
+  state cvP0Y      = 0
+  state cvZ0       = 1.0
+  state cvD0       = 1
+  state cvM0X      = 0
+  state cvM0Y      = 0
+  state cvDX       = 0
+  state cvDY       = 0
+  state cvEditReq  = 0
+  state pluginView      = "audio"
+  state pluginFmt       = "ALL"
+  state owlView         = "active"
+  state appFilter       = "all"
+  state linuxView       = "pkgs"
+  state pkgSort         = "size"
+  state query           = ""
+  state confirmKey      = ""
+  state busy            = false
+  state cmdOut          = ""
+  state statusMsg       = ""
+  state statusOk        = true
+
+  // Shader Animation Clock
+  state fxT             = 0
+
+  // ---------------- DERIVED DATA (ULTRA-LEAN) ----------------
+  let activeTheme   = themes[clamp(themeIdx, 0, len(themes) - 1)]
+  let ecoOn         = (ecoCfg.enabled ?? false) == true
+  let animMasterRaw = (animCfg.master ?? true) == true
+  let animMaster    = animMasterRaw && !ecoOn
+  let hapticsOn     = (animCfg.haptics ?? true) == true
+  let animSpeed     = clamp(num(animCfg.speed, 1.0), 0.25, 3.0)
+
+  let deckShaderRaw = (animCfg.deck_shader ?? true) == true
+  let deckScanRaw   = (animCfg.deck_scanlines ?? false) == true
+  let infVoidRaw    = (animCfg.infernal_void ?? true) == true
+  let infFxRaw      = (animCfg.infernal_fx ?? true) == true
+  let infGlitchRaw  = (animCfg.infernal_glitch_dock ?? true) == true
+  let plrShaderRaw  = (animCfg.player_shader ?? true) == true
+  let plrVisRaw     = (animCfg.player_visualizer ?? true) == true
+  let drawerFxRaw   = (animCfg.drawer_fx ?? true) == true
+
+  let effFxOn       = animMaster && deckShaderRaw
+  let deckScanOn    = animMaster && deckScanRaw
+  let accentCol     = ecoOn ? (futOn ? #00758f : #8f0018) : activeTheme.col
+  let accentDark    = ecoOn ? (futOn ? #00080a : #0a0002) : activeTheme.dark
+  let accentHot     = ecoOn ? (futOn ? #33a7cc : #cc3344) : activeTheme.hot
+  let accentGhost   = ecoOn ? (futOn ? #003f4d : #4d000e) : activeTheme.ghost
+  let titleCol      = accentHot
+  let timeHm        = fmtTime(now, "HH:mm")
+
+  let uModeVal = shaderMode == "plasma"   ? 0.0
+               : shaderMode == "obsidian" ? 1.0
+               : shaderMode == "glitch"   ? 2.0
+               : shaderMode == "void"     ? 3.0
+               : shaderMode == "aurora"   ? 4.0
+               : 5.0
+
+  // Slice 5: 12 Curated Red & Black Occult Palettes
+  let notePalettes = [
+    { id: "crimson",   name: "Crimson",  bg: (futOn ? #00090c : #0c0002), bg2: (futOn ? #01191f : #1f0105), border: (futOn ? #11d1ff : #ff1133), tag: (futOn ? #22d1ff : #ff2244), text: (futOn ? #6ed1ff : #ff6e80) },
+    { id: "obsidian",  name: "Obsidian", bg: (futOn ? #000304 : #040001), bg2: (futOn ? #010e12 : #120103), border: (futOn ? #00576b : #6b0014), tag: (futOn ? #44d1ff : #ff4455), text: (futOn ? #5cd1ff : #ff5c6e) },
+    { id: "blood",     name: "Blood",    bg: (futOn ? #001216 : #160003), bg2: (futOn ? #01232b : #2b0107), border: (futOn ? #00a7cc : #cc0022), tag: (futOn ? #33d1ff : #ff334d), text: (futOn ? #77d1ff : #ff7788) },
+    { id: "void",      name: "Void",     bg: #000000, bg2: (futOn ? #00080a : #0a0002), border: (futOn ? #004b5c : #5c0011), tag: (futOn ? #16b1d9 : #d91633), text: (futOn ? #55d1ff : #ff5566) },
+    { id: "scarlet",   name: "Scarlet",  bg: (futOn ? #010e12 : #120103), bg2: (futOn ? #021d24 : #240206), border: (futOn ? #2ad1ff : #ff2a44), tag: (futOn ? #4dd1ff : #ff4d61), text: (futOn ? #77d1ff : #ff7788) },
+    { id: "ember",     name: "Ember",    bg: (futOn ? #021014 : #140203), bg2: (futOn ? #03222a : #2a0306), border: (futOn ? #17bce6 : #e6172e), tag: (futOn ? #3bd1ff : #ff3b4f), text: (futOn ? #6ed1ff : #ff6e7a) },
+    { id: "cinder",    name: "Cinder",   bg: (futOn ? #010a0d : #0d0102), bg2: (futOn ? #02161c : #1c0205), border: (futOn ? #007d99 : #99001a), tag: (futOn ? #22bce6 : #e6223c), text: (futOn ? #66d1ff : #ff6677) },
+    { id: "vampire",   name: "Vampire",  bg: (futOn ? #011318 : #180104), bg2: (futOn ? #022730 : #300209), border: (futOn ? #0096b8 : #b8001f), tag: (futOn ? #2ed1ff : #ff2e4d), text: (futOn ? #70d1ff : #ff7082) },
+    { id: "sith",      name: "Sith",     bg: (futOn ? #000608 : #080001), bg2: (futOn ? #01151a : #1a0104), border: (futOn ? #00d1ff : #ff0026), tag: (futOn ? #33d1ff : #ff334b), text: (futOn ? #77d1ff : #ff7788) },
+    { id: "abyss",     name: "Abyss",    bg: (futOn ? #000102 : #020000), bg2: (futOn ? #010b0e : #0e0102), border: (futOn ? #00647a : #7a0016), tag: (futOn ? #14a7cc : #cc142f), text: (futOn ? #59d1ff : #ff596b) },
+    { id: "garnet",    name: "Garnet",   bg: (futOn ? #02151a : #1a0205), bg2: (futOn ? #042933 : #33040b), border: (futOn ? #14add4 : #d41432), tag: (futOn ? #47d1ff : #ff475e), text: (futOn ? #73d1ff : #ff7385) },
+    { id: "eclipse",   name: "Eclipse",  bg: (futOn ? #00080a : #0a0001), bg2: (futOn ? #011216 : #160104), border: (futOn ? #003f4d : #4d000e), tag: (futOn ? #0f96b8 : #b80f29), text: (futOn ? #4dbce6 : #e64d5f) }
+  ]
+
+  let quickSwatches = [
+    { idx: 1,  label: "Obsidian" },
+    { idx: 0,  label: "Crimson"  },
+    { idx: 8,  label: "Sith"     },
+    { idx: 4,  label: "Scarlet"  },
+    { idx: 5,  label: "Ember"    },
+    { idx: 3,  label: "Void"     },
+    { idx: 7,  label: "Vampire"  },
+    { idx: 10, label: "Garnet"   }
+  ]
+
+  let cardTemplates = [
+    { id: "blank",     label: "Blank",     title: "",            body: "",                                                                                                          font: "sans" },
+    { id: "checklist", label: "Checklist", title: "CHECKLIST",   body: "- [ ] Priority task\n- [ ] Second step\n- [ ] Final review",                                                font: "sans" },
+    { id: "table",     label: "Table",     title: "QUICK TABLE", body: "| Item | Status | Notes |\n| --- | --- | --- |\n| Alpha | Active | Core |\n| Beta | Next | Queue |",         font: "mono" },
+    { id: "callout",   label: "Callout",   title: "KEY INSIGHT", body: "> [!tip] Highlight\nCore takeaway or note here.\n---\n- [ ] Follow up",                                       font: "sans" },
+    { id: "code",      label: "Code",      title: "SNIPPET",     body: "# Command\n`pacman -Syu`\n---\n- Notes or flags here",                                                        font: "mono" }
+  ]
+
+  let tablePresets = [
+    {
+      id: "grid2x2",
+      label: "⊞ 2×2 Grid",
+      title: "2×2 Grid",
+      headers: ["Col A", "Col B"],
+      rows: [["Item 1", "Value 1"], ["Item 2", "Value 2"]]
+    },
+    {
+      id: "matrix3x3",
+      label: "▦ 3×3 Matrix",
+      title: "3×3 Matrix",
+      headers: ["Item", "Col 1", "Col 2"],
+      rows: [["Row 1", "A1", "B1"], ["Row 2", "A2", "B2"], ["Row 3", "A3", "B3"]]
+    },
+    {
+      id: "tasks",
+      label: "☑ Task Tracker",
+      title: "Task Tracker",
+      headers: ["Task", "Status", "Priority"],
+      rows: [["Design UI", "Done", "High"], ["Build Tables", "WIP", "High"], ["Polish Perf", "Todo", "Med"]]
+    },
+    {
+      id: "schedule",
+      label: "◷ Schedule",
+      title: "Daily Schedule",
+      headers: ["Time", "Block", "Notes"],
+      rows: [["09:00", "Deep Work", "Core focus"], ["12:00", "Break", "Recharge"], ["14:00", "Review", "Ship & QA"]]
+    },
+    {
+      id: "kv",
+      label: "◈ Key-Value",
+      title: "Spec Sheet",
+      headers: ["Field", "Value"],
+      rows: [["Status", "Active"], ["Owner", "Sith Deck"], ["Target", "< 2ms"]]
+    }
+  ]
+
+  let tblMdHead = "| " + join(
+    tblHeaders.map(h => replace(trim(h ?? ""), "|", "/") == "" ? "—" : replace(trim(h ?? ""), "|", "/")),
+    " | "
+  ) + " |"
+  let tblMdSep  = "| " + join(tblHeaders.map(h => "---"), " | ") + " |"
+  let tblMdBody = join(
+    tblRows.map(r =>
+      "| " + join(
+        range(len(tblHeaders)).map(ci => replace(trim(r[ci] ?? ""), "|", "/") == "" ? " " : replace(trim(r[ci] ?? ""), "|", "/")),
+        " | "
+      ) + " |"
+    ),
+    "\n"
+  )
+  let tblMarkdown = tblMdHead + "\n" + tblMdSep + "\n" + tblMdBody
+
+  // ---------------- OBSIDIAN TOKENS (see ~/.claude/skills/obsidian-css) ----------------
+  // Heading scale = Obsidian default app.css (--h1-size … --h6-size, in em of --font-text-size)
+  let obsH = [1.618, 1.462, 1.318, 1.188, 1.076, 1.0]
+  // Callout types + aliases → glyph (stand-in for the Lucide icon) and Obsidian dark-theme hue.
+  // Unknown types fall back to note, as in Obsidian. Rendered hue = mix(c, pal.tag, 0.3).
+  let obsCallouts = {
+    note:      { g: "✎", c: (futOn ? #7a7a02 : #027aff) },
+    abstract:  { g: "☰", c: (futOn ? #dddf53 : #53dfdd) },
+    summary:   { g: "☰", c: (futOn ? #dddf53 : #53dfdd) },
+    tldr:      { g: "☰", c: (futOn ? #dddf53 : #53dfdd) },
+    info:      { g: "ⓘ", c: (futOn ? #7a7a02 : #027aff) },
+    todo:      { g: "◉", c: (futOn ? #7a7a02 : #027aff) },
+    tip:       { g: "✦", c: (futOn ? #dddf53 : #53dfdd) },
+    hint:      { g: "✦", c: (futOn ? #dddf53 : #53dfdd) },
+    important: { g: "✦", c: (futOn ? #dddf53 : #53dfdd) },
+    success:   { g: "✓", c: (futOn ? #6ecf44 : #44cf6e) },
+    check:     { g: "✓", c: (futOn ? #6ecf44 : #44cf6e) },
+    done:      { g: "✓", c: (futOn ? #6ecf44 : #44cf6e) },
+    question:  { g: "?", c: (futOn ? #3fbfe9 : #e9973f) },
+    help:      { g: "?", c: (futOn ? #3fbfe9 : #e9973f) },
+    faq:       { g: "?", c: (futOn ? #3fbfe9 : #e9973f) },
+    warning:   { g: "⚠", c: (futOn ? #3fbfe9 : #e9973f) },
+    caution:   { g: "⚠", c: (futOn ? #3fbfe9 : #e9973f) },
+    attention: { g: "⚠", c: (futOn ? #3fbfe9 : #e9973f) },
+    failure:   { g: "✕", c: (futOn ? #46cdfb : #fb464c) },
+    fail:      { g: "✕", c: (futOn ? #46cdfb : #fb464c) },
+    missing:   { g: "✕", c: (futOn ? #46cdfb : #fb464c) },
+    danger:    { g: "⚡", c: (futOn ? #46cdfb : #fb464c) },
+    error:     { g: "⚡", c: (futOn ? #46cdfb : #fb464c) },
+    bug:       { g: "☣", c: (futOn ? #46cdfb : #fb464c) },
+    example:   { g: "☷", c: (futOn ? #8289a8 : #a882ff) },
+    quote:     { g: "❝", c: (futOn ? #9e9e9e : #9e9e9e) },
+    cite:      { g: "❝", c: (futOn ? #9e9e9e : #9e9e9e) }
+  }
+
+  // ---------------- CANVAS BOARD GEOMETRY (world dp; tiles are the card markers) ----------------
+  let cvCell     = max(64, floor((tileWidth - 24) / 4))
+  let cvCx       = tileWidth / 2
+  let cvCy       = 260
+  let cvBottom   = reduce(holocronNotes.filter(c => c.tx != null), (m, c) => max(m, (c.ty ?? 0) + (c.th ?? 3)), 0)
+  let cvUnplaced = holocronNotes.filter(c => c.tx == null).map(c => c.id)
+  let cvRects    = holocronNotes.map(c => merge({}, {
+    id: c.id,
+    tx: c.tx ?? (((range(len(cvUnplaced)).find(k => cvUnplaced[k] == c.id) ?? 0) % 2) * 2),
+    ty: c.ty ?? (cvBottom + floor((range(len(cvUnplaced)).find(k => cvUnplaced[k] == c.id) ?? 0) / 2) * 3),
+    tw: c.tw ?? 2,
+    th: c.th ?? 3
+  }))
+  let cvBoxes    = cvRects.map(r => merge(r, { x: r.tx * cvCell + 5, y: r.ty * cvCell + 5, w: r.tw * cvCell - 10, h: r.th * cvCell - 10 }))
+  let cvSelR     = cvBoxes.find(r => r.id == cvSel)
+  let cvTgt      = cvSelR == null ? null
+                 : cvGest == "resize" ? { tx: cvSelR.tx, ty: cvSelR.ty, tw: clamp(round(cvSelR.tw + cvDX / cvCell), 1, 6), th: clamp(round(cvSelR.th + cvDY / cvCell), 1, 12) }
+                 : { tx: clamp(round(cvSelR.tx + cvDX / cvCell), 0, 30), ty: clamp(round(cvSelR.ty + cvDY / cvCell), 0, 300), tw: cvSelR.tw, th: cvSelR.th }
+
+  // ---------------- LISTENERS ----------------
+  on forgeReq {
+    screenMode = "sith"
+    tab = "customize"
+    confirmKey = ""
+    query = ""
+    statusMsg = ""
+    screen()
+  }
+
+  on cvEditReq {
+    let c = holocronNotes.find(x => x.id == cvSel)
+    if c != null {
+      editId = c.id
+      noteTitle = c.title ?? ""
+      noteBody = c.text ?? ""
+      noteSize = c.size ?? "md"
+      noteFont = c.font ?? "sans"
+      noteBodySz = c.bodySz ?? 14
+      noteWeight = c.fontWeight ?? 600
+      noteAlign = c.align ?? "start"
+      noteColorIdx = c.colorIdx ?? 0
+      notePinned = c.pinned == true
+      noteAccentBar = c.accentBar ?? true
+      noteBorderStyle = c.borderStyle ?? "hairline"
+      edMode = "edit"
+      edCanUndo = false
+      screenMode = "noteEditor"
+      screen()
+    }
+  }
+
+  on cmdOut {
+    if value != "" {
+      let parsed = parseJson(value)
+      if parsed != null {
+        statusOk = parsed.ok == true
+        statusMsg = parsed.msg ?? value
+      } else {
+        statusOk = true
+        statusMsg = value
+      }
+      busy = false
+      confirmKey = ""
+      refresh()
+    }
+  }
+
+  on tblCellDraft {
+    let sc = clamp(tblEditCol, 0, max(0, len(tblHeaders) - 1))
+    if tblEditRow < 0 {
+      tblHeaders = range(len(tblHeaders)).map(i => i == sc ? value : tblHeaders[i])
+    } else if tblEditRow < len(tblRows) {
+      let sr = tblEditRow
+      tblRows = range(len(tblRows)).map(ri =>
+        ri == sr
+          ? range(len(tblRows[ri])).map(ci => ci == sc ? value : tblRows[ri][ci])
+          : tblRows[ri]
+      )
+    }
+  }
+
+  // ---------------- ADAPTIVE FPS (<2.0ms TARGET) ----------------
+  fps: (!effFxOn || shaderMode == "oled" || shaderMode == "amoled") ? 1 : 12
+  every frame {
+    if effFxOn && shaderMode != "oled" && shaderMode != "amoled" {
+      fxT = fxT + dt
+    }
+  }
+
+  // ---------------- REUSABLE COMPONENTS ----------------
+  // Infernal-tray style app icon: red glyph in a static sigil ring (no per-frame redraw)
+  component TraySigil(src, sz, lbl = "", ini = "") {
+    Box {
+      size: sz
+      align: center
+      Canvas {
+        fill: true
+        let cx = width / 2
+        let cy = height / 2
+        let r = min(width, height) * 0.42
+        circle(cx, cy, r * 1.12, fill: radial(cx, cy, r * 1.2, [alpha((futOn ? #1ad1ff : #ff1a34), 0.26), alpha(#000000, 0)]))
+        circle(cx, cy, r, stroke: alpha((futOn ? #24d1ff : #ff243c), 0.8), width: 1.35)
+        circle(cx, cy, r * 0.85, stroke: alpha((futOn ? #0e647a : #7a0e20), 0.65), width: 0.8)
+        for i in range(4) {
+          rotate(i * 90, cx, cy) {
+            line(cx, cy - r * 1.11, cx, cy - r * 0.93, stroke: (futOn ? #38d1ff : #ff384e), width: 1.4, cap: round)
+          }
+        }
+      }
+      if src != null {
+        Image { src: src; size: round(sz * 0.5); tint: (futOn ? #2ed1ff : #ff2e44); label: lbl }
+      } else {
+        Text { font: uiFont; text: ini; fontSize: round(sz * 0.3); color: (futOn ? #2ed1ff : #ff2e44); bold: true; align: center }
+      }
+    }
+  }
+
+  component Sigil(size) {
+    Row {
+      size: size
+      radius: size / 2
+      align: center
+      justify: center
+      background: alpha(accentDark, 0.95)
+      border: 1.6
+      borderColor: alpha(accentCol, 0.9)
+      Text { font: uiFont; text: "❖"; fontSize: size * 0.54; bold: true; color: accentHot }
+    }
+  }
+
+  // Forge: section header (◈ tiny caps + right-aligned hint)
+  component SectionHeader(label, hint = "") {
+    Row {
+      fill: width
+      align: center
+      gap: 8
+      Text { font: uiFont; text: "◈ ${upper(label)}"; fontSize: 11; bold: true; color: (futOn ? #6fd1ff : #ff6f85); letterSpacing: 2; weight: 1; maxLines: 1 }
+      Text { text: hint; fontSize: 10; font: mono; letterSpacing: 1; color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.6); maxLines: 1 }
+    }
+  }
+
+  // Forge: bordered pill switch. wait = on in config but held by master/eco. Spring knob, zero cost when settled.
+  component Toggle(on, wait = false) {
+    Row {
+      width: 48
+      height: 28
+      padding: 4
+      radius: 99
+      align: center
+      background: on ? alpha(accentCol, 0.9) : (wait ? alpha((futOn ? #11a7cc : #cc112b), 0.16) : alpha((futOn ? #03151a : #1a0307), 0.95))
+      border: 1.2
+      borderColor: on ? accentHot : (wait ? alpha((futOn ? #11a7cc : #cc112b), 0.7) : alpha((futOn ? #22d1ff : #ff2244), 0.4))
+      animate background: tween(200ms, "ease")
+      Box {
+        size: 18
+        radius: 99
+        offset: [on || wait ? 20 : 0, 0]
+        animate offset: spring(0.75, 420)
+        background: on ? (futOn ? #e8e8ff : #ffe8ec) : (wait ? (futOn ? #55d1ff : #ff5566) : alpha((futOn ? #8fd1ff : #ff8fa3), 0.5))
+      }
+    }
+  }
+
+  // Fast-Path Inline Markdown Span Renderer (0 allocations on plain text)
+  component MdSpanText(lineStr, sz, textCol, tagCol, fnt, wt, ital, algn) {
+    let rawLine = lineStr ?? ""
+    let hasMarkup = contains(rawLine, "**") || contains(rawLine, "*") || contains(rawLine, "`")
+                 || contains(rawLine, "==") || contains(rawLine, "[[") || contains(rawLine, "~~")
+                 || contains(rawLine, "#")
+
+    if !hasMarkup {
+      Text {
+        text: rawLine
+        fontSize: sz
+        color: textCol
+        font: fnt
+        fontWeight: wt
+        italic: ital
+        align: algn
+        fill: width
+      }
+    } else {
+      let boldCol   = mix(textCol, (futOn ? #66d1ff : #ff6677), 0.85)
+      let italCol   = fnt == "mono" ? mix(textCol, tagCol, 0.38) : mix(textCol, (futOn ? #66d1ff : #ff6677), 0.25)
+      let hiCol     = (futOn ? #22d1ff : #ff223b)
+      let linkCol   = (futOn ? #11a7cc : #cc112b)
+      let strikeCol = alpha(textCol, 0.45)
+      let hashCol   = (futOn ? #55d1ff : #ff5566)
+
+      let cParts = contains(rawLine, "`") ? split(rawLine, "`") : [rawLine]
+      let s1 = len(cParts) <= 1 ? [{ text: rawLine, locked: false }] : range(len(cParts)).map(i =>
+        (i % 2 == 1 && i < len(cParts) - 1)
+          ? { text: " " + cParts[i] + " ", font: "mono", color: tagCol, locked: true }
+          : { text: (i % 2 == 1 ? "`" : "") + cParts[i], locked: false }
+      )
+
+      let s2 = !contains(rawLine, "==") ? s1 : flatten(s1.map(tok =>
+        (tok.locked || !contains(tok.text, "==")) ? [tok] : range(len(split(tok.text, "=="))).map(i =>
+          (i % 2 == 1 && i < len(split(tok.text, "==")) - 1)
+            ? { text: split(tok.text, "==")[i], bold: true, color: hiCol, locked: true }
+            : { text: (i % 2 == 1 ? "==" : "") + split(tok.text, "==")[i], locked: false }
+        )
+      ))
+
+      let s3 = !contains(rawLine, "[[") ? s2 : flatten(s2.map(tok =>
+        (tok.locked || !contains(tok.text, "[[")) ? [tok] : flatten(range(len(split(tok.text, "[["))).map(i =>
+          (i > 0 && contains(split(tok.text, "[[")[i], "]]"))
+            ? [
+                {
+                  text: "◈ " + (contains(split(split(tok.text, "[[")[i], "]]")[0], "|")
+                    ? split(split(split(tok.text, "[[")[i], "]]")[0], "|")[1]
+                    : replace(split(split(tok.text, "[[")[i], "]]")[0], "#", " › ")),
+                  bold: true,
+                  color: linkCol,
+                  locked: true
+                },
+                { text: split(split(tok.text, "[[")[i], "]]")[1] ?? "", locked: false }
+              ]
+            : [{ text: (i > 0 ? "[[" : "") + split(tok.text, "[[")[i], locked: false }]
+        ))
+      ))
+
+      let s4 = !contains(rawLine, "~~") ? s3 : flatten(s3.map(tok =>
+        (tok.locked || !contains(tok.text, "~~")) ? [tok] : range(len(split(tok.text, "~~"))).map(i =>
+          (i % 2 == 1 && i < len(split(tok.text, "~~")) - 1)
+            ? { text: "⊘ " + split(tok.text, "~~")[i], italic: true, color: strikeCol, locked: true }
+            : { text: (i % 2 == 1 ? "~~" : "") + split(tok.text, "~~")[i], locked: false }
+        )
+      ))
+
+      let s5 = !contains(rawLine, "**") ? s4 : flatten(s4.map(tok =>
+        (tok.locked || !contains(tok.text, "**")) ? [tok] : range(len(split(tok.text, "**"))).map(i =>
+          (i % 2 == 1 && i < len(split(tok.text, "**")) - 1)
+            ? { text: split(tok.text, "**")[i], bold: true, fontWeight: 800, color: boldCol, locked: true }
+            : { text: (i % 2 == 1 ? "**" : "") + split(tok.text, "**")[i], locked: false }
+        )
+      ))
+
+      let s6 = !contains(rawLine, "*") ? s5 : flatten(s5.map(tok =>
+        (tok.locked || !contains(tok.text, "*")) ? [tok] : range(len(split(tok.text, "*"))).map(i =>
+          (i % 2 == 1 && i < len(split(tok.text, "*")) - 1)
+            ? { text: split(tok.text, "*")[i], italic: true, color: italCol, locked: true }
+            : { text: (i % 2 == 1 ? "*" : "") + split(tok.text, "*")[i], locked: false }
+        )
+      ))
+
+      let s7 = !contains(rawLine, "#") ? s6 : flatten(s6.map(tok =>
+        (tok.locked || !contains(tok.text, "#")) ? [tok] : range(len(split(tok.text, " "))).map(i =>
+          (startsWith(split(tok.text, " ")[i], "#") && len(split(tok.text, " ")[i]) > 1 && !startsWith(split(tok.text, " ")[i], "##"))
+            ? { text: (i > 0 ? " " : "") + split(tok.text, " ")[i], font: "mono", bold: true, color: hashCol }
+            : { text: (i > 0 ? " " : "") + split(tok.text, " ")[i] }
+        )
+      ))
+
+      let cleanSpans = s7.filter(s => (s.text ?? "") != "")
+      Text {
+        spans: len(cleanSpans) > 0 ? cleanSpans : [{ text: "" }]
+        fontSize: sz
+        color: textCol
+        font: fnt
+        fontWeight: wt
+        italic: ital
+        align: algn
+        fill: width
+      }
+    }
+  }
+
+  component MdTable(headers, rows, bSz, col, tagCol, fnt) {
+    let safeHeaders = (headers ?? []).take(6)
+    let colCount    = max(1, len(safeHeaders))
+    let safeRows    = (rows ?? []).take(12)
+    let cellFontSz  = max(9.5, bSz * 0.9)
+    let headFontSz  = max(9.5, bSz * 0.92)
+
+    Column {
+      fill: width
+      radius: 8
+      background: alpha((futOn ? #000405 : #050001), 0.78)
+      border: 0.9
+      borderColor: alpha(tagCol, 0.45)
+      gap: 0
+
+      // Header Row
+      Row {
+        fill: width
+        align: center
+        background: alpha(tagCol, 0.22)
+        for ci in range(colCount) {
+          if ci > 0 {
+            Box { width: 0.7; height: 26; background: alpha(tagCol, 0.35) }
+          }
+          Box {
+            weight: 1
+            padding: [7, 6]
+            align: start
+            Text {
+              text: safeHeaders[ci] ?? ""
+              fontSize: headFontSz
+              font: fnt
+              fontWeight: 800
+              color: mix(tagCol, (futOn ? #66d1ff : #ff6677), 0.48)
+              maxLines: 1
+              fill: width
+            }
+          }
+        }
+      }
+
+      // Header / Body Accent Divider
+      Box { fill: width; height: 1.2; background: alpha(tagCol, 0.55) }
+
+      // Body Rows with Zebra Tint & Subtle Gridlines
+      for ri in range(len(safeRows)) {
+        let rCells = safeRows[ri] ?? []
+        if ri > 0 {
+          Box { fill: width; height: 0.6; background: alpha(tagCol, 0.18) }
+        }
+        Row {
+          fill: width
+          align: center
+          background: ri % 2 == 1 ? alpha(tagCol, 0.08) : alpha((futOn ? #000406 : #060001), 0.45)
+          for ci in range(colCount) {
+            if ci > 0 {
+              Box { width: 0.6; height: 24; background: alpha(tagCol, 0.18) }
+            }
+            Box {
+              weight: 1
+              padding: [7, 6]
+              align: start
+              Text {
+                text: rCells[ci] ?? ""
+                fontSize: cellFontSz
+                font: fnt
+                color: alpha(col, 0.92)
+                maxLines: 2
+                fill: width
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ================= OBSIDIAN MARKDOWN ENGINE (obsidian-css tokens → OWL) =================
+  // Fenced code block: verbatim text (indentation kept), language chip, 1-tap COPY to clipboard.
+  component CodeBlock(code, lang, bSz, pal, live = true) {
+    Column {
+      fill: width
+      gap: 0
+      radius: 8 * corners
+      clip: true
+      background: (futOn ? #000405 : #050001)
+      border: 1
+      borderColor: alpha(pal.border, 0.5)
+      Row {
+        fill: width
+        align: center
+        padding: [12, 5, 6, 5]
+        gap: 8
+        background: alpha(pal.tag, 0.10)
+        Text { text: lang != "" ? lower(lang) : "code"; fontSize: 11; font: "mono"; fontWeight: 800; color: alpha(pal.tag, 0.9); letterSpacing: 1; weight: 1; maxLines: 1 }
+        if live {
+          Row {
+            height: 32
+            padding: [12, 0]
+            radius: 8
+            align: center
+            background: mdCopied == code ? alpha(pal.tag, 0.34) : alpha(pal.tag, 0.14)
+            border: 1
+            borderColor: alpha(pal.tag, 0.6)
+            animate background: tween(180ms, "ease")
+            onTap: {
+              if hapticsOn { haptic() }
+              copy(code)
+              mdCopied = code
+            }
+            Text { text: mdCopied == code ? "✓ COPIED" : "⧉ COPY"; fontSize: 11.5; font: "mono"; fontWeight: 800; color: (futOn ? #d6d6ff : #ffd6dc) }
+          }
+        }
+      }
+      Box {
+        fill: width
+        padding: [12, 10]
+        Text {
+          text: code == "" ? " " : code
+          font: "mono"
+          fontSize: max(11, bSz - 1.5)
+          color: (futOn ? #d6d6ff : #ffd6dc)
+          fill: width
+        }
+      }
+    }
+  }
+
+  // Full Markdown body, Obsidian semantics. live=false → no tap targets (canvas cards hand every
+  // touch to the board's onTouch). cid=0 → task taps edit the editor draft (noteBody).
+  component MdView(raw, pal, bSz, fnt = "sans", wt = 600, algn = "start", maxLn = 400, cid = 0, live = true) {
+    let mLines  = lines(raw ?? "")
+    let mFmEnd  = len(mLines) > 1 && trim(mLines[0]) == "---" ? (range(1, len(mLines)).find(j => trim(mLines[j]) == "---") ?? -1) : -1
+    let mInside = scan(mLines, (st, l) => startsWith(trim(l), "```") ? !st : st, false)
+    let mCall   = scan(range(len(mLines)), (st, i) =>
+      match(trim(mLines[i]), "^>\\s*\\[!([A-Za-z-]+)\\]([+-]?)") != null
+        ? { t: lower(match(trim(mLines[i]), "^>\\s*\\[!([A-Za-z-]+)\\]([+-]?)")[0]), f: match(trim(mLines[i]), "^>\\s*\\[!([A-Za-z-]+)\\]([+-]?)")[1], h: i }
+        : (startsWith(trim(mLines[i]), ">") ? st : { t: "", f: "", h: -1 }),
+      { t: "", f: "", h: -1 })
+
+    Column {
+      fill: width
+      gap: bSz < 14 ? 4 : 6
+
+      for li in range(min(len(mLines), maxLn)) {
+        let ln     = mLines[li]
+        let tr     = trim(ln)
+        let isFnc  = startsWith(tr, "```")
+        let inCode = mInside[li] == true
+        // hidden lines: frontmatter body (drawn as Properties at line 0) and single-line %% comments %%
+        let mSkip  = (mFmEnd > 0 && li <= mFmEnd) || (startsWith(tr, "%%") && endsWith(tr, "%%") && len(tr) >= 4)
+
+        if mFmEnd > 0 && li == 0 {
+          // YAML frontmatter → Obsidian "Properties" block
+          Column {
+            fill: width
+            gap: 3
+            padding: [10, 8]
+            radius: 6
+            background: alpha(pal.tag, 0.07)
+            border: 1
+            borderColor: alpha(pal.tag, 0.25)
+            for fl in mLines.take(mFmEnd).drop(1).take(8) {
+              Row {
+                fill: width
+                gap: 8
+                Text { text: trim(split(fl, ":")[0] ?? ""); fontSize: max(11, bSz - 2); font: "mono"; fontWeight: 800; color: alpha(pal.tag, 0.85); maxLines: 1 }
+                Text { text: trim(sub(fl, len(split(fl, ":")[0] ?? "") + 1, len(fl))); fontSize: max(11, bSz - 2); font: "mono"; color: alpha(pal.text, 0.8); weight: 1; maxLines: 2 }
+              }
+            }
+          }
+        } else if !mSkip && isFnc && inCode {
+          let cEnd = range(li + 1, len(mLines)).find(j => startsWith(trim(mLines[j]), "```")) ?? len(mLines)
+          CodeBlock {
+            code: join(mLines.take(cEnd).drop(li + 1), "\n")
+            lang: trim(sub(tr, 3, len(tr)))
+            bSz: bSz
+            pal: pal
+            live: live
+          }
+        } else if !mSkip && !isFnc && !inCode {
+          let ind   = min(4, floor(len(replace((match(ln, "^(\\s*)") ?? [""])[0], "\t", "  ")) / 2))
+          let hm    = match(tr, "^(#{1,6}) (.*)$")
+          let nm    = match(tr, "^(\\d+)[.)] (.*)$")
+          let isTO  = startsWith(tr, "- [ ] ") || startsWith(tr, "* [ ] ") || startsWith(tr, "+ [ ] ")
+          let isTD  = startsWith(lower(tr), "- [x] ") || startsWith(lower(tr), "* [x] ")
+          let isTW  = startsWith(tr, "- [/] ")
+          let isBul = startsWith(tr, "- ") || startsWith(tr, "* ") || startsWith(tr, "+ ")
+          let isPip = startsWith(tr, "|") && len(tr) >= 3 && contains(sub(tr, 1, len(tr)), "|")
+          let isSep = isPip && contains(tr, "---")
+          let cs    = mCall[li]
+          let cTyp  = cs.t
+          let cDef  = get(obsCallouts, cTyp, obsCallouts.note)
+          let cCol  = mix(cDef.c, pal.tag, 0.3)
+          let fKey  = "${cid}:${cs.h}"
+          let cOpen = cs.f == "-" ? mdFold.any(k => k == fKey) : !mdFold.any(k => k == fKey)
+
+          if tr == "" {
+            Spacer { height: 3 }
+          } else if hm != null {
+            let hl = len(hm[0])
+            Column {
+              fill: width
+              gap: 3
+              padding: [0, hl <= 2 ? 6 : 3, 0, 1]
+              MdSpanText {
+                lineStr: hm[1]
+                sz: bSz * obsH[hl - 1]
+                textCol: hl == 1 ? pal.tag : pal.text
+                tagCol: pal.tag
+                fnt: fnt
+                wt: hl <= 2 ? 900 : 800
+                ital: false
+                algn: algn
+              }
+              if hl <= 2 {
+                Box { fill: width; height: 1; background: alpha(pal.tag, hl == 1 ? 0.45 : 0.25) }
+              }
+            }
+          } else if isTO || isTD || isTW {
+            let tIcon   = isTD ? "☑" : isTW ? "◐" : "☐"
+            let tCol    = isTD ? (futOn ? #11d1ff : #ff1133) : isTW ? (futOn ? #11a7cc : #cc112b) : pal.tag
+            let flipped = isTD
+              ? replace(replace(replace(replace(ln, "- [x] ", "- [ ] "), "- [X] ", "- [ ] "), "* [x] ", "* [ ] "), "* [X] ", "* [ ] ")
+              : replace(replace(replace(ln, "- [ ] ", "- [x] "), "- [/] ", "- [x] "), "* [ ] ", "* [x] ")
+            if live {
+              Row {
+                fill: width
+                gap: 8
+                align: center
+                padding: [ind * 16, 0, 0, 0]
+                onTap: {
+                  if hapticsOn { haptic() }
+                  if cid > 0 {
+                    holocronNotes = holocronNotes.map(c => c.id != cid ? c : merge(c, { text: join(set(lines(c.text ?? ""), li, flipped), "\n") }))
+                  } else {
+                    noteBody = join(set(lines(noteBody ?? ""), li, flipped), "\n")
+                  }
+                }
+                Row {
+                  width: 32; height: 32; radius: 8; align: center; justify: center
+                  background: alpha(tCol, 0.18); border: 1.2; borderColor: alpha(tCol, 0.72)
+                  Text { font: uiFont; text: tIcon; fontSize: 16; bold: true; color: tCol }
+                }
+                Column {
+                  weight: 1
+                  MdSpanText { lineStr: sub(tr, 6, len(tr)); sz: bSz; textCol: isTD ? alpha(pal.text, 0.45) : pal.text; tagCol: pal.tag; fnt: fnt; wt: isTD ? 400 : wt; ital: isTD; algn: algn }
+                }
+              }
+            } else {
+              Row {
+                fill: width
+                gap: 6
+                align: center
+                padding: [ind * 16, 0, 0, 0]
+                Text { font: uiFont; text: tIcon; fontSize: bSz; bold: true; color: tCol }
+                Column {
+                  weight: 1
+                  MdSpanText { lineStr: sub(tr, 6, len(tr)); sz: bSz; textCol: isTD ? alpha(pal.text, 0.45) : pal.text; tagCol: pal.tag; fnt: fnt; wt: isTD ? 400 : wt; ital: isTD; algn: algn }
+                }
+              }
+            }
+          } else if isSep {
+            Box { fill: width; height: 1.5; radius: 1; background: alpha(pal.tag, 0.6) }
+          } else if isPip {
+            let stripped = endsWith(tr, "|") ? sub(tr, 1, len(tr) - 1) : sub(tr, 1, len(tr))
+            let cells = split(stripped, "|").map(x => trim(x)).take(6)
+            let isHdr = li + 1 < len(mLines) && contains(mLines[li + 1], "---") && startsWith(trim(mLines[li + 1]), "|")
+            Row {
+              fill: width
+              align: center
+              radius: isHdr ? 7 : 4
+              background: isHdr ? alpha(pal.tag, 0.24) : (li % 2 == 0 ? alpha(pal.tag, 0.09) : alpha((futOn ? #000406 : #060001), 0.62))
+              border: isHdr ? 1.0 : 0.7
+              borderColor: isHdr ? alpha(pal.tag, 0.62) : alpha(pal.border, 0.28)
+              for ci in range(len(cells)) {
+                if ci > 0 {
+                  Box { width: 0.7; height: 22; background: alpha(pal.tag, isHdr ? 0.4 : 0.22) }
+                }
+                Box {
+                  weight: 1
+                  padding: [7, 6]
+                  Text { text: cells[ci]; fontSize: max(12, bSz - 0.5); font: "mono"; fontWeight: isHdr ? 800 : 600; color: isHdr ? (futOn ? #66d1ff : #ff6677) : alpha(pal.text, 0.94); maxLines: 2; fill: width }
+                }
+              }
+            }
+          } else if cTyp != "" && cs.h == li {
+            // Callout title row (Obsidian: > [!type]+/- Title). Tap folds/unfolds.
+            let cTitle = trim((match(tr, "^>\\s*\\[![A-Za-z-]+\\][+-]?\\s*(.*)$") ?? [""])[0])
+            let cHead  = cTitle != "" ? cTitle : capitalize(cTyp)
+            if live {
+              Row {
+                fill: width
+                gap: 8
+                align: center
+                padding: [10, 7]
+                radius: 6
+                background: alpha(cCol, 0.16)
+                border: 1
+                borderColor: alpha(cCol, 0.5)
+                onTap: {
+                  if cs.f != "" {
+                    if hapticsOn { haptic() }
+                    mdFold = mdFold.any(k => k == fKey) ? mdFold.filter(k => k != fKey) : mdFold + [fKey]
+                  }
+                }
+                Text { font: uiFont; text: cDef.g; fontSize: bSz; fontWeight: 900; color: cCol }
+                Text { font: uiFont; text: cHead; fontSize: bSz; fontWeight: 800; color: mix(cCol, #ffffff, 0.35); weight: 1; maxLines: 2 }
+                if cs.f != "" {
+                  Text { font: uiFont; text: cOpen ? "▾" : "▸"; fontSize: bSz; fontWeight: 900; color: cCol }
+                }
+              }
+            } else {
+              Row {
+                fill: width
+                gap: 8
+                align: center
+                padding: [10, 7]
+                radius: 6
+                background: alpha(cCol, 0.16)
+                border: 1
+                borderColor: alpha(cCol, 0.5)
+                Text { font: uiFont; text: cDef.g; fontSize: bSz; fontWeight: 900; color: cCol }
+                Text { font: uiFont; text: cHead; fontSize: bSz; fontWeight: 800; color: mix(cCol, #ffffff, 0.35); weight: 1; maxLines: 2 }
+              }
+            }
+          } else if cTyp != "" {
+            // Callout body line (hidden while folded)
+            if cOpen {
+              Row {
+                fill: width
+                gap: 8
+                padding: [10, 3]
+                background: alpha(cCol, 0.07)
+                Box { width: 2.5; height: bSz + 6; radius: 2; background: alpha(cCol, 0.7) }
+                Column {
+                  weight: 1
+                  MdSpanText { lineStr: trim(sub(tr, 1, len(tr))); sz: bSz; textCol: alpha(pal.text, 0.94); tagCol: cCol; fnt: fnt; wt: wt; ital: false; algn: algn }
+                }
+              }
+            }
+          } else if startsWith(tr, ">") {
+            Row {
+              fill: width
+              gap: 10
+              padding: [4, 3]
+              Box { width: 3; height: bSz + 8; radius: 2; background: alpha(pal.tag, 0.75) }
+              Column {
+                weight: 1
+                MdSpanText { lineStr: trim(sub(tr, 1, len(tr))); sz: bSz; textCol: alpha(pal.text, 0.8); tagCol: pal.tag; fnt: fnt; wt: wt; ital: true; algn: algn }
+              }
+            }
+          } else if tr == "---" || tr == "***" || tr == "___" {
+            Box { fill: width; height: 1.2; radius: 1; background: alpha(pal.tag, 0.42) }
+          } else if nm != null {
+            Row {
+              fill: width
+              gap: 8
+              padding: [ind * 16, 0, 0, 0]
+              Text { text: nm[0] + "."; fontSize: bSz; font: "mono"; fontWeight: 800; color: pal.tag; minLines: 1 }
+              Column {
+                weight: 1
+                MdSpanText { lineStr: nm[1]; sz: bSz; textCol: alpha(pal.text, 0.92); tagCol: pal.tag; fnt: fnt; wt: wt; ital: false; algn: algn }
+              }
+            }
+          } else if isBul {
+            Row {
+              fill: width
+              gap: 8
+              padding: [ind * 16, 0, 0, 0]
+              Text { font: uiFont; text: ind == 0 ? "•" : ind == 1 ? "◦" : "▪"; fontSize: bSz; fontWeight: 900; color: pal.tag }
+              Column {
+                weight: 1
+                MdSpanText { lineStr: sub(tr, 2, len(tr)); sz: bSz; textCol: alpha(pal.text, 0.92); tagCol: pal.tag; fnt: fnt; wt: wt; ital: false; algn: algn }
+              }
+            }
+          } else {
+            MdSpanText { lineStr: tr; sz: bSz; textCol: alpha(pal.text, 0.92); tagCol: pal.tag; fnt: fnt; wt: wt; ital: false; algn: algn }
+          }
+        }
+      }
+
+      if len(mLines) > maxLn {
+        Text { text: "⋯ ${len(mLines) - maxLn} more lines"; fontSize: 11; font: "mono"; color: alpha(pal.tag, 0.7) }
+      }
+    }
+  }
+
+  component TableBuilderScreen() {
+    let colCnt = max(1, len(tblHeaders))
+    let rowCnt = len(tblRows)
+    let safeCol = clamp(tblEditCol, 0, colCnt - 1)
+    let safeRow = tblEditRow < 0 ? -1 : clamp(tblEditRow, 0, max(0, rowCnt - 1))
+    let editingLabel = safeRow < 0
+      ? "EDITING HEADER · COL ${safeCol + 1}"
+      : "EDITING ROW ${safeRow + 1} · COL ${safeCol + 1}"
+
+    Column {
+      fill: true
+      background: (futOn ? #000304 : #040001)
+      padding: 14
+      gap: 12
+
+      // Top Header Bar
+      Row {
+        fill: width
+        align: center
+        gap: 8
+
+        Column {
+          weight: 1
+          gap: 2
+          Text {
+            font: uiFont
+            text: tblTargetMode == "insertNote" ? "⊞ INSERT TABLE" : "⊞ NEW TABLE CARD"
+            fontSize: 16
+            fontWeight: 800
+            color: accentGhost
+            letterSpacing: 1.4
+            maxLines: 1
+          }
+          Text {
+            text: "${rowCnt} ROWS × ${colCnt} COLS · TAP ANY CELL TO EDIT"
+            fontSize: 10.5
+            font: "mono"
+            color: alpha((futOn ? #66d1ff : #ff6677), 0.65)
+            letterSpacing: 0.7
+            maxLines: 1
+          }
+        }
+
+        Row {
+          height: 44
+          padding: [14, 0]
+          radius: 10
+          align: center
+          justify: center
+          background: alpha((futOn ? #02151a : #1a0208), 0.95)
+          border: 1.1
+          borderColor: alpha((futOn ? #66d1ff : #ff6677), 0.25)
+          onTap: {
+            if hapticsOn { haptic() }
+            if tblTargetMode == "insertNote" {
+              screenMode = "noteEditor"
+            } else {
+              close()
+            }
+          }
+          Text { font: uiFont; text: "✕ CLOSE"; fontSize: 12; fontWeight: 700; color: (futOn ? #66d1ff : #ff6677) }
+        }
+      }
+
+      // Main Scrollable Builder Body
+      Column {
+        weight: 1
+        fill: width
+        scroll: true
+        gap: 12
+
+        // Card Title Input (when creating a new Table Card from main toolbar)
+        if tblTargetMode == "newCard" {
+          Column {
+            fill: width
+            gap: 4
+            Text {
+              text: "CARD TITLE"
+              fontSize: 10.5
+              font: "mono"
+              bold: true
+              color: alpha(accentCol, 0.85)
+              letterSpacing: 1.0
+            }
+            Box {
+              fill: width
+              height: 46
+              padding: [12, 0]
+              radius: 10
+              background: (futOn ? #00080a : #0a0002)
+              border: 1.2
+              borderColor: alpha(accentCol, 0.55)
+              align: center
+              Input {
+                text: tblCardTitle
+                placeholder: "Table card title…"
+                color: (futOn ? #66d1ff : #ff6677)
+                fontSize: 14.5
+                underline: false
+                fill: width
+                onChange: tblCardTitle = value
+              }
+            }
+          }
+        }
+
+        // Quick 1-Tap Table Presets (Big 44px Buttons)
+        Column {
+          fill: width
+          gap: 6
+          Text {
+            text: "QUICK PRESETS (1-TAP)"
+            fontSize: 10.5
+            font: "mono"
+            bold: true
+            color: alpha(accentGhost, 0.88)
+            letterSpacing: 1.0
+          }
+          for pRow in chunk(tablePresets, 2) {
+            Row {
+              fill: width
+              gap: 8
+              for pre in pRow {
+                let isSel = tblPresetId == pre.id
+                Row {
+                  weight: 1
+                  height: 44
+                  padding: [10, 0]
+                  radius: 10
+                  align: center
+                  justify: center
+                  background: isSel ? alpha(accentGhost, 0.26) : alpha((futOn ? #01090c : #0c0102), 0.94)
+                  border: isSel ? 1.5 : 1
+                  borderColor: isSel ? accentGhost : alpha((futOn ? #66d1ff : #ff6677), 0.2)
+                  onTap: {
+                    if hapticsOn { haptic() }
+                    tblPresetId  = pre.id
+                    tblCardTitle = pre.title
+                    tblHeaders   = pre.headers
+                    tblRows      = pre.rows
+                    tblEditRow   = -1
+                    tblEditCol   = 0
+                    tblCellDraft = pre.headers[0] ?? ""
+                  }
+                  Text {
+                    font: uiFont
+                    text: pre.label
+                    fontSize: 12.5
+                    fontWeight: isSel ? 800 : 600
+                    color: isSel ? (futOn ? #66d1ff : #ff6677) : alpha((futOn ? #5cd1ff : #ff5c6e), 0.86)
+                    maxLines: 1
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Active Cell Editor Bar (Big 48px Input + Clear + Next Cell)
+        Column {
+          fill: width
+          gap: 6
+          padding: 10
+          radius: 12
+          background: alpha((futOn ? #01090c : #0c0102), 0.96)
+          border: 1.2
+          borderColor: alpha(accentGhost, 0.6)
+
+          Text {
+            text: editingLabel
+            fontSize: 10.5
+            font: "mono"
+            fontWeight: 800
+            color: accentGhost
+            letterSpacing: 0.9
+          }
+
+          Box {
+            fill: width
+            height: 48
+            padding: [12, 0]
+            radius: 10
+            background: (futOn ? #000304 : #040001)
+            border: 1.3
+            borderColor: accentGhost
+            align: center
+            Input {
+              text: tblCellDraft
+              placeholder: safeRow < 0 ? "Header text…" : "Cell value…"
+              color: (futOn ? #66d1ff : #ff6677)
+              fontSize: 14.5
+              underline: false
+              fill: width
+              onChange: tblCellDraft = value
+            }
+          }
+
+          Row {
+            fill: width
+            gap: 8
+
+            Row {
+              weight: 1
+              height: 44
+              radius: 10
+              align: center
+              justify: center
+              background: alpha((futOn ? #041318 : #18040a), 0.94)
+              border: 1
+              borderColor: alpha((futOn ? #66d1ff : #ff6677), 0.22)
+              onTap: {
+                if hapticsOn { haptic() }
+                tblCellDraft = ""
+                if safeRow < 0 {
+                  tblHeaders = range(len(tblHeaders)).map(i => i == safeCol ? "" : tblHeaders[i])
+                } else {
+                  tblRows = range(len(tblRows)).map(ri =>
+                    ri == safeRow
+                      ? range(len(tblRows[ri])).map(ci => ci == safeCol ? "" : tblRows[ri][ci])
+                      : tblRows[ri]
+                  )
+                }
+              }
+              Text { font: uiFont; text: "⌫ CLEAR"; fontSize: 12; fontWeight: 700; color: (futOn ? #66d1ff : #ff6677) }
+            }
+
+            Row {
+              weight: 2
+              height: 44
+              radius: 10
+              align: center
+              justify: center
+              background: alpha(accentGhost, 0.22)
+              border: 1.2
+              borderColor: alpha(accentGhost, 0.78)
+              onTap: {
+                if hapticsOn { haptic() }
+                let nextCol = safeCol + 1 < colCnt ? safeCol + 1 : 0
+                let nextRow = safeCol + 1 < colCnt
+                  ? safeRow
+                  : (safeRow + 1 < rowCnt ? safeRow + 1 : -1)
+                tblEditCol = nextCol
+                tblEditRow = nextRow
+                tblCellDraft = nextRow < 0
+                  ? (tblHeaders[nextCol] ?? "")
+                  : (tblRows[nextRow][nextCol] ?? "")
+              }
+              Text { font: uiFont; text: "NEXT CELL →"; fontSize: 12.5; fontWeight: 800; color: (futOn ? #66d1ff : #ff6677); letterSpacing: 0.7 }
+            }
+          }
+        }
+
+        // Interactive Tap-to-Edit Table Grid (Big 42px Cells)
+        Column {
+          fill: width
+          gap: 6
+          Text {
+            text: "INTERACTIVE GRID (TAP CELL TO SELECT)"
+            fontSize: 10.5
+            font: "mono"
+            bold: true
+            color: alpha((futOn ? #66d1ff : #ff6677), 0.72)
+            letterSpacing: 0.9
+          }
+
+          Column {
+            fill: width
+            radius: 10
+            background: alpha((futOn ? #000406 : #060001), 0.92)
+            border: 1
+            borderColor: alpha(accentCol, 0.45)
+            padding: 4
+            gap: 4
+
+            // Tappable Header Cells
+            Row {
+              fill: width
+              gap: 4
+              for ci in range(colCnt) {
+                let activeCell = safeRow < 0 && safeCol == ci
+                Row {
+                  weight: 1
+                  height: 42
+                  padding: [6, 4]
+                  radius: 7
+                  align: center
+                  background: activeCell ? alpha(accentGhost, 0.34) : alpha(accentCol, 0.22)
+                  border: activeCell ? 1.8 : 0.9
+                  borderColor: activeCell ? (futOn ? #66d1ff : #ff6677) : alpha(accentCol, 0.55)
+                  onTap: {
+                    if hapticsOn { haptic() }
+                    tblEditRow   = -1
+                    tblEditCol   = ci
+                    tblCellDraft = tblHeaders[ci] ?? ""
+                  }
+                  Text {
+                    font: uiFont
+                    text: (tblHeaders[ci] ?? "") == "" ? "Col ${ci + 1}" : tblHeaders[ci]
+                    fontSize: 11.5
+                    fontWeight: 800
+                    color: activeCell ? (futOn ? #66d1ff : #ff6677) : accentHot
+                    maxLines: 1
+                    fill: width
+                  }
+                }
+              }
+            }
+
+            // Tappable Body Cells
+            for ri in range(rowCnt) {
+              Row {
+                fill: width
+                gap: 4
+                for ci in range(colCnt) {
+                  let activeCell = safeRow == ri && safeCol == ci
+                  let cellVal = tblRows[ri][ci] ?? ""
+                  Row {
+                    weight: 1
+                    height: 42
+                    padding: [6, 4]
+                    radius: 7
+                    align: center
+                    background: activeCell
+                      ? alpha(accentGhost, 0.32)
+                      : (ri % 2 == 1 ? alpha(accentCol, 0.09) : alpha((futOn ? #010b0e : #0e0103), 0.85))
+                    border: activeCell ? 1.8 : 0.8
+                    borderColor: activeCell ? (futOn ? #66d1ff : #ff6677) : alpha((futOn ? #66d1ff : #ff6677), 0.16)
+                    onTap: {
+                      if hapticsOn { haptic() }
+                      tblEditRow   = ri
+                      tblEditCol   = ci
+                      tblCellDraft = cellVal
+                    }
+                    Text {
+                      font: uiFont
+                      text: cellVal == "" ? "·" : cellVal
+                      fontSize: 11.5
+                      color: activeCell ? (futOn ? #66d1ff : #ff6677) : (cellVal == "" ? alpha((futOn ? #66d1ff : #ff6677), 0.3) : (futOn ? #66d1ff : #ff6677))
+                      maxLines: 2
+                      fill: width
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Big + ROW / - ROW / + COL / - COL Structure Buttons (46px height)
+        Column {
+          fill: width
+          gap: 8
+
+          Row {
+            fill: width
+            gap: 8
+
+            Row {
+              weight: 1
+              height: 46
+              radius: 10
+              align: center
+              justify: center
+              background: rowCnt < 12 ? alpha((futOn ? #11d1ff : #ff1133), 0.18) : alpha((futOn ? #040e12 : #120408), 0.6)
+              border: 1.2
+              borderColor: rowCnt < 12 ? alpha((futOn ? #11d1ff : #ff1133), 0.72) : alpha((futOn ? #66d1ff : #ff6677), 0.15)
+              onTap: {
+                if hapticsOn { haptic() }
+                if len(tblRows) < 12 {
+                  tblRows = tblRows + [range(len(tblHeaders)).map(i => "")]
+                  tblEditRow = len(tblRows) - 1
+                  tblEditCol = 0
+                  tblCellDraft = ""
+                }
+              }
+              Text { font: uiFont; text: "+ ROW"; fontSize: 13; fontWeight: 800; color: rowCnt < 12 ? (futOn ? #66d1ff : #ff6677) : alpha((futOn ? #66d1ff : #ff6677), 0.35); letterSpacing: 0.8 }
+            }
+
+            Row {
+              weight: 1
+              height: 46
+              radius: 10
+              align: center
+              justify: center
+              background: rowCnt > 1 ? alpha((futOn ? #2ad1ff : #ff2a48), 0.18) : alpha((futOn ? #040e12 : #120408), 0.6)
+              border: 1.2
+              borderColor: rowCnt > 1 ? alpha((futOn ? #2ad1ff : #ff2a48), 0.72) : alpha((futOn ? #66d1ff : #ff6677), 0.15)
+              onTap: {
+                if hapticsOn { haptic() }
+                if len(tblRows) > 1 {
+                  tblRows = tblRows.take(len(tblRows) - 1)
+                  if tblEditRow >= len(tblRows) {
+                    tblEditRow = len(tblRows) - 1
+                    tblCellDraft = tblRows[tblEditRow][clamp(tblEditCol, 0, len(tblHeaders) - 1)] ?? ""
+                  }
+                }
+              }
+              Text { font: uiFont; text: "− ROW"; fontSize: 13; fontWeight: 800; color: rowCnt > 1 ? (futOn ? #55d1ff : #ff5566) : alpha((futOn ? #66d1ff : #ff6677), 0.35); letterSpacing: 0.8 }
+            }
+          }
+
+          Row {
+            fill: width
+            gap: 8
+
+            Row {
+              weight: 1
+              height: 46
+              radius: 10
+              align: center
+              justify: center
+              background: colCnt < 6 ? alpha(accentGhost, 0.18) : alpha((futOn ? #040e12 : #120408), 0.6)
+              border: 1.2
+              borderColor: colCnt < 6 ? alpha(accentGhost, 0.72) : alpha((futOn ? #66d1ff : #ff6677), 0.15)
+              onTap: {
+                if hapticsOn { haptic() }
+                if len(tblHeaders) < 6 {
+                  let nextColNum = len(tblHeaders) + 1
+                  tblHeaders = tblHeaders + ["Col ${nextColNum}"]
+                  tblRows = tblRows.map(r => r + [""])
+                  tblEditRow = -1
+                  tblEditCol = len(tblHeaders) - 1
+                  tblCellDraft = "Col ${nextColNum}"
+                }
+              }
+              Text { font: uiFont; text: "+ COL"; fontSize: 13; fontWeight: 800; color: colCnt < 6 ? mix(accentGhost, (futOn ? #66d1ff : #ff6677), 0.4) : alpha((futOn ? #66d1ff : #ff6677), 0.35); letterSpacing: 0.8 }
+            }
+
+            Row {
+              weight: 1
+              height: 46
+              radius: 10
+              align: center
+              justify: center
+              background: colCnt > 2 ? alpha((futOn ? #11a7cc : #cc112b), 0.16) : alpha((futOn ? #040e12 : #120408), 0.6)
+              border: 1.2
+              borderColor: colCnt > 2 ? alpha((futOn ? #11a7cc : #cc112b), 0.72) : alpha((futOn ? #66d1ff : #ff6677), 0.15)
+              onTap: {
+                if hapticsOn { haptic() }
+                if len(tblHeaders) > 2 {
+                  let newCols = len(tblHeaders) - 1
+                  tblHeaders = tblHeaders.take(newCols)
+                  tblRows = tblRows.map(r => r.take(newCols))
+                  if tblEditCol >= newCols {
+                    tblEditCol = newCols - 1
+                    tblCellDraft = tblEditRow < 0
+                      ? (tblHeaders[tblEditCol] ?? "")
+                      : (tblRows[clamp(tblEditRow, 0, len(tblRows) - 1)][tblEditCol] ?? "")
+                  }
+                }
+              }
+              Text { font: uiFont; text: "− COL"; fontSize: 13; fontWeight: 800; color: colCnt > 2 ? (futOn ? #55d1ff : #ff5566) : alpha((futOn ? #66d1ff : #ff6677), 0.35); letterSpacing: 0.8 }
+            }
+          }
+        }
+
+        // Live Rendered Card Table Preview
+        Column {
+          fill: width
+          gap: 6
+          Text {
+            text: "◉ LIVE CARD PREVIEW"
+            fontSize: 10.5
+            font: "mono"
+            bold: true
+            color: alpha(accentCol, 0.82)
+            letterSpacing: 1.0
+          }
+          MdTable {
+            headers: tblHeaders
+            rows: tblRows
+            bSz: 12
+            col: (futOn ? #6ed1ff : #ff6e80)
+            tagCol: accentCol
+            fnt: "mono"
+          }
+        }
+      }
+
+      // Big Primary Action Footer (50px height)
+      Row {
+        fill: width
+        gap: 10
+
+        Row {
+          weight: 1
+          height: 50
+          radius: 12
+          align: center
+          justify: center
+          background: alpha((futOn ? #021014 : #140204), 0.95)
+          border: 1.1
+          borderColor: alpha((futOn ? #66d1ff : #ff6677), 0.24)
+          onTap: {
+            if hapticsOn { haptic() }
+            if tblTargetMode == "insertNote" {
+              screenMode = "noteEditor"
+            } else {
+              close()
+            }
+          }
+          Text { font: uiFont; text: "CANCEL"; fontSize: 13; fontWeight: 700; color: alpha((futOn ? #66d1ff : #ff6677), 0.85); letterSpacing: 0.9 }
+        }
+
+        Row {
+          weight: 2
+          height: 50
+          radius: 12
+          align: center
+          justify: center
+          background: accentCol
+          border: 1.4
+          borderColor: (futOn ? #66d1ff : #ff6677)
+          onTap: {
+            if hapticsOn { haptic() }
+            if tblTargetMode == "insertNote" {
+              let sep = (noteBody == "" || endsWith(noteBody, "\n")) ? "" : "\n\n"
+              noteBody = (noteBody ?? "") + sep + tblMarkdown + "\n"
+              screenMode = "noteEditor"
+            } else {
+              let nid = nextNoteId
+              nextNoteId = nextNoteId + 1
+              let finalTitle = trim(tblCardTitle ?? "") != "" ? trim(tblCardTitle) : "TABLE #${nid}"
+              holocronNotes = holocronNotes + [{
+                id: nid,
+                title: finalTitle,
+                text: tblMarkdown + "\n#table",
+                font: "mono",
+                fontSizeIdx: 1,
+                size: "md",
+                titleSz: 17,
+                bodySz: 14,
+                fontWeight: 600,
+                colorIdx: 8,
+                borderIdx: 1,
+                radiusIdx: 2,
+                skin: "amoled",
+                opacity: 0.95,
+                pinned: false,
+                time: timeHm
+              }]
+              close()
+            }
+          }
+          Text {
+            font: uiFont
+            text: tblTargetMode == "insertNote" ? "✓ INSERT TABLE" : "✓ CREATE TABLE CARD"
+            fontSize: 13.5
+            fontWeight: 800
+            color: (futOn ? #66d1ff : #ff6677)
+            letterSpacing: 0.9
+          }
+        }
+      }
+    }
+  }
+
+  // ================= MAIN SCREEN: ULTRA-CLEAN CARD-AFTER-CARD DECK =================
+  Box {
+    fill: true
+
+    // Lean <0.4ms 0-loop AGSL Backdrop Shader (static Box when FX off or Pure AMOLED)
+    if effFxOn && shaderMode != "oled" && shaderMode != "amoled" {
+      Shader {
+        fill: true
+        fallback: #000000
+        uniforms: { uFut: futOn ? 1.0 : 0.0,
+          uT: fxT * animSpeed,
+          uCol: accentCol,
+          uGhost: accentGhost,
+          uMode: uModeVal,
+          uScan: deckScanOn ? 1.0 : 0.0
+        }
+        code: """
+          uniform float uFut;
+          uniform float uT;
+          uniform half4 uCol;
+          uniform half4 uGhost;
+          uniform float uMode;
+          uniform float uScan;
+
+          half4 mainOrig(float2 p) {
+            float2 uv = p / max(size, float2(1.0));
+            float t = uT;
+            half3 baseRgb = uCol.rgb;
+            half3 ghostRgb = uGhost.rgb;
+            half3 col = half3(0.0);
+
+            if (uMode < 0.5) {
+              float2 d1 = uv - float2(0.50 + 0.16 * sin(t * 0.24), 0.24 + 0.10 * cos(t * 0.20));
+              float2 d2 = uv - float2(0.42 + 0.15 * cos(t * 0.19), 0.72 + 0.10 * sin(t * 0.23));
+              half g1 = half(exp(-dot(d1, d1) * 4.2));
+              half g2 = half(exp(-dot(d2, d2) * 4.6));
+              col = baseRgb * (g1 * half(0.38)) + mix(baseRgb, ghostRgb, half(0.30)) * (g2 * half(0.30));
+            } else if (uMode < 1.5) {
+              float2 d1 = uv - float2(0.50 + 0.12 * sin(t * 0.16), 0.35 + 0.08 * cos(t * 0.14));
+              half aura = half(exp(-dot(d1, d1) * 5.8));
+              col = baseRgb * (aura * half(0.24));
+            } else if (uMode < 2.5) {
+              half w = half(sin(uv.y * 10.0 - t * 1.8) * 0.5 + 0.5);
+              col = mix(baseRgb, ghostRgb, half(uv.y * 0.4)) * (half(0.06) + w * half(0.10));
+            } else if (uMode < 3.5) {
+              float2 d = (uv - float2(0.5, 0.42)) * float2(0.6, 1.0);
+              float dist = length(d);
+              float dr = (dist - 0.24 - 0.025 * sin(t * 1.1)) * 14.0;
+              half ring = half(exp(-(dr * dr)));
+              col = baseRgb * (ring * half(0.34)) + ghostRgb * (ring * half(0.14));
+            } else {
+              float b1 = (uv.y - 0.34 - 0.07 * sin(uv.x * 3.0 + t * 0.4)) * 8.0;
+              float b2 = (uv.y - 0.66 - 0.07 * cos(uv.x * 2.5 - t * 0.3)) * 8.5;
+              col = baseRgb * half(exp(-(b1 * b1)) * 0.28) + ghostRgb * half(exp(-(b2 * b2)) * 0.22);
+            }
+
+            if (uScan > 0.5) {
+              half sl = half(0.84 + 0.16 * sin(p.y * 1.4));
+              col = col * sl;
+            }
+
+            col = col / (half3(1.0) + half(0.45) * col);
+            return half4(col, half(1.0));
+          }
+          half4 main(float2 fc) { half4 c = mainOrig(fc); half3 m = half3(min(c.g, c.b), max(c.g, c.r * 0.82), c.r); return half4(mix(c.rgb, m, half(uFut)), c.a); }
+        """
+      }
+    } else {
+      Box {
+        fill: true
+        background: linear(0, 0, 0, 1, [#000000, alpha(accentDark, 0.55), #000000])
+      }
+    }
+
+    // Ultra-Clean Vertical Layout: Header + 2 Big Buttons + Card-After-Card Feed
+    Column {
+      fill: true
+      align: start
+      padding: [0, 12, 0, 0]
+      gap: 10
+
+      // 1. Minimal Header (Title + Single ⚙ Forge Icon)
+      Row {
+        fill: width
+        align: center
+        padding: [14, 0]
+        gap: 10
+
+        Sigil { size: 32 }
+
+        Text {
+          font: uiFont
+          text: "OBSIDIAN DECK"
+          fontSize: 19
+          fontWeight: 900
+          color: titleCol
+          letterSpacing: 1.6
+          maxLines: 1
+          weight: 1
+        }
+
+        Row {
+          height: 46
+          padding: [14, 0]
+          radius: 13
+          align: center
+          justify: center
+          gap: 6
+          background: deckView == "canvas" ? alpha(accentCol, 0.30) : alpha(accentDark, 0.94)
+          border: 1.6
+          borderColor: deckView == "canvas" ? accentHot : alpha(accentCol, 0.85)
+          animate background: tween(180ms, "ease")
+          onTap: {
+            if hapticsOn { haptic() }
+            if deckView == "canvas" {
+              deckView = "feed"
+            } else {
+              holocronNotes = holocronNotes.map(c => c.tx != null ? c : merge(c, {
+                tx: (cvRects.find(r => r.id == c.id) ?? { tx: 0 }).tx,
+                ty: (cvRects.find(r => r.id == c.id) ?? { ty: 0 }).ty,
+                tw: 2,
+                th: 3
+              }))
+              cvSel = 0
+              cvGest = ""
+              deckView = "canvas"
+            }
+          }
+          Text { font: uiFont; text: deckView == "canvas" ? "≣ FEED" : "▦ CANVAS"; fontSize: 13; fontWeight: 900; color: (futOn ? #77d1ff : #ff7788); letterSpacing: 0.8 }
+        }
+
+        Row {
+          width: 46
+          height: 46
+          radius: 13
+          align: center
+          justify: center
+          background: alpha(accentDark, 0.94)
+          border: 1.6
+          borderColor: alpha(accentCol, 0.85)
+          onTap: {
+            if hapticsOn { haptic() }
+            screenMode = "sith"
+            tab = "customize"
+            confirmKey = ""
+            query = ""
+            statusMsg = ""
+            refresh()
+            screen()
+          }
+          Text { font: uiFont; text: "⚙"; fontSize: 20; fontWeight: 800; color: (futOn ? #66d1ff : #ff6677) }
+        }
+      }
+
+      // 2. Single Clean Action Row (ONLY 2 BIG BUTTONS: + ADD CARD | ⊞ TABLE)
+      Row {
+        fill: width
+        padding: [14, 0]
+        gap: 10
+
+        Row {
+          weight: 1.3
+          height: 52
+          radius: 14
+          align: center
+          justify: center
+          background: accentCol
+          border: 2.0
+          borderColor: accentHot
+          onTap: {
+            if hapticsOn { haptic() }
+            editId = 0
+            noteTitle = ""
+            noteBody = ""
+            noteSize = "md"
+            notePinned = false
+            noteAccentBar = true
+            noteBorderStyle = "hairline"
+            screenMode = "noteEditor"
+            screen()
+          }
+          Text { font: uiFont; text: "+ ADD CARD"; fontSize: 15; fontWeight: 900; color: (futOn ? #66d1ff : #ff6677); letterSpacing: 0.9 }
+        }
+
+        Row {
+          weight: 1
+          height: 52
+          radius: 14
+          align: center
+          justify: center
+          background: alpha((futOn ? #02151a : #1a0205), 0.96)
+          border: 2.0
+          borderColor: (futOn ? #22d1ff : #ff223b)
+          onTap: {
+            if hapticsOn { haptic() }
+            tblTargetMode = "newCard"
+            tblPresetId   = "tasks"
+            tblCardTitle  = "Task Tracker"
+            tblHeaders    = ["Task", "Status", "Priority"]
+            tblRows       = [
+              ["Design UI", "Done", "High"],
+              ["Build Tables", "WIP", "High"],
+              ["Polish Perf", "Todo", "Med"]
+            ]
+            tblEditRow    = -1
+            tblEditCol    = 0
+            tblCellDraft  = "Task"
+            screenMode = "tableBuilder"
+            screen()
+          }
+          Text { font: uiFont; text: "⊞ TABLE"; fontSize: 15; fontWeight: 900; color: (futOn ? #77d1ff : #ff7788); letterSpacing: 0.9 }
+        }
+      }
+
+      if deckView == "canvas" {
+      // NEEDS: (none beyond the contract)
+      // 3b. Obsidian-style TILE CANVAS — cards snap to tile markers; pinch zoom, pan, move, resize.
+      // Toolbar: − | NNN% (reset) | + | ⊡ HOME | (selected) ✎ EDIT | ✕
+      Row {
+        fill: width
+        padding: [14, 0]
+        gap: 6
+        align: center
+
+        Row {
+          width: 44; height: 40; radius: 11; align: center; justify: center
+          background: alpha((futOn ? #010e12 : #120103), 0.96); border: 1.3; borderColor: alpha(accentCol, 0.6)
+          onTap: {
+            if hapticsOn { haptic() }
+            let z = clamp(cvZoom / 1.25, 0.35, 2.6)
+            let wx = (cvCx - cvPanX) / cvZoom
+            let wy = (cvCy - cvPanY) / cvZoom
+            cvZoom = z
+            cvPanX = cvCx - wx * z
+            cvPanY = cvCy - wy * z
+          }
+          Text { font: uiFont; text: "−"; fontSize: 18; fontWeight: 900; color: (futOn ? #66d1ff : #ff6677); align: center }
+        }
+
+        Row {
+          width: 64; height: 40; radius: 11; align: center; justify: center
+          background: alpha(accentDark, 0.94); border: 1.3; borderColor: alpha(accentCol, 0.8)
+          onTap: {
+            if hapticsOn { haptic() }
+            cvZoom = 1.0
+            cvPanX = 0
+            cvPanY = 0
+          }
+          Text { text: "${round(cvZoom * 100)}%"; fontSize: 12.5; font: "mono"; fontWeight: 800; color: (futOn ? #b3d1ff : #ffb3c0); align: center }
+        }
+
+        Row {
+          width: 44; height: 40; radius: 11; align: center; justify: center
+          background: alpha((futOn ? #010e12 : #120103), 0.96); border: 1.3; borderColor: alpha(accentCol, 0.6)
+          onTap: {
+            if hapticsOn { haptic() }
+            let z = clamp(cvZoom * 1.25, 0.35, 2.6)
+            let wx = (cvCx - cvPanX) / cvZoom
+            let wy = (cvCy - cvPanY) / cvZoom
+            cvZoom = z
+            cvPanX = cvCx - wx * z
+            cvPanY = cvCy - wy * z
+          }
+          Text { font: uiFont; text: "+"; fontSize: 18; fontWeight: 900; color: (futOn ? #66d1ff : #ff6677); align: center }
+        }
+
+        Row {
+          height: 40; padding: [12, 0]; radius: 11; align: center; justify: center
+          background: alpha((futOn ? #010e12 : #120103), 0.96); border: 1.3; borderColor: alpha(accentCol, 0.6)
+          onTap: {
+            if hapticsOn { haptic() }
+            cvPanX = 0
+            cvPanY = 0
+          }
+          Text { font: uiFont; text: "⊡ HOME"; fontSize: 12; fontWeight: 800; color: (futOn ? #66d1ff : #ff6677); letterSpacing: 0.6 }
+        }
+
+        Spacer { weight: 1 }
+
+        if cvSel != 0 {
+          Row {
+            height: 40; padding: [12, 0]; radius: 11; align: center; justify: center
+            background: accentCol; border: 1.6; borderColor: accentHot
+            onTap: {
+              if hapticsOn { haptic() }
+              cvEditReq = cvEditReq + 1
+            }
+            Text { font: uiFont; text: "✎ EDIT"; fontSize: 12; fontWeight: 900; color: (futOn ? #e8e8ff : #ffe8ec); letterSpacing: 0.6 }
+          }
+          Row {
+            width: 40; height: 40; radius: 11; align: center; justify: center
+            background: alpha((futOn ? #010e12 : #120103), 0.96); border: 1.3; borderColor: alpha(accentCol, 0.6)
+            onTap: {
+              if hapticsOn { haptic() }
+              cvSel = 0
+            }
+            Text { font: uiFont; text: "✕"; fontSize: 14; fontWeight: 900; color: (futOn ? #66d1ff : #ff6677); align: center }
+          }
+        }
+      }
+
+      // The board. Every touch is handled here (children have no tap targets), so gestures never fight.
+      Box {
+        weight: 1
+        fill: width
+        clip: true
+        align: topStart
+        background: alpha(#000000, 0.35)
+        border: 1
+        borderColor: alpha(accentCol, 0.22)
+
+        onTouch: {
+          let n = len(touches)
+          if n >= 2 {
+            let a = touches[0]
+            let b = touches[1]
+            let pd = max(1, sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)))
+            let mx = (a.x + b.x) / 2
+            let my = (a.y + b.y) / 2
+            if cvGest != "pinch" {
+              cvGest = "pinch"
+              cvD0 = pd
+              cvZ0 = cvZoom
+              cvM0X = mx
+              cvM0Y = my
+              cvP0X = cvPanX
+              cvP0Y = cvPanY
+              cvDX = 0
+              cvDY = 0
+            } else {
+              let z = clamp(cvZ0 * pd / cvD0, 0.35, 2.6)
+              let wx = (cvM0X - cvP0X) / cvZ0
+              let wy = (cvM0Y - cvP0Y) / cvZ0
+              cvZoom = z
+              cvPanX = mx - wx * z
+              cvPanY = my - wy * z
+            }
+          } else if n == 1 {
+            let f = touches[0]
+            if cvGest == "" {
+              let wx = (f.x - cvPanX) / cvZoom
+              let wy = (f.y - cvPanY) / cvZoom
+              let hits = cvBoxes.filter(r => wx >= r.x && wx <= r.x + r.w && wy >= r.y && wy <= r.y + r.h)
+              cvGest = "pending"
+              cvSX = f.x
+              cvSY = f.y
+              cvP0X = cvPanX
+              cvP0Y = cvPanY
+              cvDX = 0
+              cvDY = 0
+              cvHit = len(hits) > 0 ? last(hits).id : 0
+              cvOnHandle = cvSelR != null
+                && wx >= cvSelR.x + cvSelR.w - 44 / cvZoom && wx <= cvSelR.x + cvSelR.w + 12 / cvZoom
+                && wy >= cvSelR.y + cvSelR.h - 44 / cvZoom && wy <= cvSelR.y + cvSelR.h + 12 / cvZoom
+            } else if cvGest == "pending" || cvGest == "pan" || cvGest == "move" || cvGest == "resize" {
+              let ddx = f.x - cvSX
+              let ddy = f.y - cvSY
+              if cvGest == "pending" && abs(ddx) + abs(ddy) > 10 {
+                cvGest = cvOnHandle ? "resize" : ((cvHit != 0 && cvHit == cvSel) ? "move" : "pan")
+              }
+              if cvGest == "pan" {
+                cvPanX = cvP0X + ddx
+                cvPanY = cvP0Y + ddy
+              } else if cvGest == "move" || cvGest == "resize" {
+                cvDX = ddx / cvZoom
+                cvDY = ddy / cvZoom
+              }
+            }
+          } else {
+            if cvGest == "pending" {
+              if cvHit == 0 {
+                cvSel = 0
+              } else if cvHit == cvSel {
+                cvEditReq = cvEditReq + 1
+              } else {
+                if hapticsOn { haptic() }
+                cvSel = cvHit
+              }
+            } else if (cvGest == "move" || cvGest == "resize") && cvTgt != null {
+              let tg = cvTgt
+              let sid = cvSel
+              holocronNotes = holocronNotes.map(c => c.id != sid ? c : merge(c, { tx: tg.tx, ty: tg.ty, tw: tg.tw, th: tg.th }))
+              if hapticsOn { haptic() }
+            }
+            cvGest = ""
+            cvDX = 0
+            cvDY = 0
+          }
+        }
+
+        // Tile markers (only the visible ones) + snap-target ghost while moving/resizing
+        Canvas {
+          fill: true
+          let cs = cvCell * cvZoom
+          let c0 = clamp(floor(-cvPanX / cs), 0, 30)
+          let c1 = clamp(ceil((width - cvPanX) / cs), 0, 30)
+          let r0 = clamp(floor(-cvPanY / cs), 0, 300)
+          let r1 = clamp(ceil((height - cvPanY) / cs), 0, 300)
+          for gx in range(c0, c1) {
+            for gy in range(r0, r1) {
+              rect(cvPanX + gx * cs + 3 * cvZoom, cvPanY + gy * cs + 3 * cvZoom, cs - 6 * cvZoom, cs - 6 * cvZoom, radius: 8 * cvZoom, stroke: alpha(accentCol, 0.13), width: 1)
+              circle(cvPanX + gx * cs + cs / 2, cvPanY + gy * cs + cs / 2, max(1, 1.6 * cvZoom), fill: alpha(accentCol, 0.22))
+            }
+          }
+          if (cvGest == "move" || cvGest == "resize") && cvTgt != null {
+            rect(cvPanX + cvTgt.tx * cs + 3 * cvZoom, cvPanY + cvTgt.ty * cs + 3 * cvZoom, cvTgt.tw * cs - 6 * cvZoom, cvTgt.th * cs - 6 * cvZoom, radius: 10 * cvZoom, fill: alpha(accentCol, 0.12))
+            rect(cvPanX + cvTgt.tx * cs + 3 * cvZoom, cvPanY + cvTgt.ty * cs + 3 * cvZoom, cvTgt.tw * cs - 6 * cvZoom, cvTgt.th * cs - 6 * cvZoom, radius: 10 * cvZoom, stroke: accentHot, width: 1.5)
+          }
+        }
+
+        // Cards: laid out at world size, then scaled (draw-time only — pinch costs no layout).
+        for r in cvBoxes key r.id {
+          let card  = holocronNotes.find(c => c.id == r.id)
+          let pal   = notePalettes[clamp(card.colorIdx ?? 0, 0, len(notePalettes) - 1)]
+          let isSel = cvSel == r.id
+          let mv    = isSel && cvGest == "move"
+          let rs    = isSel && cvGest == "resize"
+          let dx    = mv ? cvDX : 0
+          let dy    = mv ? cvDY : 0
+          let w     = rs ? max(cvCell - 10, r.w + cvDX) : r.w
+          let h     = rs ? max(cvCell - 10, r.h + cvDY) : r.h
+          Box {
+            width: w
+            height: h
+            scale: cvZoom
+            offset: [cvPanX + (r.x + dx) * cvZoom - w * (1 - cvZoom) / 2, cvPanY + (r.y + dy) * cvZoom - h * (1 - cvZoom) / 2]
+            opacity: mv ? 0.88 : 1.0
+            Column {
+              fill: true
+              padding: 10
+              gap: 6
+              clip: true
+              radius: 10 * corners
+              background: isSel ? mix(pal.bg, accentDark, 0.5) : alpha(pal.bg, 0.97)
+              border: isSel ? 2.2 : 1.2
+              borderColor: isSel ? accentHot : alpha(pal.border, 0.8)
+              if cvZoom >= 0.55 {
+                Text { font: uiFont; text: (card.title ?? "") != "" ? card.title : "UNTITLED"; fontSize: 14.5; fontWeight: 900; color: pal.text; maxLines: 2; fill: width }
+                if card.table != null {
+                  MdTable { headers: card.table.headers ?? []; rows: card.table.rows ?? []; bSz: 12; col: pal.text; tagCol: pal.tag; fnt: card.font ?? "sans" }
+                }
+                MdView { raw: card.text ?? ""; pal: pal; bSz: 13; fnt: card.font ?? "sans"; wt: card.fontWeight ?? 600; algn: card.align ?? "start"; maxLn: r.th * 4; cid: r.id; live: false }
+              } else {
+                Text { font: uiFont; text: (card.title ?? "") != "" ? card.title : "UNTITLED"; fontSize: 24; fontWeight: 900; color: pal.text; maxLines: 4; fill: width }
+              }
+            }
+            if isSel {
+              Box {
+                fill: true
+                align: bottomEnd
+                Text { font: uiFont; text: "◢"; fontSize: 22; fontWeight: 900; color: accentHot; padding: [0, 0, 4, 2]; align: end; fill: width }
+              }
+            }
+          }
+        }
+
+        // HUD (no tap targets → touches still reach the board)
+        Column {
+          fill: true
+          justify: end
+          align: end
+          padding: [10, 8]
+          Text {
+            text: cvSel != 0
+              ? "${round(cvZoom * 100)}% · drag card to move · ◢ resize · tap again to edit"
+              : "${round(cvZoom * 100)}% · drag to pan · pinch to zoom · tap a card to select"
+            fontSize: 10.5
+            font: "mono"
+            color: alpha((futOn ? #b3d1ff : #ffb3c0), 0.55)
+            padding: [10, 4]
+            radius: 99
+            background: alpha(#000000, 0.6)
+          }
+        }
+      }
+      }
+
+      if deckView != "canvas" {
+      // 3. Clean Card-After-Card Vertical Scrolling Feed
+      Column {
+        weight: 1
+        fill: width
+        scroll: true
+        padding: [14, 4, 14, screenInset + 22]
+        gap: 12
+
+        if len(holocronNotes) == 0 {
+          Column {
+            fill: width
+            padding: 28
+            align: center
+            gap: 8
+            radius: 16
+            background: alpha((futOn ? #00080a : #0a0002), 0.94)
+            border: 1.5
+            borderColor: alpha(accentCol, 0.45)
+            Text { font: uiFont; text: "NO CARDS YET"; fontSize: 18; fontWeight: 900; color: accentHot }
+            Text { font: uiFont; text: "Tap + ADD CARD or ⊞ TABLE above."; fontSize: 14; color: alpha((futOn ? #5cd1ff : #ff5c6e), 0.78); align: "center" }
+          }
+        }
+
+        for card in holocronNotes key card.id {
+          let cid      = card.id
+          let pal      = notePalettes[clamp(card.colorIdx ?? 0, 0, len(notePalettes) - 1)]
+          let cSz      = card.size ?? "md"
+          let cPad     = cSz == "sm" ? 10 : cSz == "lg" ? 18 : 14
+          let cGap     = cSz == "sm" ? 6  : cSz == "lg" ? 11 : 8
+          let cTitleSz = cSz == "sm" ? 15 : cSz == "lg" ? 21 : 17.5
+          let cBodySz  = cSz == "sm" ? 13 : cSz == "lg" ? max(15.5, card.bodySz ?? 15.5) : max(13.5, card.bodySz ?? 14)
+          let cMaxLn   = cSz == "sm" ? 4  : cSz == "lg" ? 32 : 14
+          let cFont    = card.font ?? "sans"
+          let cWeight  = card.fontWeight ?? 600
+          let cAlign   = card.align ?? "start"
+          let cPinned  = card.pinned == true
+          let cBarOn   = card.accentBar ?? true
+          let cBStyle  = card.borderStyle ?? "hairline"
+          let cBWidth  = cBStyle == "none" ? 0 : cBStyle == "bold" ? 2.6 : 1.4
+          let cSzBadge = cSz == "sm" ? "S" : cSz == "lg" ? "L" : "M"
+          let rawLines = lines(card.text ?? "")
+          let visLines = rawLines.take(cMaxLn)
+
+          Column {
+            fill: width
+            padding: cPad
+            gap: cGap
+            radius: 16
+            clip: true
+            background: alpha(pal.bg, 0.96)
+            border: cBWidth
+            borderColor: alpha(pal.border, cBStyle == "bold" ? 0.98 : 0.85)
+
+            // Clean Card Header: Optional Left Accent Bar + Pin Indicator + Bold Title + Size Badge + Single ✎ Edit
+            Row {
+              fill: width
+              align: center
+              gap: 8
+
+              if cBarOn {
+                Box {
+                  width: 3.5
+                  height: cTitleSz + 6
+                  radius: 2
+                  background: pal.border
+                }
+              }
+
+              if cPinned {
+                Text {
+                  font: uiFont
+                  text: "◆"
+                  fontSize: 12
+                  fontWeight: 900
+                  color: pal.tag
+                }
+              }
+
+              Text {
+                text: (card.title ?? "") != "" ? card.title : "UNTITLED"
+                fontSize: cTitleSz
+                fontWeight: 900
+                align: cAlign
+                color: pal.text
+                font: cFont
+                maxLines: 2
+                weight: 1
+                onTap: {
+                  if hapticsOn { haptic() }
+                  editId = cid
+                  noteTitle = card.title ?? ""
+                  noteBody = card.text ?? ""
+                  noteSize = cSz
+                  noteFont = cFont
+                  noteBodySz = card.bodySz ?? 14
+                  noteWeight = cWeight
+                  noteAlign = cAlign
+                  noteColorIdx = card.colorIdx ?? 0
+                  notePinned = cPinned
+                  noteAccentBar = cBarOn
+                  noteBorderStyle = cBStyle
+                  screenMode = "noteEditor"
+                  screen()
+                }
+              }
+
+              Text {
+                text: cSzBadge
+                fontSize: 10
+                font: "mono"
+                fontWeight: 800
+                color: alpha(pal.tag, 0.9)
+                padding: [6, 3]
+                radius: 6
+                background: alpha(pal.tag, 0.14)
+                border: 0.8
+                borderColor: alpha(pal.tag, 0.38)
+              }
+
+              Row {
+                width: 42
+                height: 42
+                radius: 12
+                align: center
+                justify: center
+                background: alpha(#000000, 0.50)
+                border: 1.3
+                borderColor: alpha(pal.border, 0.65)
+                onTap: {
+                  if hapticsOn { haptic() }
+                  editId = cid
+                  noteTitle = card.title ?? ""
+                  noteBody = card.text ?? ""
+                  noteSize = cSz
+                  noteFont = cFont
+                  noteBodySz = card.bodySz ?? 14
+                  noteWeight = cWeight
+                  noteAlign = cAlign
+                  noteColorIdx = card.colorIdx ?? 0
+                  notePinned = cPinned
+                  noteAccentBar = cBarOn
+                  noteBorderStyle = cBStyle
+                  screenMode = "noteEditor"
+                  screen()
+                }
+                Text { font: uiFont; text: "✎"; fontSize: 16; fontWeight: 800; color: pal.text }
+              }
+            }
+
+            // Structured Table if present
+            if card.table != null {
+              MdTable {
+                headers: card.table.headers ?? []
+                rows: card.table.rows ?? []
+                bSz: cBodySz
+                col: pal.text
+                tagCol: pal.tag
+                fnt: cFont
+              }
+            }
+
+            // Obsidian Markdown body (code blocks + COPY, H1–H6, nested lists, callouts, tables, tasks)
+            MdView {
+              raw: card.text ?? ""
+              pal: pal
+              bSz: cBodySz
+              fnt: cFont
+              wt: cWeight
+              algn: cAlign
+              maxLn: cMaxLn
+              cid: cid
+              live: true
+            }
+          }
+        }
+      }
+      }
+    }
+  }
+
+  // ================= POPUP SCREEN: SIMPLE EDITOR · TABLE BUILDER · FORGE =================
+  screen {
+    title: screenMode == "noteEditor"   ? (editId > 0 ? "EDIT CARD" : "NEW CARD")
+         : screenMode == "tableBuilder" ? "⊞ TABLE BUILDER"
+         : "SITH LYFE · SCREEN FORGE"
+
+    if screenMode == "noteEditor" {
+      let edPal  = notePalettes[clamp(noteColorIdx, 0, len(notePalettes) - 1)]
+      let curIdx = editId > 0 ? (range(len(holocronNotes)).find(i => holocronNotes[i].id == editId) ?? -1) : -1
+
+      Column {
+        fill: true
+        background: (futOn ? #000304 : #040001)
+        padding: 14
+        gap: 12
+
+        // Scrollable Simple Card Editor Body
+        Column {
+          weight: 1
+          fill: width
+          scroll: true
+          gap: 12
+
+          // 0. Quick Card Templates Row (1-tap Markdown starters)
+          Column {
+            fill: width
+            gap: 5
+            Text {
+              text: "QUICK TEMPLATES"
+              fontSize: 10
+              font: "mono"
+              fontWeight: 800
+              color: alpha(accentCol, 0.85)
+              letterSpacing: 1.0
+            }
+            Row {
+              fill: width
+              gap: 6
+              for tpl in cardTemplates {
+                Row {
+                  weight: 1
+                  height: 40
+                  radius: 10
+                  align: center
+                  justify: center
+                  background: alpha((futOn ? #010e12 : #120103), 0.96)
+                  border: 1.2
+                  borderColor: alpha(accentCol, 0.45)
+                  onTap: {
+                    if hapticsOn { haptic() }
+                    noteTitle = tpl.title
+                    noteBody = tpl.body
+                    noteFont = tpl.font
+                  }
+                  Text {
+                    font: uiFont
+                    text: tpl.label
+                    fontSize: 11.5
+                    fontWeight: 800
+                    color: (futOn ? #66d1ff : #ff6677)
+                    maxLines: 1
+                  }
+                }
+              }
+            }
+          }
+
+          // 1. Card Title
+          Box {
+            fill: width
+            height: 50
+            padding: [14, 0]
+            radius: 12
+            background: (futOn ? #00080a : #0a0002)
+            border: 1.4
+            borderColor: alpha(edPal.border, 0.75)
+            align: center
+            Input {
+              text: noteTitle
+              placeholder: "Card title…"
+              color: (futOn ? #66d1ff : #ff6677)
+              fontSize: 16
+              underline: false
+              focus: true
+              fill: width
+              onChange: noteTitle = value
+            }
+          }
+
+          // 2. 3 Card Sizes: S · M · L (Big 48dp buttons)
+          Row {
+            fill: width
+            gap: 8
+            for szOpt in [
+              { id: "sm", label: "S · COMPACT" },
+              { id: "md", label: "M · NORMAL"  },
+              { id: "lg", label: "L · LARGE"   }
+            ] {
+              let isSz = noteSize == szOpt.id
+              Row {
+                weight: 1
+                height: 48
+                radius: 12
+                align: center
+                justify: center
+                background: isSz ? accentCol : alpha((futOn ? #010e12 : #120103), 0.96)
+                border: isSz ? 2.0 : 1.3
+                borderColor: isSz ? (futOn ? #66d1ff : #ff6677) : alpha(accentCol, 0.5)
+                onTap: {
+                  if hapticsOn { haptic() }
+                  noteSize = szOpt.id
+                }
+                Text { font: uiFont; text: szOpt.label; fontSize: 13; fontWeight: 800; color: isSz ? (futOn ? #66d1ff : #ff6677) : (futOn ? #66d1ff : #ff6677); maxLines: 1 }
+              }
+            }
+          }
+
+          // 3. Obsidian-style Markdown Editor: SOURCE / PREVIEW · toolbar · text zoom · copy / undo
+          // (OWL has no cursor API, so every toolbar insert appends at the end of the note)
+          Row {
+            fill: width
+            gap: 8
+            align: center
+
+            // Segmented mode switch
+            Row {
+              weight: 1
+              height: 44
+              radius: 12
+              padding: 3
+              gap: 3
+              background: (futOn ? #00080a : #0a0002)
+              border: 1.3
+              borderColor: alpha(edPal.border, 0.6)
+              for md in [
+                { id: "edit",    label: "✎ SOURCE"  },
+                { id: "preview", label: "◉ PREVIEW" }
+              ] {
+                let isMd = edMode == md.id
+                Row {
+                  weight: 1
+                  fill: true
+                  radius: 9
+                  align: center
+                  justify: center
+                  background: isMd ? accentCol : alpha(#000000, 0)
+                  border: isMd ? 1.2 : 0
+                  borderColor: accentHot
+                  animate background: tween(160ms, "ease")
+                  onTap: {
+                    if hapticsOn { haptic() }
+                    edMode = md.id
+                    edCallMenu = false
+                    edClearArm = false
+                  }
+                  Text { font: uiFont; text: md.label; fontSize: 12.5; fontWeight: 900; color: isMd ? (futOn ? #e8e8ff : #ffe8ec) : (futOn ? #66d1ff : #ff6677); letterSpacing: 0.8; maxLines: 1 }
+                }
+              }
+            }
+
+            // Text zoom: A− [size] A+
+            Row {
+              height: 44
+              radius: 12
+              gap: 0
+              align: center
+              background: (futOn ? #00080a : #0a0002)
+              border: 1.3
+              borderColor: alpha(edPal.border, 0.6)
+              Row {
+                width: 42; fill: height; align: center; justify: center
+                opacity: edFont > 11 ? 1.0 : 0.35
+                onTap: { if edFont > 11 { if hapticsOn { haptic() }; edFont = max(11, edFont - 1.5) } }
+                Text { font: uiFont; text: "A−"; fontSize: 13; fontWeight: 900; color: (futOn ? #66d1ff : #ff6677) }
+              }
+              Text { text: "${round(edFont)}"; fontSize: 12; font: "mono"; fontWeight: 800; color: (futOn ? #b3d1ff : #ffb3c0); width: 26; align: center }
+              Row {
+                width: 42; fill: height; align: center; justify: center
+                opacity: edFont < 26 ? 1.0 : 0.35
+                onTap: { if edFont < 26 { if hapticsOn { haptic() }; edFont = min(26, edFont + 1.5) } }
+                Text { font: uiFont; text: "A+"; fontSize: 15; fontWeight: 900; color: (futOn ? #66d1ff : #ff6677) }
+              }
+            }
+          }
+
+          if edMode == "edit" {
+            // Formatting toolbar (wraps onto as many rows as it needs)
+            Row {
+              fill: width
+              wrap: true
+              gap: 6
+              for ins in [
+                { label: "H1",       snip: "# Heading",                                   line: true,  raw: false },
+                { label: "H2",       snip: "## Heading",                                  line: true,  raw: false },
+                { label: "H3",       snip: "### Heading",                                 line: true,  raw: false },
+                { label: "B",        snip: "**bold**",                                    line: false, raw: false },
+                { label: "I",        snip: "*italic*",                                    line: false, raw: false },
+                { label: "S̶",        snip: "~~strike~~",                                  line: false, raw: false },
+                { label: "==H==",    snip: "==highlight==",                               line: false, raw: false },
+                { label: "`code`",   snip: "`code`",                                      line: false, raw: false },
+                { label: "```block", snip: "```bash\n\n```",                              line: true,  raw: false },
+                { label: "• list",   snip: "- Item",                                      line: true,  raw: false },
+                { label: "1. list",  snip: "1. Item",                                     line: true,  raw: false },
+                { label: "☐ task",   snip: "- [ ] Task",                                  line: true,  raw: false },
+                { label: "> quote",  snip: "> Quote",                                     line: true,  raw: false },
+                { label: "[[link]]", snip: "[[Note]]",                                    line: false, raw: false },
+                { label: "[url]()",  snip: "[text](https://)",                            line: false, raw: false },
+                { label: "⊞ table",  snip: "| Col A | Col B |\n| --- | --- |\n| A1 | B1 |\n| A2 | B2 |", line: true, raw: false },
+                { label: "———",      snip: "---",                                         line: true,  raw: false },
+                { label: "↵",        snip: "\n",                                          line: false, raw: true  },
+                { label: "⇥",        snip: "  ",                                          line: false, raw: true  }
+              ] {
+                Row {
+                  height: 38
+                  padding: [11, 0]
+                  radius: 10
+                  align: center
+                  justify: center
+                  background: alpha((futOn ? #021014 : #140204), 0.96)
+                  border: 1.2
+                  borderColor: alpha(edPal.border, 0.55)
+                  onTap: {
+                    if hapticsOn { haptic() }
+                    let pre = noteBody ?? ""
+                    let sep = ins.raw || pre == "" ? "" : (ins.line ? (endsWith(pre, "\n") ? "" : "\n") : (endsWith(pre, " ") || endsWith(pre, "\n") ? "" : " "))
+                    edPrev = pre
+                    edCanUndo = true
+                    edClearArm = false
+                    noteBody = pre + sep + ins.snip
+                  }
+                  Text { text: ins.label; fontSize: 12.5; font: "mono"; fontWeight: 800; color: (futOn ? #66d1ff : #ff6677); maxLines: 1 }
+                }
+              }
+
+              // Callout picker toggle
+              Row {
+                height: 38
+                padding: [11, 0]
+                radius: 10
+                align: center
+                justify: center
+                background: edCallMenu ? alpha(accentCol, 0.4) : alpha((futOn ? #021014 : #140204), 0.96)
+                border: 1.2
+                borderColor: edCallMenu ? accentHot : alpha(edPal.border, 0.55)
+                onTap: { if hapticsOn { haptic() }; edCallMenu = !edCallMenu }
+                Text { text: edCallMenu ? "[!] ▴" : "[!] ▾"; fontSize: 12.5; font: "mono"; fontWeight: 800; color: (futOn ? #66d1ff : #ff6677); maxLines: 1 }
+              }
+
+              // Undo
+              Row {
+                height: 38
+                padding: [11, 0]
+                radius: 10
+                align: center
+                justify: center
+                opacity: edCanUndo ? 1.0 : 0.35
+                background: alpha((futOn ? #02151a : #1a0205), 0.96)
+                border: 1.2
+                borderColor: edCanUndo ? accentHot : alpha(edPal.border, 0.4)
+                onTap: {
+                  if edCanUndo {
+                    if hapticsOn { haptic() }
+                    noteBody = edPrev
+                    edPrev = ""
+                    edCanUndo = false
+                  }
+                }
+                Text { text: "⎌ UNDO"; fontSize: 12.5; font: "mono"; fontWeight: 800; color: (futOn ? #77d1ff : #ff7788); maxLines: 1 }
+              }
+            }
+
+            // Callout types (Obsidian's defaults)
+            if edCallMenu {
+              Row {
+                fill: width
+                wrap: true
+                gap: 6
+                padding: 8
+                radius: 12
+                background: alpha((futOn ? #00080a : #0a0002), 0.96)
+                border: 1
+                borderColor: alpha(accentCol, 0.45)
+                for ct in ["note", "tip", "info", "warning", "danger", "success", "question", "example", "quote", "todo", "bug", "abstract"] {
+                  Row {
+                    height: 36
+                    padding: [10, 0]
+                    radius: 9
+                    align: center
+                    background: alpha((futOn ? #021014 : #140204), 0.96)
+                    border: 1
+                    borderColor: alpha(edPal.border, 0.5)
+                    onTap: {
+                      if hapticsOn { haptic() }
+                      let pre = noteBody ?? ""
+                      let sep = pre == "" ? "" : (endsWith(pre, "\n") ? "" : "\n")
+                      edPrev = pre
+                      edCanUndo = true
+                      edClearArm = false
+                      edCallMenu = false
+                      noteBody = pre + sep + "> [!${ct}] Title\n> "
+                    }
+                    Text { text: ct; fontSize: 12; font: "mono"; fontWeight: 700; color: (futOn ? #b3d1ff : #ffb3c0); maxLines: 1 }
+                  }
+                }
+              }
+            }
+
+            // Markdown source box (Enter = new line; long-press to paste)
+            Box {
+              fill: width
+              height: edFont * 1.5 * 14 + 28
+              padding: [14, 12]
+              radius: 12
+              background: (futOn ? #00080a : #0a0002)
+              border: 1.4
+              borderColor: alpha(edPal.border, 0.65)
+              Input {
+                text: noteBody
+                placeholder: "Write Markdown… or long-press to paste code & scripts"
+                color: (futOn ? #e8e8ff : #ffe8ec)
+                fontSize: edFont
+                lines: 14
+                underline: false
+                fill: true
+                onChange: noteBody = value
+              }
+            }
+
+            // Footer: stats · COPY ALL · CLEAR (two-tap)
+            let edSrc   = noteBody ?? ""
+            let edLines = len(lines(edSrc))
+            let edWords = len(matchAll(edSrc, "\\S+"))
+            let edChars = len(edSrc)
+            Row {
+              fill: width
+              gap: 8
+              align: center
+              Text {
+                text: "${edLines} lines · ${edWords} words · ${edChars} chars"
+                fontSize: 11
+                font: "mono"
+                color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.6)
+                weight: 1
+                maxLines: 1
+              }
+              Row {
+                height: 38
+                padding: [12, 0]
+                radius: 10
+                align: center
+                background: mdCopied == noteBody && noteBody != "" ? alpha(accentCol, 0.4) : alpha((futOn ? #021014 : #140204), 0.96)
+                border: 1.2
+                borderColor: alpha(edPal.border, 0.6)
+                animate background: tween(180ms, "ease")
+                onTap: {
+                  if hapticsOn { haptic() }
+                  copy(noteBody ?? "")
+                  mdCopied = noteBody ?? ""
+                }
+                Text { text: mdCopied == noteBody && noteBody != "" ? "✓ COPIED" : "⧉ COPY ALL"; fontSize: 12; font: "mono"; fontWeight: 800; color: (futOn ? #66d1ff : #ff6677); maxLines: 1 }
+              }
+              Row {
+                height: 38
+                padding: [12, 0]
+                radius: 10
+                align: center
+                background: edClearArm ? alpha((futOn ? #022f3a : #3a020e), 0.98) : alpha((futOn ? #021014 : #140204), 0.96)
+                border: 1.2
+                borderColor: edClearArm ? (futOn ? #22d1ff : #ff2244) : alpha(edPal.border, 0.6)
+                onTap: {
+                  if hapticsOn { haptic() }
+                  if edClearArm {
+                    edPrev = noteBody ?? ""
+                    edCanUndo = true
+                    noteBody = ""
+                    edClearArm = false
+                  } else {
+                    edClearArm = true
+                  }
+                }
+                Text { text: edClearArm ? "TAP AGAIN" : "✕ CLEAR"; fontSize: 12; font: "mono"; fontWeight: 800; color: edClearArm ? (futOn ? #4dd1ff : #ff4d61) : (futOn ? #66d1ff : #ff6677); maxLines: 1 }
+              }
+            }
+
+            Text {
+              font: uiFont
+              text: "Long-press the box to paste code — it stays exactly as pasted inside ``` fences."
+              fontSize: 11
+              color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.6)
+              fill: width
+            }
+          } else {
+            // Live preview, rendered exactly like the card
+            Column {
+              fill: width
+              gap: 10
+              padding: 14
+              radius: 14
+              background: alpha(edPal.bg, 0.96)
+              border: 1.4
+              borderColor: alpha(edPal.border, 0.75)
+              if trim(noteTitle) != "" {
+                Text { font: uiFont; text: noteTitle; fontSize: edFont + 4; fontWeight: 900; color: edPal.text; maxLines: 3; fill: width }
+              }
+              if trim(noteBody ?? "") == "" {
+                Text { font: uiFont; text: "Nothing to preview yet — switch to ✎ SOURCE and write something."; fontSize: 13; color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.6); fill: width }
+              } else {
+                MdView {
+                  raw: noteBody
+                  pal: edPal
+                  bSz: edFont
+                  fnt: noteFont
+                  wt: noteWeight
+                  algn: noteAlign
+                  maxLn: 400
+                  cid: 0
+                  live: true
+                }
+              }
+            }
+          }
+
+
+          // 4. Big 48dp Insert / Edit Table Button
+          Row {
+            fill: width
+            height: 48
+            radius: 12
+            align: center
+            justify: center
+            background: alpha((futOn ? #02151a : #1a0205), 0.96)
+            border: 1.8
+            borderColor: (futOn ? #22d1ff : #ff223b)
+            onTap: {
+              if hapticsOn { haptic() }
+              tblTargetMode = "insertNote"
+              tblPresetId   = "grid2x2"
+              tblHeaders    = ["Col A", "Col B"]
+              tblRows       = [["Item 1", "Value 1"], ["Item 2", "Value 2"]]
+              tblEditRow    = -1
+              tblEditCol    = 0
+              tblCellDraft  = "Col A"
+              screenMode    = "tableBuilder"
+            }
+            Text { font: uiFont; text: "⊞ ADD / EDIT TABLE"; fontSize: 14; fontWeight: 900; color: (futOn ? #77d1ff : #ff7788); letterSpacing: 0.8 }
+          }
+
+          // 5. Color Swatches (2 clean rows of 4 big 46dp buttons)
+          Column {
+            fill: width
+            gap: 6
+            Row {
+              fill: width
+              gap: 6
+              for si in range(4) {
+                let sw = quickSwatches[si]
+                let p = notePalettes[clamp(sw.idx, 0, len(notePalettes) - 1)]
+                let isCur = noteColorIdx == sw.idx
+                Row {
+                  weight: 1; height: 46; radius: 12; align: center; justify: center; gap: 5
+                  background: alpha(p.bg2 ?? p.bg, 0.98)
+                  border: isCur ? 2.4 : 1.3
+                  borderColor: isCur ? (futOn ? #66d1ff : #ff6677) : p.border
+                  onTap: { if hapticsOn { haptic() }; noteColorIdx = sw.idx }
+                  Box { size: 10; radius: 99; background: p.border }
+                  Text { font: uiFont; text: sw.label; fontSize: 12.5; fontWeight: 800; color: p.text; maxLines: 1 }
+                }
+              }
+            }
+            Row {
+              fill: width
+              gap: 6
+              for si in [4, 5, 6, 7] {
+                let sw = quickSwatches[si]
+                let p = notePalettes[clamp(sw.idx, 0, len(notePalettes) - 1)]
+                let isCur = noteColorIdx == sw.idx
+                Row {
+                  weight: 1; height: 46; radius: 12; align: center; justify: center; gap: 5
+                  background: alpha(p.bg2 ?? p.bg, 0.98)
+                  border: isCur ? 2.4 : 1.3
+                  borderColor: isCur ? (futOn ? #66d1ff : #ff6677) : p.border
+                  onTap: { if hapticsOn { haptic() }; noteColorIdx = sw.idx }
+                  Box { size: 10; radius: 99; background: p.border }
+                  Text { font: uiFont; text: sw.label; fontSize: 12.5; fontWeight: 800; color: p.text; maxLines: 1 }
+                }
+              }
+            }
+          }
+
+          // 6. Font & Text Size Controls (Big 46dp buttons)
+          Row {
+            fill: width
+            gap: 6
+            for fo in [
+              { id: "sans",  label: "Sans"  },
+              { id: "mono",  label: "Mono"  },
+              { id: "serif", label: "Serif" }
+            ] {
+              let isF = noteFont == fo.id
+              Row {
+                weight: 1; height: 46; radius: 12; align: center; justify: center
+                background: isF ? alpha(accentCol, 0.36) : alpha((futOn ? #010e12 : #120103), 0.96)
+                border: isF ? 2.0 : 1.3
+                borderColor: isF ? (futOn ? #66d1ff : #ff6677) : alpha(accentCol, 0.45)
+                onTap: { if hapticsOn { haptic() }; noteFont = fo.id }
+                Text { text: fo.label; font: fo.id; fontSize: 13.5; fontWeight: 800; color: isF ? (futOn ? #66d1ff : #ff6677) : (futOn ? #66d1ff : #ff6677) }
+              }
+            }
+          }
+
+          Row {
+            fill: width
+            gap: 6
+            Row {
+              weight: 1; height: 46; radius: 12; align: center; justify: center
+              background: alpha((futOn ? #010e12 : #120103), 0.96); border: 1.3; borderColor: alpha((futOn ? #66d1ff : #ff6677), 0.28)
+              onTap: { if hapticsOn { haptic() }; noteBodySz = max(12, noteBodySz - 1) }
+              Text { font: uiFont; text: "A− ${round(noteBodySz)}"; fontSize: 13; fontWeight: 800; color: (futOn ? #66d1ff : #ff6677) }
+            }
+            Row {
+              weight: 1; height: 46; radius: 12; align: center; justify: center
+              background: alpha(accentCol, 0.30); border: 1.5; borderColor: accentCol
+              onTap: { if hapticsOn { haptic() }; noteBodySz = min(22, noteBodySz + 1) }
+              Text { font: uiFont; text: "A+"; fontSize: 14; fontWeight: 900; color: (futOn ? #66d1ff : #ff6677) }
+            }
+            Row {
+              width: 54; height: 46; radius: 12; align: center; justify: center
+              background: noteWeight >= 700 ? alpha(accentCol, 0.38) : alpha((futOn ? #010e12 : #120103), 0.96)
+              border: noteWeight >= 700 ? 2.0 : 1.3
+              borderColor: noteWeight >= 700 ? (futOn ? #66d1ff : #ff6677) : alpha((futOn ? #66d1ff : #ff6677), 0.28)
+              onTap: { if hapticsOn { haptic() }; noteWeight = noteWeight >= 700 ? 500 : 800 }
+              Text { font: uiFont; text: "B"; fontSize: 15; fontWeight: 900; color: (futOn ? #66d1ff : #ff6677) }
+            }
+            for ao in [
+              { id: "start",  label: "◧" },
+              { id: "center", label: "◫" },
+              { id: "end",    label: "◨" }
+            ] {
+              let isAl = noteAlign == ao.id
+              Row {
+                width: 48; height: 46; radius: 12; align: center; justify: center
+                background: isAl ? alpha(accentCol, 0.38) : alpha((futOn ? #010e12 : #120103), 0.96)
+                border: isAl ? 2.0 : 1.3
+                borderColor: isAl ? (futOn ? #66d1ff : #ff6677) : alpha((futOn ? #66d1ff : #ff6677), 0.26)
+                onTap: { if hapticsOn { haptic() }; noteAlign = ao.id }
+                Text { font: uiFont; text: ao.label; fontSize: 15; fontWeight: 800; color: (futOn ? #66d1ff : #ff6677) }
+              }
+            }
+          }
+
+          // 7. Card Style Extras: Pin to Top, Accent Bar, Border Style
+          Column {
+            fill: width
+            gap: 8
+
+            Row {
+              fill: width
+              gap: 8
+              Row {
+                weight: 1; height: 46; radius: 12; align: center; justify: center
+                background: notePinned ? alpha(accentCol, 0.36) : alpha((futOn ? #010e12 : #120103), 0.96)
+                border: notePinned ? 2.0 : 1.3
+                borderColor: notePinned ? (futOn ? #66d1ff : #ff6677) : alpha(accentCol, 0.45)
+                onTap: { if hapticsOn { haptic() }; notePinned = !notePinned }
+                Text { font: uiFont; text: notePinned ? "◆ PINNED TOP" : "◇ PIN TO TOP"; fontSize: 12.5; fontWeight: 800; color: notePinned ? (futOn ? #66d1ff : #ff6677) : (futOn ? #66d1ff : #ff6677) }
+              }
+              Row {
+                weight: 1; height: 46; radius: 12; align: center; justify: center
+                background: noteAccentBar ? alpha(accentCol, 0.36) : alpha((futOn ? #010e12 : #120103), 0.96)
+                border: noteAccentBar ? 2.0 : 1.3
+                borderColor: noteAccentBar ? (futOn ? #66d1ff : #ff6677) : alpha(accentCol, 0.45)
+                onTap: { if hapticsOn { haptic() }; noteAccentBar = !noteAccentBar }
+                Text { font: uiFont; text: noteAccentBar ? "▎ ACCENT BAR ON" : "▎ ACCENT BAR OFF"; fontSize: 12.5; fontWeight: 800; color: noteAccentBar ? (futOn ? #66d1ff : #ff6677) : (futOn ? #66d1ff : #ff6677) }
+              }
+            }
+
+            Row {
+              fill: width
+              gap: 6
+              for bs in [
+                { id: "hairline", label: "HAIRLINE" },
+                { id: "bold",     label: "BOLD"     },
+                { id: "none",     label: "NO BORDER" }
+              ] {
+                let isBs = noteBorderStyle == bs.id
+                Row {
+                  weight: 1; height: 44; radius: 12; align: center; justify: center
+                  background: isBs ? alpha(accentCol, 0.36) : alpha((futOn ? #010e12 : #120103), 0.96)
+                  border: isBs ? 2.0 : 1.3
+                  borderColor: isBs ? (futOn ? #66d1ff : #ff6677) : alpha((futOn ? #66d1ff : #ff6677), 0.24)
+                  onTap: { if hapticsOn { haptic() }; noteBorderStyle = bs.id }
+                  Text { font: uiFont; text: bs.label; fontSize: 12; fontWeight: 800; color: isBs ? (futOn ? #66d1ff : #ff6677) : (futOn ? #66d1ff : #ff6677); maxLines: 1 }
+                }
+              }
+            }
+          }
+
+          // 8. Reorder, Duplicate & Delete Actions (only when editing an existing card)
+          if editId > 0 {
+            Column {
+              fill: width
+              gap: 8
+              Row {
+                fill: width
+                gap: 8
+                Row {
+                  weight: 1; height: 46; radius: 12; align: center; justify: center
+                  background: alpha((futOn ? #010e12 : #120103), 0.96); border: 1.4; borderColor: curIdx > 0 ? accentCol : alpha((futOn ? #66d1ff : #ff6677), 0.16)
+                  opacity: curIdx > 0 ? 1.0 : 0.4
+                  onTap: {
+                    if curIdx > 0 {
+                      if hapticsOn { haptic() }
+                      let prevItem = holocronNotes[curIdx - 1]
+                      let currItem = holocronNotes[curIdx]
+                      holocronNotes = range(len(holocronNotes)).map(i =>
+                        i == curIdx - 1 ? currItem : i == curIdx ? prevItem : holocronNotes[i]
+                      )
+                    }
+                  }
+                  Text { font: uiFont; text: "▲ UP"; fontSize: 13; fontWeight: 800; color: (futOn ? #66d1ff : #ff6677) }
+                }
+                Row {
+                  weight: 1; height: 46; radius: 12; align: center; justify: center
+                  background: alpha((futOn ? #010e12 : #120103), 0.96); border: 1.4; borderColor: (curIdx >= 0 && curIdx < len(holocronNotes) - 1) ? accentCol : alpha((futOn ? #66d1ff : #ff6677), 0.16)
+                  opacity: (curIdx >= 0 && curIdx < len(holocronNotes) - 1) ? 1.0 : 0.4
+                  onTap: {
+                    if curIdx >= 0 && curIdx < len(holocronNotes) - 1 {
+                      if hapticsOn { haptic() }
+                      let nextItem = holocronNotes[curIdx + 1]
+                      let currItem = holocronNotes[curIdx]
+                      holocronNotes = range(len(holocronNotes)).map(i =>
+                        i == curIdx ? nextItem : i == curIdx + 1 ? currItem : holocronNotes[i]
+                      )
+                    }
+                  }
+                  Text { font: uiFont; text: "▼ DOWN"; fontSize: 13; fontWeight: 800; color: (futOn ? #66d1ff : #ff6677) }
+                }
+                Row {
+                  weight: 1; height: 46; radius: 12; align: center; justify: center
+                  background: alpha((futOn ? #021318 : #180205), 0.96); border: 1.4; borderColor: alpha(accentGhost, 0.72)
+                  onTap: {
+                    if hapticsOn { haptic() }
+                    let nid = nextNoteId
+                    nextNoteId = nextNoteId + 1
+                    let dupBase = trim(noteTitle) != "" ? trim(noteTitle) : "CARD #${editId}"
+                    let dupCard = {
+                      id: nid,
+                      title: "${dupBase} (Copy)",
+                      text: noteBody ?? "",
+                      size: noteSize,
+                      font: noteFont,
+                      bodySz: noteBodySz,
+                      fontWeight: noteWeight,
+                      align: noteAlign,
+                      colorIdx: noteColorIdx,
+                      pinned: notePinned,
+                      accentBar: noteAccentBar,
+                      borderStyle: noteBorderStyle,
+                      time: timeHm
+                    }
+                    let combined = [dupCard] + holocronNotes
+                    holocronNotes = combined.filter(x => x.pinned == true) + combined.filter(x => x.pinned != true)
+                    close()
+                  }
+                  Text { font: uiFont; text: "⧉ COPY"; fontSize: 13; fontWeight: 800; color: (futOn ? #77d1ff : #ff7788) }
+                }
+              }
+
+              Row {
+                fill: width; height: 46; radius: 12; align: center; justify: center
+                background: alpha((futOn ? #022f3a : #3a020e), 0.98); border: 1.6; borderColor: (futOn ? #22d1ff : #ff2244)
+                onTap: {
+                  if hapticsOn { haptic() }
+                  let delId = editId
+                  holocronNotes = holocronNotes.filter(it => it.id != delId)
+                  editId = 0
+                  close()
+                }
+                Text { font: uiFont; text: "✕ DELETE CARD"; fontSize: 13; fontWeight: 800; color: (futOn ? #4dd1ff : #ff4d61); letterSpacing: 0.7 }
+              }
+            }
+          }
+        }
+
+        // Sticky Bottom Bar: CANCEL | SAVE CARD (50dp)
+        Row {
+          fill: width
+          gap: 10
+          Row {
+            weight: 1; height: 50; radius: 12; align: center; justify: center
+            background: alpha((futOn ? #021014 : #140204), 0.96); border: 1.2; borderColor: alpha((futOn ? #66d1ff : #ff6677), 0.24)
+            onTap: { if hapticsOn { haptic() }; close() }
+            Text { font: uiFont; text: "CANCEL"; fontSize: 13.5; fontWeight: 800; color: (futOn ? #66d1ff : #ff6677) }
+          }
+          Row {
+            weight: 2; height: 50; radius: 12; align: center; justify: center
+            background: accentCol; border: 1.6; borderColor: (futOn ? #66d1ff : #ff6677)
+            onTap: {
+              if hapticsOn { haptic() }
+              let t = trim(noteTitle)
+              let b = trim(noteBody)
+              if t != "" || b != "" {
+                let eid = editId
+                let nextList = editId > 0
+                  ? holocronNotes.map(it => it.id == eid ? merge(it, {
+                      title: t != "" ? t : "CARD #${eid}",
+                      text: b,
+                      size: noteSize,
+                      font: noteFont,
+                      bodySz: noteBodySz,
+                      fontWeight: noteWeight,
+                      align: noteAlign,
+                      colorIdx: noteColorIdx,
+                      pinned: notePinned,
+                      accentBar: noteAccentBar,
+                      borderStyle: noteBorderStyle,
+                      time: timeHm
+                    }) : it)
+                  : [{
+                      id: nextNoteId,
+                      title: t != "" ? t : "CARD #${nextNoteId}",
+                      text: b,
+                      size: noteSize,
+                      font: noteFont,
+                      bodySz: noteBodySz,
+                      fontWeight: noteWeight,
+                      align: noteAlign,
+                      colorIdx: noteColorIdx,
+                      pinned: notePinned,
+                      accentBar: noteAccentBar,
+                      borderStyle: noteBorderStyle,
+                      time: timeHm
+                    }] + holocronNotes
+                if editId <= 0 {
+                  nextNoteId = nextNoteId + 1
+                }
+                holocronNotes = nextList.filter(x => x.pinned == true) + nextList.filter(x => x.pinned != true)
+              }
+              close()
+            }
+            Text { font: uiFont; text: editId > 0 ? "✓ SAVE CARD" : "✓ ADD CARD"; fontSize: 14; fontWeight: 900; color: (futOn ? #66d1ff : #ff6677); letterSpacing: 0.8 }
+          }
+        }
+      }
+    }
+    else if screenMode == "tableBuilder" {
+      TableBuilderScreen {}
+    }
+    else {
+      let q = lower(trim(query))
+      let sum = panel.summary ?? {}
+    
+      let rawPlugins = panel.audioPlugins ?? []
+      let fmtPlugins = pluginFmt == "ALL" ? rawPlugins
+        : pluginFmt == "INST" ? rawPlugins.filter(p => p.installed)
+        : rawPlugins.filter(p => p.fmt == pluginFmt)
+      let filtPlugins = q == "" ? fmtPlugins : fmtPlugins.filter(p => contains(lower(p.name), q) || contains(lower(p.fmt), q))
+      let shownPlugins = filtPlugins.take(36)
+    
+      let rawOwls = panel.owlModules ?? []
+      let viewOwls = owlView == "active" ? rawOwls.filter(w => w.active) : rawOwls.filter(w => !w.active)
+      let filtOwls = q == "" ? viewOwls : viewOwls.filter(w => contains(lower(w.name), q) || contains(lower(w.file), q) || contains(lower(w.kind), q))
+      let shownOwls = filtOwls.take(36)
+    
+      let allDrawerApps = d.apps ?? []
+      let baseDrawerApps = appFilter == "all" ? allDrawerApps
+        : appFilter == "android" ? allDrawerApps.filter(a => a.kind == "android")
+        : appFilter == "owl" ? allDrawerApps.filter(a => a.kind == "owl")
+        : allDrawerApps.filter(a => a.kind == "linux")
+      let filtDrawerApps = q == "" ? baseDrawerApps.sortBy(a => lower(a.name)) : rank(baseDrawerApps, q)
+      let shownDrawerApps = filtDrawerApps.take(36)
+    
+      let rawPkgs = panel.linuxPkgs ?? []
+      let sortedPkgs = pkgSort == "size" ? rawPkgs : rawPkgs.sortBy(p => lower(p.name))
+      let filtPkgs = q == "" ? sortedPkgs : sortedPkgs.filter(p => contains(lower(p.name), q) || contains(lower(p.desc ?? ""), q))
+      let shownPkgs = filtPkgs.take(36)
+    
+      let rawLinuxApps = panel.linuxApps ?? []
+      let filtLinuxApps = q == "" ? rawLinuxApps : rawLinuxApps.filter(a => contains(lower(a.name), q) || contains(lower(a.pkg ?? ""), q) || contains(lower(a.exec ?? ""), q))
+      let shownLinuxApps = filtLinuxApps.take(36)
+    
+      let orphans = panel.orphans ?? []
+    
+      let memUsed = sys.memory.used ?? 0
+      let memTotal = max(sys.memory.total ?? 1, 1)
+      let memPct = round(memUsed / memTotal * 100)
+      let stoUsed = sys.storage.used ?? 0
+      let stoTotal = max(sys.storage.total ?? 1, 1)
+      let stoPct = round(stoUsed / stoTotal * 100)
+      let volOut = vol.output ?? {}
+      let volOutLabel = volOut.name != null && volOut.name != "" ? volOut.name : upper(volOut.type ?? "SPEAKER")
+      // Full Sith Lyfe Control Panel & Screen Customization Forge
+      Box {
+        fill: true
+        background: linear(0, 0, 0, 1, [(futOn ? #021318 : #180208), (futOn ? #000507 : #070002), (futOn ? #000102 : #020000)])
+
+        Column {
+          fill: true
+          padding: 12
+          gap: 10
+
+          // Tactical Header
+          Row {
+            fill: width
+            align: center
+            gap: 8
+            padding: [12, 10]
+            radius: 12 * corners
+            background: linear(0, 0, 1, 1, [alpha(accentDark, 0.95), alpha((futOn ? #010a0d : #0d0104), 0.94)])
+            border: 1.2
+            borderColor: alpha(accentCol, 0.65)
+
+            Canvas {
+              size: 28
+              let c = 14
+              circle(c, c, 12, fill: radial(c, c, 12, [alpha(accentCol, 0.45), alpha(#000000, 0)]))
+              circle(c, c, 10.5, stroke: alpha(accentCol, 0.75), width: 1.2)
+              path([[c, 5], [22, c], [c, 23], [6, c]], closed: true, fill: accentCol, stroke: accentHot, width: 1.0)
+              circle(c, c, 2.3, fill: (futOn ? #000405 : #050001))
+            }
+
+            Column {
+              weight: 1
+              gap: 1
+              Text {
+                font: uiFont
+                text: "SITH CONTROL & FORGE"
+                fontSize: 14.5
+                color: accentCol
+                bold: true
+                letterSpacing: 2.0
+              }
+              Text {
+                font: uiFont
+                text: "SCREEN FORGE · PLUGINS · PURGE · CORE"
+                fontSize: 8.5
+                color: alpha((futOn ? #45bce6 : #e6455a), 0.65)
+                letterSpacing: 1.2
+                maxLines: 1
+              }
+            }
+
+            Text {
+              font: uiFont
+              text: busy ? "…" : "↻"
+              fontSize: 14
+              color: accentHot
+              bold: true
+              padding: [9, 5]
+              radius: 99
+              background: alpha((futOn ? #02191f : #1f0208), 0.95)
+              border: 1
+              borderColor: alpha(accentCol, 0.50)
+              onTap: {
+                if hapticsOn { haptic() }
+                statusMsg = "Rescanning system vault…"
+                statusOk = true
+                refresh()
+              }
+            }
+
+            Text {
+              font: uiFont
+              text: "CLOSE"
+              fontSize: 10
+              color: (futOn ? #66d1ff : #ff6677)
+              bold: true
+              letterSpacing: 1.3
+              padding: [11, 6]
+              radius: 99
+              background: (futOn ? #0c718a : #8a0c22)
+              border: 1
+              borderColor: accentCol
+              onTap: {
+                if hapticsOn { haptic() }
+                confirmKey = ""
+                query = ""
+                close()
+              }
+            }
+          }
+
+          // Status feedback banner
+          if statusMsg != "" || busy {
+            Row {
+              fill: width
+              align: center
+              gap: 8
+              padding: [10, 7]
+              radius: 10 * corners
+              background: busy ? alpha((futOn ? #021d24 : #240206), 0.92) : statusOk ? alpha((futOn ? #03191f : #1f030a), 0.94) : alpha((futOn ? #04323d : #3d040c), 0.96)
+              border: 1
+              borderColor: busy ? (futOn ? #0096b8 : #b8001f) : statusOk ? alpha(accentCol, 0.65) : (futOn ? #1ed1ff : #ff1e3c)
+
+              Box {
+                size: 7
+                radius: 99
+                background: busy ? (futOn ? #11a7cc : #cc112b) : statusOk ? (futOn ? #11d1ff : #ff1133) : (futOn ? #1ed1ff : #ff1e3c)
+              }
+              Text {
+                font: uiFont
+                text: statusMsg
+                fontSize: 11
+                color: (futOn ? #77d1ff : #ff7788)
+                weight: 1
+                maxLines: 2
+              }
+              if !busy {
+                Text {
+                  font: uiFont
+                  text: "✕"
+                  fontSize: 11
+                  color: alpha((futOn ? #5cd1ff : #ff5c6e), 0.72)
+                  padding: [4, 2]
+                  onTap: statusMsg = ""
+                }
+              }
+            }
+          }
+
+          // 5 Primary Navigation Tabs
+          Row {
+            fill: width
+            gap: 5
+
+            for tItem in [
+              { id: "customize", label: "⚡ FORGE" },
+              { id: "plugins",   label: "PLUGINS" },
+              { id: "apps",      label: "APPS" },
+              { id: "linux",     label: "LINUX" },
+              { id: "control",   label: "CORE" }
+            ] {
+              let active = tab == tItem.id
+              Box {
+                weight: 1
+                padding: [3, 8]
+                radius: 9 * corners
+                align: center
+                background: active ? linear(0, 0, 0, 1, [alpha(accentDark, 0.98), (futOn ? #022028 : #28020a)]) : alpha((futOn ? #010e12 : #120105), 0.88)
+                border: active ? 1.3 : 1
+                borderColor: active ? accentCol : alpha(accentCol, 0.26)
+                onTap: {
+                  if hapticsOn { haptic() }
+                  tab = tItem.id
+                  confirmKey = ""
+                  query = ""
+                }
+                Text {
+                  font: uiFont
+                  text: tItem.label
+                  fontSize: 9.5
+                  color: active ? (futOn ? #66d1ff : #ff6677) : alpha((futOn ? #45bce6 : #e6455a), 0.72)
+                  bold: active
+                  letterSpacing: 1.0
+                  align: center
+                  maxLines: 1
+                }
+              }
+            }
+          }
+
+          // ================= TAB 1: ⚡ UNIFIED THEMES & ANIMATIONS MASTER MENU =================
+          if tab == "customize" {
+            // Grouped by the page each effect lives on; keys are animations.json keys (shared with every widget).
+            let fxGroups = [
+              { page: "OBSIDIAN DECK", rows: [
+                { key: "deck_shader",          label: "Living backdrop",  desc: "AGSL wave behind the feed",         val: deckShaderRaw },
+                { key: "deck_scanlines",       label: "Scanlines",        desc: "Subtle CRT overlay on the backdrop", val: deckScanRaw }
+              ] },
+              { page: "INFERNAL HOME", rows: [
+                { key: "infernal_void",        label: "Void & sigil",     desc: "Abyss shader, sigil and dock glow",  val: infVoidRaw },
+                { key: "infernal_fx",          label: "Touch FX",         desc: "Embers, slash and Force lightning",  val: infFxRaw },
+                { key: "infernal_glitch_dock", label: "Glitch dock",      desc: "5-slot glitch shader & shockwaves",  val: infGlitchRaw }
+              ] },
+              { page: "AUDIO PLAYER", rows: [
+                { key: "player_shader",        label: "Liquid backdrop",  desc: "Chaos liquid shader",                val: plrShaderRaw },
+                { key: "player_visualizer",    label: "Visualizer",       desc: "EQ bars, waveform, VU & art spin",   val: plrVisRaw }
+              ] },
+              { page: "APP DRAWER", rows: [
+                { key: "drawer_fx",            label: "Motion & FX",      desc: "Breathing icons, spin & storm",      val: drawerFxRaw }
+              ] }
+            ]
+            let fxLiveCount = count([deckShaderRaw, deckScanRaw, infVoidRaw, infFxRaw, infGlitchRaw, plrShaderRaw, plrVisRaw, drawerFxRaw], v => v)
+            let deckFpsLabel = effFxOn && shaderMode != "oled" ? "DECK 12 FPS" : "DECK 1 FPS · IDLE"
+
+            Column {
+              scroll: true
+              weight: 1
+              fill: width
+              gap: 14
+              padding: [0, 2, 0, 18]
+
+              // ───────── 1 · POWER ─────────
+              Column {
+                fill: width
+                gap: 12
+                padding: 14
+                radius: 18 * corners
+                background: linear(0, 0, 1, 1, [alpha((futOn ? #03161c : #1c0308), 0.92), alpha((futOn ? #000507 : #070002), 0.92)])
+                border: 1
+                borderColor: alpha(accentCol, 0.45)
+
+                SectionHeader { label: "power & feel"; hint: deckFpsLabel }
+
+                // Master animations
+                Row {
+                  fill: width
+                  align: center
+                  gap: 12
+                  padding: [14, 12]
+                  radius: 14 * corners
+                  background: animMaster ? alpha(accentDark, 0.96) : alpha((futOn ? #021014 : #140205), 0.9)
+                  border: animMaster ? 1.4 : 1
+                  borderColor: animMaster ? accentCol : alpha((futOn ? #22d1ff : #ff2244), 0.32)
+                  animate background: tween(200ms, "ease")
+                  onTap: {
+                    if hapticsOn { haptic() }
+                    let nextMaster = animMaster ? "false" : "true"
+                    let nextMsg = animMaster ? "ALL ANIMATIONS OFF" : "ALL ANIMATIONS ON"
+                    cmdOut = run("python3 -c 'import json,os,sys; p=os.path.expanduser(\"~/.config/omalauncher/animations.json\"); d=json.load(open(p)) if os.path.exists(p) else {}; v=json.loads(sys.argv[1]); d[\"master\"]=v; t=p+\".tmp\"; open(t,\"w\").write(json.dumps(d,indent=2)+\"\\n\"); os.replace(t,p); ep=os.path.expanduser(\"~/.config/omalauncher/eco-mode.json\"); (lambda: (ed:=json.load(open(ep)), ed.__setitem__(\"enabled\", False), open(ep+\".tmp\",\"w\").write(json.dumps(ed,indent=2)+\"\\n\"), os.replace(ep+\".tmp\", ep)))() if (v and os.path.exists(ep)) else None; print(json.dumps({\"ok\":True,\"msg\":sys.argv[2]}))' ${sh(nextMaster)} ${sh(nextMsg)}")
+                  }
+                  Column {
+                    weight: 1
+                    gap: 2
+                    Text { font: uiFont; text: "All animations"; fontSize: 15; bold: true; color: (futOn ? #e8e8ff : #ffe8ec); maxLines: 1 }
+                    Text {
+                      font: uiFont
+                      text: animMaster ? "Master switch · every widget, every page" : (ecoOn ? "Paused by eco mode · tap to resume all" : "Every shader & FX paused · max battery")
+                      fontSize: 11
+                      color: alpha((futOn ? #b3d1ff : #ffb3c0), 0.75)
+                      maxLines: 1
+                    }
+                  }
+                  Toggle { on: animMaster; wait: animMasterRaw && ecoOn }
+                }
+
+                // Eco mode (same backend as the Infernal face's eco switch)
+                Row {
+                  fill: width
+                  align: center
+                  gap: 12
+                  padding: [14, 12]
+                  radius: 14 * corners
+                  background: ecoOn ? alpha(accentDark, 0.96) : alpha((futOn ? #021014 : #140205), 0.9)
+                  border: ecoOn ? 1.4 : 1
+                  borderColor: ecoOn ? accentCol : alpha((futOn ? #22d1ff : #ff2244), 0.32)
+                  animate background: tween(200ms, "ease")
+                  onTap: {
+                    if hapticsOn { haptic() }
+                    run("python3 ~/.local/bin/omalauncher-eco.py toggle")
+                    statusMsg = ecoOn ? "Eco mode OFF · restoring full style" : "Eco mode ON · 540p chill AMOLED, FX paused"
+                    statusOk = true
+                  }
+                  Column {
+                    weight: 1
+                    gap: 2
+                    Text { font: uiFont; text: "Eco mode"; fontSize: 15; bold: true; color: (futOn ? #e8e8ff : #ffe8ec); maxLines: 1 }
+                    Text {
+                      font: uiFont
+                      text: ecoOn ? "Active · 540p chill theme, all FX off" : "540p chill AMOLED theme · battery saver"
+                      fontSize: 11
+                      color: alpha((futOn ? #b3d1ff : #ffb3c0), 0.75)
+                      maxLines: 1
+                    }
+                  }
+                  Toggle { on: ecoOn; wait: false }
+                }
+
+                // Haptics (global, not an animation: never paused by master)
+                for a in [{ key: "haptics", label: "HAPTICS", val: hapticsOn }] key a.key {
+                  Row {
+                    fill: width
+                    align: center
+                    gap: 12
+                    padding: [14, 12]
+                    radius: 14 * corners
+                    background: hapticsOn ? alpha(accentDark, 0.96) : alpha((futOn ? #021014 : #140205), 0.9)
+                    border: hapticsOn ? 1.4 : 1
+                    borderColor: hapticsOn ? accentCol : alpha((futOn ? #22d1ff : #ff2244), 0.32)
+                    animate background: tween(200ms, "ease")
+                    onTap: {
+                      if hapticsOn { haptic() }
+                      let nextVal = a.val ? "false" : "true"
+                      let nextMsg = a.label + (a.val ? ": OFF" : ": ON")
+                      cmdOut = run("python3 -c 'import json,os,sys; p=os.path.expanduser(\"~/.config/omalauncher/animations.json\"); d=json.load(open(p)) if os.path.exists(p) else {}; d[sys.argv[1]]=json.loads(sys.argv[2]); t=p+\".tmp\"; open(t,\"w\").write(json.dumps(d,indent=2)+\"\\n\"); os.replace(t,p); print(json.dumps({\"ok\":True,\"msg\":sys.argv[3]}))' ${sh(a.key)} ${sh(nextVal)} ${sh(nextMsg)}")
+                    }
+                    Column {
+                      weight: 1
+                      gap: 2
+                      Text { font: uiFont; text: "Haptics"; fontSize: 15; bold: true; color: (futOn ? #e8e8ff : #ffe8ec); maxLines: 1 }
+                      Text { font: uiFont; text: "Vibration feedback on every widget"; fontSize: 11; color: alpha((futOn ? #b3d1ff : #ffb3c0), 0.75); maxLines: 1 }
+                    }
+                    Toggle { on: hapticsOn; wait: false }
+                  }
+                }
+
+                // Global animation speed (segmented)
+                Column {
+                  fill: width
+                  gap: 8
+                  Row {
+                    fill: width
+                    align: center
+                    Text { font: uiFont; text: "ANIMATION SPEED"; fontSize: 10; letterSpacing: 1.5; color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.7); weight: 1 }
+                    Text { text: "${animSpeed}x"; fontSize: 11; font: mono; bold: true; color: accentHot }
+                  }
+                  Row {
+                    fill: width
+                    gap: 4
+                    padding: 3
+                    radius: 12 * corners
+                    background: alpha((futOn ? #01080a : #0a0103), 0.92)
+                    border: 1
+                    borderColor: alpha(accentCol, 0.35)
+                    for sp in [
+                      { v: 0.5, l: "0.5x" },
+                      { v: 1.0, l: "1.0x" },
+                      { v: 1.5, l: "1.5x" },
+                      { v: 2.0, l: "2.0x" }
+                    ] key sp.l {
+                      let isSp = abs(animSpeed - sp.v) < 0.05
+                      Box {
+                        weight: 1
+                        padding: [0, 10]
+                        radius: 9 * corners
+                        background: isSp ? accentCol : alpha(#000000, 0)
+                        border: 1
+                        borderColor: isSp ? accentHot : alpha(accentCol, 0.18)
+                        animate background: tween(200ms, "ease")
+                        onTap: {
+                          if hapticsOn { haptic() }
+                          let spVal = "${sp.v}"
+                          let spMsg = "Global speed: ${sp.l}"
+                          cmdOut = run("python3 -c 'import json,os,sys; p=os.path.expanduser(\"~/.config/omalauncher/animations.json\"); d=json.load(open(p)) if os.path.exists(p) else {}; d[\"speed\"]=json.loads(sys.argv[1]); t=p+\".tmp\"; open(t,\"w\").write(json.dumps(d,indent=2)+\"\\n\"); os.replace(t,p); print(json.dumps({\"ok\":True,\"msg\":sys.argv[2]}))' ${sh(spVal)} ${sh(spMsg)}")
+                        }
+                        Text { text: sp.l; align: center; fontSize: 12; font: mono; bold: isSp; color: isSp ? (futOn ? #e8e8ff : #ffe8ec) : alpha((futOn ? #b3d1ff : #ffb3c0), 0.7) }
+                      }
+                    }
+                  }
+                }
+              }
+
+              // ───────── 2 · ACCENT THEME ─────────
+              Column {
+                fill: width
+                gap: 12
+                padding: 14
+                radius: 18 * corners
+                background: alpha((futOn ? #010709 : #090103), 0.85)
+                border: 1
+                borderColor: alpha(accentCol, 0.3)
+
+                SectionHeader { label: "accent theme"; hint: ecoOn ? "ECO OVERRIDES" : activeTheme.name }
+
+                Grid {
+                  columns: 3
+                  gap: 8
+                  fill: width
+                  for th, ti in themes key th.id {
+                    let isCur = themeIdx == ti
+                    Column {
+                      gap: 8
+                      padding: [10, 10]
+                      radius: 14 * corners
+                      background: isCur ? alpha(th.dark, 0.98) : alpha((futOn ? #021014 : #140205), 0.9)
+                      border: isCur ? 1.6 : 1
+                      borderColor: isCur ? th.col : alpha(th.col, 0.3)
+                      animate background: tween(200ms, "ease")
+                      onTap: {
+                        if hapticsOn { haptic() }
+                        themeIdx = ti
+                        statusMsg = "Theme: ${th.name}"
+                        statusOk = true
+                      }
+                      Box {
+                        fill: width
+                        height: 8
+                        radius: 4 * corners
+                        background: linear(0, 0, 1, 0, [th.ghost, th.col, th.hot])
+                      }
+                      Row {
+                        fill: width
+                        align: center
+                        gap: 4
+                        Text { font: uiFont; text: th.name; fontSize: 10; letterSpacing: 0.8; bold: isCur; color: isCur ? (futOn ? #e8e8ff : #ffe8ec) : alpha((futOn ? #b3d1ff : #ffb3c0), 0.7); maxLines: 1; weight: 1 }
+                        if isCur { Text { text: "●"; fontSize: 10; color: th.hot } }
+                      }
+                    }
+                  }
+                }
+              }
+
+              // ───────── 3 · BACKDROP ─────────
+              Column {
+                fill: width
+                gap: 12
+                padding: 14
+                radius: 18 * corners
+                background: alpha((futOn ? #010709 : #090103), 0.85)
+                border: 1
+                borderColor: alpha(accentCol, 0.3)
+
+                SectionHeader { label: "deck backdrop"; hint: effFxOn || shaderMode == "oled" ? upper(shaderMode) : "PAUSED · FX OFF" }
+
+                Grid {
+                  columns: 2
+                  gap: 8
+                  fill: width
+                  for sm in [
+                    { id: "plasma",   label: "CRIMSON PLASMA", desc: "Organic fluid wave",   pv: radial(0.3, 0.35, 0.9, [alpha(accentCol, 0.6), alpha(accentGhost, 0.25), #000000]) },
+                    { id: "obsidian", label: "OBSIDIAN DEPTH", desc: "AMOLED parallax aura", pv: radial(0.5, 0.25, 0.7, [alpha(accentCol, 0.32), #000000]) },
+                    { id: "glitch",   label: "CRIMSON MATRIX", desc: "Wave & slice",         pv: linear(0, 0, 0, 1, [alpha(accentCol, 0.35), #000000, alpha(accentGhost, 0.45), #000000, alpha(accentCol, 0.2)]) },
+                    { id: "void",     label: "SINGULARITY",    desc: "Gravitational ring",   pv: radial(0.5, 0.5, 0.55, [#000000, #000000, alpha(accentCol, 0.6), #000000]) },
+                    { id: "aurora",   label: "BLOOD AURORA",   desc: "Dual silk ribbons",    pv: linear(0, 0, 0, 1, [#000000, alpha(accentCol, 0.45), #000000, alpha(accentGhost, 0.5), #000000]) },
+                    { id: "oled",     label: "PURE AMOLED",    desc: "Static true black",    pv: #000000 }
+                  ] key sm.id {
+                    let isSm = shaderMode == sm.id
+                    Column {
+                      gap: 8
+                      padding: 8
+                      radius: 14 * corners
+                      background: isSm ? alpha(accentDark, 0.96) : alpha((futOn ? #021014 : #140205), 0.9)
+                      border: isSm ? 1.6 : 1
+                      borderColor: isSm ? accentCol : alpha((futOn ? #22d1ff : #ff2244), 0.28)
+                      animate background: tween(200ms, "ease")
+                      onTap: {
+                        if hapticsOn { haptic() }
+                        shaderMode = sm.id
+                        statusMsg = "Backdrop style: ${sm.label}"
+                        statusOk = true
+                      }
+                      Box {
+                        fill: width
+                        height: 40
+                        radius: 10 * corners
+                        background: sm.pv
+                        border: 1
+                        borderColor: alpha(accentCol, isSm ? 0.6 : 0.18)
+                      }
+                      Column {
+                        fill: width
+                        gap: 1
+                        padding: [4, 0]
+                        Text { font: uiFont; text: sm.label; fontSize: 11; bold: true; letterSpacing: 0.8; color: isSm ? (futOn ? #e8e8ff : #ffe8ec) : alpha((futOn ? #b3d1ff : #ffb3c0), 0.8); maxLines: 1 }
+                        Text { font: uiFont; text: sm.desc; fontSize: 10; color: isSm ? accentHot : alpha((futOn ? #8fd1ff : #ff8fa3), 0.55); maxLines: 1 }
+                      }
+                    }
+                  }
+                }
+              }
+
+              // ───────── 4 · WIDGET FX ─────────
+              Column {
+                fill: width
+                gap: 12
+                padding: 14
+                radius: 18 * corners
+                background: alpha((futOn ? #010709 : #090103), 0.85)
+                border: 1
+                borderColor: alpha(accentCol, 0.3)
+
+                SectionHeader { label: "widget fx"; hint: animMaster ? "${fxLiveCount}/8 ON · ALL PAGES" : "MASTER OFF" }
+
+                for g in fxGroups key g.page {
+                  Column {
+                    fill: width
+                    gap: 6
+                    Text { font: uiFont; text: g.page; fontSize: 10; letterSpacing: 1.5; color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.65); padding: [2, 2] }
+                    for a in g.rows key a.key {
+                      let isPaused = !animMaster
+                      let isLiveOn = a.val && !isPaused
+                      Row {
+                        fill: width
+                        align: center
+                        gap: 12
+                        padding: [14, 10]
+                        radius: 14 * corners
+                        background: isLiveOn ? alpha(accentDark, 0.94) : alpha((futOn ? #021014 : #140205), 0.9)
+                        border: 1
+                        borderColor: isLiveOn ? alpha(accentCol, 0.75) : alpha((futOn ? #22d1ff : #ff2244), 0.25)
+                        opacity: isPaused ? 0.6 : 1.0
+                        animate background: tween(200ms, "ease")
+                        onTap: {
+                          if hapticsOn { haptic() }
+                          let nextVal = a.val ? "false" : "true"
+                          let nextMsg = a.label + (a.val ? ": OFF" : ": ON")
+                          cmdOut = run("python3 -c 'import json,os,sys; p=os.path.expanduser(\"~/.config/omalauncher/animations.json\"); d=json.load(open(p)) if os.path.exists(p) else {}; d[sys.argv[1]]=json.loads(sys.argv[2]); t=p+\".tmp\"; open(t,\"w\").write(json.dumps(d,indent=2)+\"\\n\"); os.replace(t,p); print(json.dumps({\"ok\":True,\"msg\":sys.argv[3]}))' ${sh(a.key)} ${sh(nextVal)} ${sh(nextMsg)}")
+                        }
+                        Column {
+                          weight: 1
+                          gap: 1
+                          Text { font: uiFont; text: a.label; fontSize: 13.5; bold: true; color: isLiveOn ? (futOn ? #e8e8ff : #ffe8ec) : alpha((futOn ? #b3d1ff : #ffb3c0), 0.85); maxLines: 1 }
+                          Text { font: uiFont; text: isPaused && a.val ? "${a.desc} · waits for master" : a.desc; fontSize: 10.5; color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.6); maxLines: 1 }
+                        }
+                        Toggle { on: isLiveOn; wait: a.val && isPaused }
+                      }
+                    }
+                  }
+                }
+              }
+
+              // ───────── 5 · LAUNCHER & TOOLS ─────────
+              Column {
+                fill: width
+                gap: 12
+                padding: 14
+                radius: 18 * corners
+                background: alpha((futOn ? #010709 : #090103), 0.85)
+                border: 1
+                borderColor: alpha(accentCol, 0.3)
+
+                SectionHeader { label: "launcher & tools"; hint: "SYSTEM" }
+
+                Grid {
+                  columns: 2
+                  gap: 8
+                  fill: width
+                  for ef in [
+                    { id: "style",    glyph: "◐", label: "STYLE",       desc: "Font, corners, gaps" },
+                    { id: "settings", glyph: "⚙", label: "LAUNCHER",    desc: "Settings & gestures" },
+                    { id: "store",    glyph: "▦", label: "WIDGET STORE", desc: "Faces & widgets" },
+                    { id: "agents",   glyph: "✦", label: "AI AGENTS",   desc: "Default agent" }
+                  ] key ef.id {
+                    Row {
+                      align: center
+                      gap: 10
+                      padding: [12, 10]
+                      radius: 14 * corners
+                      background: alpha((futOn ? #021014 : #140205), 0.9)
+                      border: 1.2
+                      borderColor: alpha(accentCol, 0.45)
+                      onTap: {
+                        if hapticsOn { haptic() }
+                        launcher(ef.id)
+                      }
+                      Text { font: uiFont; text: ef.glyph; fontSize: 16; color: accentHot }
+                      Column {
+                        weight: 1
+                        gap: 1
+                        Text { font: uiFont; text: ef.label; fontSize: 11; bold: true; letterSpacing: 1; color: (futOn ? #e8e8ff : #ffe8ec); maxLines: 1 }
+                        Text { font: uiFont; text: ef.desc; fontSize: 10; color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.6); maxLines: 1 }
+                      }
+                    }
+                  }
+                }
+
+                // Obsidian Vault & JSON Canvas 1.0 Bridge
+                Row {
+                  fill: width
+                  align: center
+                  padding: [2, 4, 2, 0]
+                  Text { font: uiFont; text: "OBSIDIAN VAULT BRIDGE"; fontSize: 10; letterSpacing: 1.5; color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.65); weight: 1 }
+                  Text { text: ".CANVAS · .MD · SPEC 1.0"; fontSize: 10; font: mono; color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.45) }
+                }
+                Row {
+                  fill: width
+                  gap: 8
+                  Box {
+                    weight: 1
+                    padding: [0, 12]
+                    radius: 12 * corners
+                    background: alpha((futOn ? #021014 : #140205), 0.9)
+                    border: 1.2
+                    borderColor: alpha(accentCol, 0.45)
+                    onTap: {
+                      if hapticsOn { haptic() }
+                      run("python3 ~/.local/share/omalauncher/obsidian-bridge/vault_bridge.py demo --out ~/.local/share/omalauncher/obsidian-bridge/deck.json")
+                      statusMsg = "Vault Bridge: exported JSON Canvas 1.0 demo deck"
+                      statusOk = true
+                    }
+                    Text { text: "⟳  EXPORT DEMO"; align: center; fontSize: 11; font: mono; bold: true; color: (futOn ? #b3d1ff : #ffb3c0) }
+                  }
+                  Box {
+                    weight: 1
+                    padding: [0, 12]
+                    radius: 12 * corners
+                    background: alpha(accentDark, 0.9)
+                    border: 1.2
+                    borderColor: alpha(accentCol, 0.7)
+                    onTap: {
+                      if hapticsOn { haptic() }
+                      run("python3 ~/.local/share/omalauncher/obsidian-bridge/vault_bridge.py validate ~/.local/share/omalauncher/obsidian-bridge/deck.json")
+                      statusMsg = "Vault Bridge: validated deck.json"
+                      statusOk = true
+                    }
+                    Text { text: "✓  VALIDATE"; align: center; fontSize: 11; font: mono; bold: true; color: accentHot }
+                  }
+                }
+              }
+
+              Text { font: uiFont; text: "Changes save instantly · FX sync to every page via animations.json"; fontSize: 10; align: center; color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.45) }
+            }
+          }
+
+          // ================= TAB 2: PLUGINS =================
+          else if tab == "plugins" {
+        // Sub-mode switcher: AUDIO VST/CLAP/LV2 vs OWL MODULES
+        Row {
+        fill: width
+        gap: 6
+        align: center
+
+        Box {
+        weight: 1
+        padding: [8, 6]
+        radius: 8 * corners
+        align: center
+        background: pluginView == "audio" ? alpha((futOn ? #052d38 : #380510), 0.95) : alpha((futOn ? #010d10 : #100104), 0.85)
+        border: 1
+        borderColor: pluginView == "audio" ? (futOn ? #2ed1ff : #ff2e4d) : alpha((futOn ? #22d1ff : #ff2244), 0.22)
+        onTap: {
+        haptic()
+        pluginView = "audio"
+        confirmKey = ""
+        }
+        Text {
+          font: uiFont
+        text: "AUDIO (${sum.pluginsInstalled ?? 0}/${sum.pluginsTotal ?? 0})"
+        fontSize: 10
+        color: pluginView == "audio" ? (futOn ? #77d1ff : #ff7788) : alpha((futOn ? #45bce6 : #e6455a), 0.65)
+        bold: pluginView == "audio"
+        letterSpacing: 1.0
+        align: center
+        }
+        }
+
+        Box {
+        weight: 1
+        padding: [8, 6]
+        radius: 8 * corners
+        align: center
+        background: pluginView == "owl" ? alpha((futOn ? #052d38 : #380510), 0.95) : alpha((futOn ? #010d10 : #100104), 0.85)
+        border: 1
+        borderColor: pluginView == "owl" ? (futOn ? #2ed1ff : #ff2e4d) : alpha((futOn ? #22d1ff : #ff2244), 0.22)
+        onTap: {
+        haptic()
+        pluginView = "owl"
+        confirmKey = ""
+        }
+        Text {
+          font: uiFont
+        text: "OWL (${sum.owlActive ?? 0} ON · ${sum.owlDisabled ?? 0} OFF)"
+        fontSize: 10
+        color: pluginView == "owl" ? (futOn ? #77d1ff : #ff7788) : alpha((futOn ? #45bce6 : #e6455a), 0.65)
+        bold: pluginView == "owl"
+        letterSpacing: 1.0
+        align: center
+        }
+        }
+        }
+
+        // Search bar
+        Row {
+        fill: width
+        align: center
+        gap: 8
+        padding: [10, 5]
+        radius: 10 * corners
+        background: (futOn ? #010d10 : #100104)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.42)
+        Text { font: uiFont; text: "⌕"; color: (futOn ? #3bd1ff : #ff3b58); fontSize: 15 }
+        Input {
+        weight: 1
+        text: query
+        placeholder: pluginView == "audio" ? "Search VST3, CLAP, LV2, LADSPA…" : "Search OWL widgets, faces, apps…"
+        underline: false
+        color: (futOn ? #77d1ff : #ff7788)
+        onChange: query = value
+        }
+        if query != "" {
+        Text {
+          font: uiFont
+        text: "✕"
+        color: alpha((futOn ? #5cd1ff : #ff5c6e), 0.72)
+        padding: [4, 2]
+        onTap: query = ""
+        }
+        }
+        }
+
+        // Filter pills
+        if pluginView == "audio" {
+        Row {
+        fill: width
+        gap: 5
+        for f in ["ALL", "INST", "VST3", "CLAP", "LV2", "LADSPA"] {
+        let on = pluginFmt == f
+        Box {
+        weight: 1
+        padding: [2, 5]
+        radius: 99
+        align: center
+        background: on ? (futOn ? #09647a : #7a091e) : alpha((futOn ? #011014 : #140105), 0.88)
+        border: 1
+        borderColor: on ? (futOn ? #33d1ff : #ff3355) : alpha((futOn ? #22d1ff : #ff2244), 0.24)
+        onTap: {
+        haptic()
+        pluginFmt = f
+        }
+        Text {
+          font: uiFont
+        text: f
+        fontSize: 9.5
+        color: on ? (futOn ? #66d1ff : #ff6677) : alpha((futOn ? #45bce6 : #e6455a), 0.72)
+        bold: on
+        letterSpacing: 0.8
+        align: center
+        }
+        }
+        }
+        }
+        } else {
+        Row {
+        fill: width
+        gap: 6
+        for ow in [
+        { id: "active", label: "ACTIVE (${sum.owlActive ?? 0})" },
+        { id: "archive", label: "ARCHIVED (${sum.owlDisabled ?? 0})" }
+        ] {
+        let on = owlView == ow.id
+        Box {
+        weight: 1
+        padding: [6, 5]
+        radius: 99
+        align: center
+        background: on ? (futOn ? #09647a : #7a091e) : alpha((futOn ? #011014 : #140105), 0.88)
+        border: 1
+        borderColor: on ? (futOn ? #33d1ff : #ff3355) : alpha((futOn ? #22d1ff : #ff2244), 0.24)
+        onTap: {
+        haptic()
+        owlView = ow.id
+        confirmKey = ""
+        }
+        Text {
+          font: uiFont
+        text: ow.label
+        fontSize: 9.5
+        color: on ? (futOn ? #66d1ff : #ff6677) : alpha((futOn ? #45bce6 : #e6455a), 0.72)
+        bold: on
+        letterSpacing: 0.9
+        align: center
+        }
+        }
+        }
+        }
+        }
+
+        // Plugin / OWL List
+        Column {
+        scroll: true
+        weight: 1
+        fill: width
+        gap: 6
+
+        if pluginView == "audio" {
+        for p in shownPlugins key p.id {
+        let ck = "plug:" + p.id
+        let armed = confirmKey == ck
+        Row {
+        fill: width
+        align: center
+        gap: 8
+        padding: [10, 9]
+        radius: 10 * corners
+        background: p.installed ? alpha((futOn ? #041f26 : #26040d), 0.94) : alpha((futOn ? #010d11 : #110104), 0.86)
+        border: 1
+        borderColor: armed ? (futOn ? #1ed1ff : #ff1e3c) : p.installed ? alpha((futOn ? #2ed1ff : #ff2e4d), 0.65) : alpha((futOn ? #22d1ff : #ff2244), 0.20)
+
+        // Format badge
+        Text {
+          font: uiFont
+        text: p.fmt
+        fontSize: 9
+        color: p.installed ? (futOn ? #66d1ff : #ff6677) : (futOn ? #5cd1ff : #ff5c77)
+        bold: true
+        letterSpacing: 0.8
+        padding: [6, 3]
+        radius: 6 * corners
+        background: p.installed ? (futOn ? #0e819e : #9e0e28) : alpha((futOn ? #031d24 : #24030a), 0.95)
+        border: 1
+        borderColor: p.installed ? (futOn ? #47d1ff : #ff4766) : alpha((futOn ? #2ed1ff : #ff2e4d), 0.35)
+        }
+
+        Column {
+        weight: 1
+        gap: 1
+        Text {
+          font: uiFont
+        text: p.name
+        fontSize: 12.5
+        color: (futOn ? #77d1ff : #ff7788)
+        bold: p.installed
+        maxLines: 1
+        }
+        Text {
+          font: uiFont
+        text: p.installed ? (p.size != "" ? "INSTALLED · ${p.ver} · ${p.size}" : "INSTALLED · ${p.ver}") : "ARCH REPO · READY TO INSTALL"
+        fontSize: 9.5
+        color: p.installed ? (futOn ? #11d1ff : #ff1133) : alpha((futOn ? #45bce6 : #e6455a), 0.56)
+        maxLines: 1
+        }
+        }
+
+        if p.installed {
+        if armed {
+        Text {
+          font: uiFont
+        text: "CONFIRM"
+        fontSize: 9.5
+        color: (futOn ? #66d1ff : #ff6677)
+        bold: true
+        letterSpacing: 0.9
+        padding: [9, 6]
+        radius: 8 * corners
+        background: (futOn ? #0ba4c8 : #c80b28)
+        border: 1
+        borderColor: (futOn ? #5cd1ff : #ff5c6e)
+        onTap: {
+        haptic()
+        busy = true
+        statusOk = true
+        statusMsg = "Purging ${p.name}…"
+        cmdOut = ""
+        if p.kind == "file" {
+        cmdOut = run("python3 ~/.local/share/omalauncher/synth-pads/sith_panel.py plugin-file-remove ${sh(p.path)}")
+        } else {
+        cmdOut = run("python3 ~/.local/share/omalauncher/synth-pads/sith_panel.py pkg-remove ${sh(p.name)}")
+        }
+        }
+        }
+        Text {
+          font: uiFont
+        text: "✕"
+        fontSize: 10
+        color: alpha((futOn ? #5cd1ff : #ff5c6e), 0.78)
+        padding: [6, 6]
+        radius: 8 * corners
+        background: alpha((futOn ? #02161b : #1b0207), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.35)
+        onTap: confirmKey = ""
+        }
+        } else {
+        Text {
+          font: uiFont
+        text: "PURGE"
+        fontSize: 9.5
+        color: (futOn ? #47d1ff : #ff4766)
+        bold: true
+        letterSpacing: 1.0
+        padding: [9, 6]
+        radius: 8 * corners
+        background: alpha((futOn ? #03242c : #2c030c), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.55)
+        onTap: {
+        haptic()
+        confirmKey = ck
+        }
+        }
+        }
+        } else {
+        Text {
+          font: uiFont
+        text: "INSTALL"
+        fontSize: 9.5
+        color: (futOn ? #77d1ff : #ff7788)
+        bold: true
+        letterSpacing: 0.9
+        padding: [9, 6]
+        radius: 8 * corners
+        background: alpha((futOn ? #085366 : #66081a), 0.92)
+        border: 1
+        borderColor: alpha((futOn ? #33d1ff : #ff3355), 0.70)
+        onTap: {
+        haptic()
+        busy = true
+        statusOk = true
+        statusMsg = "Installing ${p.name}…"
+        cmdOut = ""
+        cmdOut = run("python3 ~/.local/share/omalauncher/synth-pads/sith_panel.py pkg-install ${sh(p.name)}")
+        }
+        }
+        }
+        }
+        }
+
+        if len(filtPlugins) == 0 {
+        Text {
+          font: uiFont
+        text: panel == null ? "Scanning plugin vault…" : "No matching audio plugins"
+        style: muted
+        align: center
+        fill: width
+        padding: [0, 24]
+        }
+        } else if len(filtPlugins) > 40 {
+        Text {
+          font: uiFont
+        text: "Showing 40 of ${len(filtPlugins)} plugins — search or filter to narrow"
+        fontSize: 10
+        color: alpha((futOn ? #45bce6 : #e6455a), 0.52)
+        align: center
+        fill: width
+        padding: [0, 8]
+        }
+        }
+        } else {
+        // OWL Launcher Modules
+        for w in shownOwls key w.file {
+        let ck = "owl:" + w.file
+        let armed = confirmKey == ck
+        Row {
+        fill: width
+        align: center
+        gap: 8
+        padding: [10, 9]
+        radius: 10 * corners
+        background: w.active ? alpha((futOn ? #02151a : #1a0208), 0.92) : alpha((futOn ? #010c0f : #0f0104), 0.85)
+        border: 1
+        borderColor: armed ? (futOn ? #1ed1ff : #ff1e3c) : w.active ? alpha((futOn ? #2ed1ff : #ff2e4d), 0.42) : alpha((futOn ? #22d1ff : #ff2244), 0.18)
+
+        Text {
+          font: uiFont
+        text: upper(w.kind)
+        fontSize: 8.5
+        color: w.active ? (futOn ? #66d1ff : #ff6680) : alpha((futOn ? #45bce6 : #e6455a), 0.55)
+        bold: true
+        letterSpacing: 0.7
+        padding: [6, 3]
+        radius: 6 * corners
+        background: alpha((futOn ? #031d24 : #24030a), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.32)
+        }
+
+        Column {
+        weight: 1
+        gap: 1
+        Text {
+          font: uiFont
+        text: w.name
+        fontSize: 12.5
+        color: (futOn ? #77d1ff : #ff7788)
+        bold: w.active
+        maxLines: 1
+        }
+        Text {
+          font: uiFont
+        text: "${w.file} · ${w.size}"
+        fontSize: 9.5
+        color: alpha((futOn ? #45bce6 : #e6455a), 0.56)
+        maxLines: 1
+        }
+        }
+
+        if w.protected {
+        Text {
+          font: uiFont
+        text: "CORE"
+        fontSize: 9
+        color: alpha((futOn ? #45bce6 : #e6455a), 0.55)
+        bold: true
+        letterSpacing: 1.0
+        padding: [8, 5]
+        radius: 8 * corners
+        background: alpha((futOn ? #02161b : #1b0207), 0.9)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.24)
+        }
+        } else if w.active {
+        if armed {
+        Text {
+          font: uiFont
+        text: "DISABLE"
+        fontSize: 9.5
+        color: (futOn ? #66d1ff : #ff6677)
+        bold: true
+        padding: [9, 6]
+        radius: 8 * corners
+        background: (futOn ? #0d96b8 : #b80d28)
+        border: 1
+        borderColor: (futOn ? #5cd1ff : #ff5c6e)
+        onTap: {
+        haptic()
+        busy = true
+        statusOk = true
+        statusMsg = "Disabling ${w.file}…"
+        cmdOut = ""
+        cmdOut = run("python3 ~/.local/share/omalauncher/synth-pads/sith_panel.py owl-disable ${sh(w.file)}")
+        }
+        }
+        Text {
+          font: uiFont
+        text: "✕"
+        fontSize: 10
+        color: alpha((futOn ? #5cd1ff : #ff5c6e), 0.78)
+        padding: [6, 6]
+        radius: 8 * corners
+        background: alpha((futOn ? #02161b : #1b0207), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.35)
+        onTap: confirmKey = ""
+        }
+        } else {
+        Text {
+          font: uiFont
+        text: "OFF"
+        fontSize: 9.5
+        color: (futOn ? #47d1ff : #ff4766)
+        bold: true
+        letterSpacing: 1.0
+        padding: [9, 6]
+        radius: 8 * corners
+        background: alpha((futOn ? #03242c : #2c030c), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.55)
+        onTap: {
+        haptic()
+        confirmKey = ck
+        }
+        }
+        }
+        } else {
+        Text {
+          font: uiFont
+        text: "RESTORE"
+        fontSize: 9.5
+        color: (futOn ? #77d1ff : #ff7788)
+        bold: true
+        letterSpacing: 0.8
+        padding: [8, 6]
+        radius: 8 * corners
+        background: alpha((futOn ? #074859 : #590717), 0.92)
+        border: 1
+        borderColor: alpha((futOn ? #33d1ff : #ff3355), 0.68)
+        onTap: {
+        haptic()
+        busy = true
+        statusOk = true
+        statusMsg = "Restoring ${w.file}…"
+        cmdOut = ""
+        cmdOut = run("python3 ~/.local/share/omalauncher/synth-pads/sith_panel.py owl-restore ${sh(w.file)}")
+        }
+        }
+        if armed {
+        Text {
+          font: uiFont
+        text: "DEL!"
+        fontSize: 9.5
+        color: (futOn ? #66d1ff : #ff6677)
+        bold: true
+        padding: [8, 6]
+        radius: 8 * corners
+        background: (futOn ? #0ba4c8 : #c80b28)
+        border: 1
+        borderColor: (futOn ? #5cd1ff : #ff5c6e)
+        onTap: {
+        haptic()
+        busy = true
+        statusOk = true
+        statusMsg = "Deleting ${w.file}…"
+        cmdOut = ""
+        cmdOut = run("python3 ~/.local/share/omalauncher/synth-pads/sith_panel.py owl-purge ${sh(w.file)}")
+        }
+        }
+        } else {
+        Text {
+          font: uiFont
+        text: "✕"
+        fontSize: 10
+        color: (futOn ? #47d1ff : #ff4766)
+        bold: true
+        padding: [7, 6]
+        radius: 8 * corners
+        background: alpha((futOn ? #031d24 : #24030a), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.45)
+        onTap: {
+        haptic()
+        confirmKey = ck
+        }
+        }
+        }
+        }
+        }
+        }
+
+        if len(filtOwls) == 0 {
+        Text {
+          font: uiFont
+        text: "No matching OWL modules"
+        style: muted
+        align: center
+        fill: width
+        padding: [0, 24]
+        }
+        }
+        }
+        }
+          }
+
+          // ================= TAB 3: APPS =================
+          else if tab == "apps" {
+        // Search bar
+        Row {
+        fill: width
+        align: center
+        gap: 8
+        padding: [10, 5]
+        radius: 10 * corners
+        background: (futOn ? #010d10 : #100104)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.42)
+        Text { font: uiFont; text: "⌕"; color: (futOn ? #3bd1ff : #ff3b58); fontSize: 15 }
+        Input {
+        weight: 1
+        text: query
+        placeholder: "Search apps to uninstall or inspect…"
+        underline: false
+        color: (futOn ? #77d1ff : #ff7788)
+        onChange: query = value
+        }
+        if query != "" {
+        Text {
+          font: uiFont
+        text: "✕"
+        color: alpha((futOn ? #5cd1ff : #ff5c6e), 0.72)
+        padding: [4, 2]
+        onTap: query = ""
+        }
+        }
+        }
+
+        // App kind filter pills
+        Row {
+        fill: width
+        gap: 6
+        for af in [
+        { id: "android", label: "ANDROID" },
+        { id: "all", label: "ALL (${len(allDrawerApps)})" },
+        { id: "owl", label: "OWL" },
+        { id: "linux", label: "LINUX" }
+        ] {
+        let on = appFilter == af.id
+        Box {
+        weight: 1
+        padding: [4, 5]
+        radius: 99
+        align: center
+        background: on ? (futOn ? #09647a : #7a091e) : alpha((futOn ? #011014 : #140105), 0.88)
+        border: 1
+        borderColor: on ? (futOn ? #33d1ff : #ff3355) : alpha((futOn ? #22d1ff : #ff2244), 0.24)
+        onTap: {
+        haptic()
+        appFilter = af.id
+        }
+        Text {
+          font: uiFont
+        text: af.label
+        fontSize: 9.5
+        color: on ? (futOn ? #66d1ff : #ff6677) : alpha((futOn ? #45bce6 : #e6455a), 0.72)
+        bold: on
+        letterSpacing: 0.9
+        align: center
+        }
+        }
+        }
+        }
+
+        Column {
+        scroll: true
+        weight: 1
+        fill: width
+        gap: 6
+
+        for a in shownDrawerApps key a.key {
+        let acts = a.actions ?? []
+        let canUninstall = any(acts, x => x == "uninstall")
+        let canRemove = any(acts, x => x == "remove")
+        let canInfo = any(acts, x => x == "info")
+
+        Row {
+        fill: width
+        align: center
+        gap: 9
+        padding: [9, 8]
+        radius: 10 * corners
+        background: alpha((futOn ? #010f13 : #130105), 0.90)
+        border: 1
+        borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.24)
+
+        // App icon framed in obsidian crimson
+        Box {
+        size: 34
+        align: center
+        onTap: {
+        haptic()
+        open(a.key)
+        }
+        TraySigil { src: a.hasIcon ? a.icon : null; sz: 34; lbl: a.label; ini: a.initials }
+        }
+
+        Column {
+        weight: 1
+        gap: 1
+        onTap: {
+        haptic()
+        open(a.key)
+        }
+        Text {
+          font: uiFont
+        text: a.name
+        fontSize: 12.5
+        color: (futOn ? #77d1ff : #ff7788)
+        bold: true
+        maxLines: 1
+        }
+        Text {
+          font: uiFont
+        text: a.profile != null ? "${upper(a.kind)} · ${upper(a.profile)}" : upper(a.kind)
+        fontSize: 9
+        color: alpha((futOn ? #45bce6 : #e6455a), 0.56)
+        letterSpacing: 0.8
+        maxLines: 1
+        }
+        }
+
+        if canInfo {
+        Text {
+          font: uiFont
+        text: "INFO"
+        fontSize: 9.5
+        color: alpha((futOn ? #5cd1ff : #ff5c6e), 0.85)
+        bold: true
+        letterSpacing: 0.8
+        padding: [8, 6]
+        radius: 8 * corners
+        background: alpha((futOn ? #02171d : #1d0208), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.36)
+        onTap: {
+        haptic()
+        appAction("info", a.key)
+        }
+        }
+        }
+
+        if canUninstall {
+        Text {
+          font: uiFont
+        text: "UNINSTALL"
+        fontSize: 9.5
+        color: (futOn ? #66d1ff : #ff6677)
+        bold: true
+        letterSpacing: 0.8
+        padding: [8, 6]
+        radius: 8 * corners
+        background: (futOn ? #0b758f : #8f0b23)
+        border: 1
+        borderColor: (futOn ? #33d1ff : #ff3355)
+        onTap: {
+        haptic()
+        appAction("uninstall", a.key)
+        }
+        }
+        } else if canRemove {
+        Text {
+          font: uiFont
+        text: "REMOVE"
+        fontSize: 9.5
+        color: (futOn ? #66d1ff : #ff6677)
+        bold: true
+        letterSpacing: 0.8
+        padding: [8, 6]
+        radius: 8 * corners
+        background: (futOn ? #0b758f : #8f0b23)
+        border: 1
+        borderColor: (futOn ? #33d1ff : #ff3355)
+        onTap: {
+        haptic()
+        appAction("remove", a.key)
+        }
+        }
+        } else if canInfo {
+        Text {
+          font: uiFont
+        text: "SYS"
+        fontSize: 9
+        color: alpha((futOn ? #45bce6 : #e6455a), 0.55)
+        bold: true
+        letterSpacing: 0.8
+        padding: [8, 6]
+        radius: 8 * corners
+        background: alpha((futOn ? #021318 : #180206), 0.9)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.22)
+        onTap: {
+        haptic()
+        appAction("info", a.key)
+        }
+        }
+        } else {
+        Text {
+          font: uiFont
+        text: "OPEN"
+        fontSize: 9.5
+        color: (futOn ? #66d1ff : #ff6680)
+        bold: true
+        letterSpacing: 0.8
+        padding: [8, 6]
+        radius: 8 * corners
+        background: alpha((futOn ? #031b22 : #22030a), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.42)
+        onTap: {
+        haptic()
+        open(a.key)
+        }
+        }
+        }
+        }
+        }
+
+        if len(filtDrawerApps) == 0 {
+        Text {
+          font: uiFont
+        text: "No matching apps"
+        style: muted
+        align: center
+        fill: width
+        padding: [0, 24]
+        }
+        } else if len(filtDrawerApps) > 36 {
+        Text {
+          font: uiFont
+        text: "Showing 36 of ${len(filtDrawerApps)} apps — search to narrow"
+        fontSize: 10
+        color: alpha((futOn ? #45bce6 : #e6455a), 0.52)
+        align: center
+        fill: width
+        padding: [0, 8]
+        }
+        }
+        }
+          }
+
+          // ================= TAB 4: LINUX =================
+          else if tab == "linux" {
+        // Sub-mode switcher
+        Row {
+        fill: width
+        gap: 6
+        for lv in [
+        { id: "pkgs", label: "PKGS (${sum.linuxPkgs ?? 0})" },
+        { id: "apps", label: "APPS (${sum.linuxApps ?? 0})" },
+        { id: "orphans", label: "ORPHANS (${sum.orphans ?? 0})" }
+        ] {
+        let on = linuxView == lv.id
+        Box {
+        weight: 1
+        padding: [4, 6]
+        radius: 8 * corners
+        align: center
+        background: on ? alpha((futOn ? #052d38 : #380510), 0.95) : alpha((futOn ? #010d10 : #100104), 0.85)
+        border: 1
+        borderColor: on ? (futOn ? #2ed1ff : #ff2e4d) : alpha((futOn ? #22d1ff : #ff2244), 0.22)
+        onTap: {
+        haptic()
+        linuxView = lv.id
+        confirmKey = ""
+        }
+        Text {
+          font: uiFont
+        text: lv.label
+        fontSize: 9.5
+        color: on ? (futOn ? #77d1ff : #ff7788) : alpha((futOn ? #45bce6 : #e6455a), 0.65)
+        bold: on
+        letterSpacing: 0.9
+        align: center
+        }
+        }
+        }
+        }
+
+        // Search + sort bar (for pkgs and apps)
+        if linuxView != "orphans" {
+        Row {
+        fill: width
+        align: center
+        gap: 6
+        Row {
+        weight: 1
+        align: center
+        gap: 8
+        padding: [10, 5]
+        radius: 10 * corners
+        background: (futOn ? #010d10 : #100104)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.42)
+        Text { font: uiFont; text: "⌕"; color: (futOn ? #3bd1ff : #ff3b58); fontSize: 15 }
+        Input {
+        weight: 1
+        text: query
+        placeholder: linuxView == "pkgs" ? "Search pacman packages…" : "Search Linux apps…"
+        underline: false
+        color: (futOn ? #77d1ff : #ff7788)
+        onChange: query = value
+        }
+        if query != "" {
+        Text {
+          font: uiFont
+        text: "✕"
+        color: alpha((futOn ? #5cd1ff : #ff5c6e), 0.72)
+        padding: [4, 2]
+        onTap: query = ""
+        }
+        }
+        }
+
+        if linuxView == "pkgs" {
+        Text {
+          font: uiFont
+        text: pkgSort == "size" ? "SIZE" : "A–Z"
+        fontSize: 10
+        color: (futOn ? #66d1ff : #ff6680)
+        bold: true
+        letterSpacing: 1.0
+        padding: [10, 8]
+        radius: 10 * corners
+        background: (futOn ? #010d10 : #100104)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.42)
+        onTap: {
+        haptic()
+        pkgSort = pkgSort == "size" ? "name" : "size"
+        }
+        }
+        }
+        }
+        }
+
+        Column {
+        scroll: true
+        weight: 1
+        fill: width
+        gap: 6
+
+        if linuxView == "pkgs" {
+        for p in shownPkgs key p.name {
+        let ck = "pkg:" + p.name
+        let armed = confirmKey == ck
+        Row {
+        fill: width
+        align: center
+        gap: 8
+        padding: [10, 8]
+        radius: 10 * corners
+        background: alpha((futOn ? #010e12 : #120105), 0.90)
+        border: 1
+        borderColor: armed ? (futOn ? #1ed1ff : #ff1e3c) : alpha((futOn ? #22d1ff : #ff2244), 0.22)
+
+        Column {
+        weight: 1
+        gap: 1
+        Row {
+        align: center
+        gap: 6
+        Text {
+          font: uiFont
+        text: p.name
+        fontSize: 12.5
+        color: (futOn ? #77d1ff : #ff7788)
+        bold: true
+        maxLines: 1
+        }
+        Text {
+          font: uiFont
+        text: p.size
+        fontSize: 9.5
+        color: (futOn ? #5cd1ff : #ff5c77)
+        bold: true
+        padding: [5, 1]
+        radius: 4 * corners
+        background: alpha((futOn ? #032028 : #28030c), 0.95)
+        }
+        }
+        Text {
+          font: uiFont
+        text: p.desc != "" ? p.desc : p.ver
+        fontSize: 9.5
+        color: alpha((futOn ? #45bce6 : #e6455a), 0.56)
+        maxLines: 1
+        }
+        }
+
+        if p.core {
+        Text {
+          font: uiFont
+        text: "CORE"
+        fontSize: 9
+        color: alpha((futOn ? #45bce6 : #e6455a), 0.55)
+        bold: true
+        letterSpacing: 1.0
+        padding: [8, 5]
+        radius: 8 * corners
+        background: alpha((futOn ? #02161b : #1b0207), 0.9)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.24)
+        }
+        } else if armed {
+        Text {
+          font: uiFont
+        text: "CONFIRM"
+        fontSize: 9.5
+        color: (futOn ? #66d1ff : #ff6677)
+        bold: true
+        padding: [8, 6]
+        radius: 8 * corners
+        background: (futOn ? #0ba4c8 : #c80b28)
+        border: 1
+        borderColor: (futOn ? #5cd1ff : #ff5c6e)
+        onTap: {
+        haptic()
+        busy = true
+        statusOk = true
+        statusMsg = "Purging ${p.name}…"
+        cmdOut = ""
+        cmdOut = run("python3 ~/.local/share/omalauncher/synth-pads/sith_panel.py pkg-remove ${sh(p.name)}")
+        }
+        }
+        Text {
+          font: uiFont
+        text: "✕"
+        fontSize: 10
+        color: alpha((futOn ? #5cd1ff : #ff5c6e), 0.78)
+        padding: [6, 6]
+        radius: 8 * corners
+        background: alpha((futOn ? #02161b : #1b0207), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.35)
+        onTap: confirmKey = ""
+        }
+        } else {
+        Text {
+          font: uiFont
+        text: "PURGE"
+        fontSize: 9.5
+        color: (futOn ? #47d1ff : #ff4766)
+        bold: true
+        letterSpacing: 0.9
+        padding: [9, 6]
+        radius: 8 * corners
+        background: alpha((futOn ? #03242c : #2c030c), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.55)
+        onTap: {
+        haptic()
+        confirmKey = ck
+        }
+        }
+        }
+        }
+        }
+
+        if len(filtPkgs) == 0 {
+        Text {
+          font: uiFont
+        text: panel == null ? "Scanning Arch packages…" : "No matching packages"
+        style: muted
+        align: center
+        fill: width
+        padding: [0, 24]
+        }
+        } else if len(filtPkgs) > 40 {
+        Text {
+          font: uiFont
+        text: "Showing 40 of ${len(filtPkgs)} explicit packages — search to narrow"
+        fontSize: 10
+        color: alpha((futOn ? #45bce6 : #e6455a), 0.52)
+        align: center
+        fill: width
+        padding: [0, 8]
+        }
+        }
+        } else if linuxView == "apps" {
+        for la in shownLinuxApps key la.id {
+        let ck = "lapp:" + la.id
+        let armed = confirmKey == ck
+        Row {
+        fill: width
+        align: center
+        gap: 8
+        padding: [10, 8]
+        radius: 10 * corners
+        background: alpha((futOn ? #010e12 : #120105), 0.90)
+        border: 1
+        borderColor: armed ? (futOn ? #1ed1ff : #ff1e3c) : alpha((futOn ? #22d1ff : #ff2244), 0.22)
+
+        Column {
+        weight: 1
+        gap: 1
+        Text {
+          font: uiFont
+        text: la.name
+        fontSize: 12.5
+        color: (futOn ? #77d1ff : #ff7788)
+        bold: true
+        maxLines: 1
+        }
+        Text {
+          font: uiFont
+        text: la.pkg != "" ? "pkg: ${la.pkg} · ${la.exec}" : "user shortcut · ${la.exec}"
+        fontSize: 9.5
+        color: alpha((futOn ? #45bce6 : #e6455a), 0.56)
+        maxLines: 1
+        }
+        }
+
+        if la.core {
+        Text {
+          font: uiFont
+        text: "CORE"
+        fontSize: 9
+        color: alpha((futOn ? #45bce6 : #e6455a), 0.55)
+        bold: true
+        padding: [8, 5]
+        radius: 8 * corners
+        background: alpha((futOn ? #02161b : #1b0207), 0.9)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.24)
+        }
+        } else if la.pkg != "" || !la.sys {
+        if armed {
+        Text {
+          font: uiFont
+        text: "CONFIRM"
+        fontSize: 9.5
+        color: (futOn ? #66d1ff : #ff6677)
+        bold: true
+        padding: [8, 6]
+        radius: 8 * corners
+        background: (futOn ? #0ba4c8 : #c80b28)
+        border: 1
+        borderColor: (futOn ? #5cd1ff : #ff5c6e)
+        onTap: {
+        haptic()
+        busy = true
+        statusOk = true
+        statusMsg = "Removing ${la.name}…"
+        cmdOut = ""
+        if la.pkg != "" {
+        cmdOut = run("python3 ~/.local/share/omalauncher/synth-pads/sith_panel.py pkg-remove ${sh(la.pkg)}")
+        } else {
+        cmdOut = run("python3 ~/.local/share/omalauncher/synth-pads/sith_panel.py desktop-remove ${sh(la.path)}")
+        }
+        }
+        }
+        Text {
+          font: uiFont
+        text: "✕"
+        fontSize: 10
+        color: alpha((futOn ? #5cd1ff : #ff5c6e), 0.78)
+        padding: [6, 6]
+        radius: 8 * corners
+        background: alpha((futOn ? #02161b : #1b0207), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.35)
+        onTap: confirmKey = ""
+        }
+        } else {
+        Text {
+          font: uiFont
+        text: "UNINSTALL"
+        fontSize: 9.5
+        color: (futOn ? #47d1ff : #ff4766)
+        bold: true
+        letterSpacing: 0.8
+        padding: [8, 6]
+        radius: 8 * corners
+        background: alpha((futOn ? #03242c : #2c030c), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.55)
+        onTap: {
+        haptic()
+        confirmKey = ck
+        }
+        }
+        }
+        }
+        }
+        }
+
+        if len(filtLinuxApps) == 0 {
+        Text {
+          font: uiFont
+        text: "No matching Linux apps"
+        style: muted
+        align: center
+        fill: width
+        padding: [0, 24]
+        }
+        }
+        } else {
+        // Orphans tab
+        if len(orphans) > 0 {
+        Row {
+        fill: width
+        align: center
+        gap: 8
+        padding: [12, 10]
+        radius: 10 * corners
+        background: alpha((futOn ? #032028 : #28030c), 0.94)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.65)
+        Column {
+        weight: 1
+        gap: 1
+        Text {
+          font: uiFont
+        text: "${len(orphans)} UNUSED DEPENDENCY ORPHAN(S)"
+        fontSize: 11
+        color: (futOn ? #77d1ff : #ff7788)
+        bold: true
+        letterSpacing: 0.8
+        }
+        Text {
+          font: uiFont
+        text: "Safe to purge with pacman -Rns"
+        fontSize: 9.5
+        color: alpha((futOn ? #45bce6 : #e6455a), 0.65)
+        }
+        }
+        Text {
+          font: uiFont
+        text: "PURGE ALL"
+        fontSize: 10
+        color: (futOn ? #66d1ff : #ff6677)
+        bold: true
+        letterSpacing: 1.0
+        padding: [10, 7]
+        radius: 8 * corners
+        background: (futOn ? #0d96b8 : #b80d28)
+        border: 1
+        borderColor: (futOn ? #47d1ff : #ff4766)
+        onTap: {
+        haptic()
+        busy = true
+        statusOk = true
+        statusMsg = "Purging orphan packages…"
+        cmdOut = ""
+        cmdOut = run("python3 ~/.local/share/omalauncher/synth-pads/sith_panel.py purge-orphans")
+        }
+        }
+        }
+
+        for o in orphans key o {
+        Row {
+        fill: width
+        align: center
+        gap: 8
+        padding: [10, 8]
+        radius: 10 * corners
+        background: alpha((futOn ? #010e12 : #120105), 0.88)
+        border: 1
+        borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.22)
+        Text { font: uiFont; text: "◆"; color: (futOn ? #2ed1ff : #ff2e4d); fontSize: 10 }
+        Text { font: uiFont; text: o; fontSize: 12.5; color: (futOn ? #77d1ff : #ff7788); weight: 1 }
+        Text {
+          font: uiFont
+        text: "PURGE"
+        fontSize: 9.5
+        color: (futOn ? #47d1ff : #ff4766)
+        bold: true
+        padding: [8, 5]
+        radius: 8 * corners
+        background: alpha((futOn ? #03242c : #2c030c), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.50)
+        onTap: {
+        haptic()
+        busy = true
+        statusOk = true
+        statusMsg = "Purging ${o}…"
+        cmdOut = ""
+        cmdOut = run("python3 ~/.local/share/omalauncher/synth-pads/sith_panel.py pkg-remove ${sh(o)}")
+        }
+        }
+        }
+        }
+        } else {
+        Text {
+          font: uiFont
+        text: "No orphan packages — system is clean"
+        style: muted
+        align: center
+        fill: width
+        padding: [0, 28]
+        }
+        }
+        }
+        }
+          }
+
+          // ================= TAB 5: CONTROL / CORE =================
+          else {
+        Column {
+        scroll: true
+        weight: 1
+        fill: width
+        gap: 10
+
+        // --- TELEMETRY GRID ---
+        Row {
+        fill: width
+        gap: 8
+        Column {
+        weight: 1
+        gap: 4
+        padding: [10, 9]
+        radius: 10 * corners
+        background: alpha((futOn ? #011014 : #140106), 0.92)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.35)
+        Text { font: uiFont; text: "POWER CORE"; fontSize: 9; color: alpha((futOn ? #45bce6 : #e6455a), 0.62); bold: true; letterSpacing: 1.2 }
+        Text { font: uiFont; text: "${bat.level ?? "…"}%"; fontSize: 18; color: (futOn ? #77d1ff : #ff7788); bold: true }
+        Text { font: uiFont; text: "${bat.charging ? "CHARGING" : "DRAIN"} · ${bat.temp ?? "…"}°C"; fontSize: 9.5; color: (futOn ? #5cd1ff : #ff5c77) }
+        }
+
+        Column {
+        weight: 1
+        gap: 4
+        padding: [10, 9]
+        radius: 10 * corners
+        background: alpha((futOn ? #011014 : #140106), 0.92)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.35)
+        Text { font: uiFont; text: "MEMORY"; fontSize: 9; color: alpha((futOn ? #45bce6 : #e6455a), 0.62); bold: true; letterSpacing: 1.2 }
+        Text { font: uiFont; text: "${memPct}%"; fontSize: 18; color: (futOn ? #77d1ff : #ff7788); bold: true }
+        Text { font: uiFont; text: "${fmtBytes(memUsed)} / ${fmtBytes(memTotal)}"; fontSize: 9.5; color: (futOn ? #5cd1ff : #ff5c77); maxLines: 1 }
+        }
+        }
+
+        Row {
+        fill: width
+        gap: 8
+        Column {
+        weight: 1
+        gap: 4
+        padding: [10, 9]
+        radius: 10 * corners
+        background: alpha((futOn ? #011014 : #140106), 0.92)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.35)
+        Text { font: uiFont; text: "STORAGE"; fontSize: 9; color: alpha((futOn ? #45bce6 : #e6455a), 0.62); bold: true; letterSpacing: 1.2 }
+        Text { font: uiFont; text: "${stoPct}%"; fontSize: 18; color: (futOn ? #77d1ff : #ff7788); bold: true }
+        Text { font: uiFont; text: "${fmtBytes(stoUsed)} / ${fmtBytes(stoTotal)}"; fontSize: 9.5; color: (futOn ? #5cd1ff : #ff5c77); maxLines: 1 }
+        }
+
+        Column {
+        weight: 1
+        gap: 4
+        padding: [10, 9]
+        radius: 10 * corners
+        background: alpha((futOn ? #011014 : #140106), 0.92)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.35)
+        Text { font: uiFont; text: "ARSENAL"; fontSize: 9; color: alpha((futOn ? #45bce6 : #e6455a), 0.62); bold: true; letterSpacing: 1.2 }
+        Text { font: uiFont; text: "${len(allDrawerApps)} APPS"; fontSize: 16; color: (futOn ? #77d1ff : #ff7788); bold: true }
+        Text { font: uiFont; text: "${sum.linuxPkgs ?? 0} PKGS · ${sum.pluginsInstalled ?? 0} PLUGINS"; fontSize: 9.5; color: (futOn ? #5cd1ff : #ff5c77); maxLines: 1 }
+        }
+        }
+
+        // --- HARDWARE & AUDIO CONTROLS ---
+        Column {
+        fill: width
+        gap: 8
+        padding: [12, 10]
+        radius: 10 * corners
+        background: alpha((futOn ? #011014 : #140106), 0.92)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.38)
+
+        Row {
+        fill: width
+        align: center
+        Text { font: uiFont; text: "HARDWARE & AUDIO"; fontSize: 10; color: (futOn ? #3bd1ff : #ff3b58); bold: true; letterSpacing: 1.5; weight: 1 }
+        Text { font: uiFont; text: volOutLabel; fontSize: 9.5; color: alpha((futOn ? #5cd1ff : #ff5c6e), 0.70); maxLines: 1 }
+        }
+
+        Row {
+        fill: width
+        gap: 8
+
+        Box {
+        weight: 1
+        padding: [8, 9]
+        radius: 9 * corners
+        align: center
+        background: modes.torch == true ? (futOn ? #0b758f : #8f0b23) : alpha((futOn ? #02171d : #1d0208), 0.92)
+        border: 1
+        borderColor: modes.torch == true ? (futOn ? #47d1ff : #ff4766) : alpha((futOn ? #2ed1ff : #ff2e4d), 0.35)
+        onTap: {
+        haptic()
+        torch("toggle")
+        }
+        Text {
+          font: uiFont
+        text: modes.torch == true ? "TORCH ON" : "TORCH OFF"
+        fontSize: 10
+        color: (futOn ? #77d1ff : #ff7788)
+        bold: true
+        letterSpacing: 1.0
+        align: center
+        }
+        }
+
+        Box {
+        weight: 1
+        padding: [8, 9]
+        radius: 9 * corners
+        align: center
+        background: modes.dnd == true ? (futOn ? #0b758f : #8f0b23) : alpha((futOn ? #02171d : #1d0208), 0.92)
+        border: 1
+        borderColor: modes.dnd == true ? (futOn ? #47d1ff : #ff4766) : alpha((futOn ? #2ed1ff : #ff2e4d), 0.35)
+        onTap: {
+        haptic()
+        dnd("toggle")
+        }
+        Text {
+          font: uiFont
+        text: modes.dnd == true ? "DND ON" : "DND OFF"
+        fontSize: 10
+        color: (futOn ? #77d1ff : #ff7788)
+        bold: true
+        letterSpacing: 1.0
+        align: center
+        }
+        }
+
+        Box {
+        weight: 1
+        padding: [8, 9]
+        radius: 9 * corners
+        align: center
+        background: vol.muted == true ? (futOn ? #0b758f : #8f0b23) : alpha((futOn ? #02171d : #1d0208), 0.92)
+        border: 1
+        borderColor: vol.muted == true ? (futOn ? #47d1ff : #ff4766) : alpha((futOn ? #2ed1ff : #ff2e4d), 0.35)
+        onTap: {
+        haptic()
+        volume("toggle")
+        }
+        Text {
+          font: uiFont
+        text: vol.muted == true ? "MUTED" : "VOL ${vol.level ?? 0}%"
+        fontSize: 10
+        color: (futOn ? #77d1ff : #ff7788)
+        bold: true
+        letterSpacing: 1.0
+        align: center
+        }
+        }
+        }
+
+        Slider {
+        value: vol.level ?? 50
+        min: 0
+        max: 100
+        color: (futOn ? #1ed1ff : #ff1e3c)
+        track: alpha((futOn ? #2ed1ff : #ff2e4d), 0.22)
+        live: true
+        onChange: volume(value)
+        }
+        }
+
+        // --- ANDROID SYSTEM PANELS ---
+        Column {
+        fill: width
+        gap: 8
+        padding: [12, 10]
+        radius: 10 * corners
+        background: alpha((futOn ? #011014 : #140106), 0.92)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.35)
+
+        Text { font: uiFont; text: "ANDROID PANELS"; fontSize: 10; color: (futOn ? #3bd1ff : #ff3b58); bold: true; letterSpacing: 1.5 }
+
+        Grid {
+        columns: 3
+        gap: 6
+        fill: width
+        for sp in [
+        { id: "wifi", label: "WI-FI" },
+        { id: "bluetooth", label: "BLUETOOTH" },
+        { id: "output", label: "AUDIO OUT" },
+        { id: "display", label: "DISPLAY" },
+        { id: "battery", label: "BATTERY" },
+        { id: "notifications", label: "NOTIFS" }
+        ] {
+        Box {
+        padding: [6, 9]
+        radius: 8 * corners
+        align: center
+        background: alpha((futOn ? #02171d : #1d0208), 0.92)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.34)
+        onTap: {
+        haptic()
+        settings(sp.id)
+        }
+        Text {
+          font: uiFont
+        text: sp.label
+        fontSize: 9.5
+        color: (futOn ? #77d1ff : #ff7788)
+        bold: true
+        letterSpacing: 0.9
+        align: center
+        }
+        }
+        }
+        }
+        }
+
+        // --- LAUNCHER & LINUX COMMAND DECK ---
+        Column {
+        fill: width
+        gap: 8
+        padding: [12, 10]
+        radius: 10 * corners
+        background: alpha((futOn ? #011014 : #140106), 0.92)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.35)
+
+        Text { font: uiFont; text: "LAUNCHER & LINUX COMMAND DECK"; fontSize: 10; color: (futOn ? #3bd1ff : #ff3b58); bold: true; letterSpacing: 1.5 }
+
+        Grid {
+        columns: 2
+        gap: 6
+        fill: width
+
+        for lp in [
+        { id: "style", label: "OMARCHY STYLE" },
+        { id: "agents", label: "AI AGENTS" },
+        { id: "store", label: "WIDGET STORE" },
+        { id: "settings", label: "LAUNCHER CFG" }
+        ] {
+        Box {
+        padding: [8, 9]
+        radius: 8 * corners
+        align: center
+        background: alpha((futOn ? #02171d : #1d0208), 0.92)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.34)
+        onTap: {
+        haptic()
+        launcher(lp.id)
+        }
+        Text {
+          font: uiFont
+        text: lp.label
+        fontSize: 9.5
+        color: (futOn ? #77d1ff : #ff7788)
+        bold: true
+        letterSpacing: 1.0
+        align: center
+        }
+        }
+        }
+        }
+
+        Row {
+        fill: width
+        gap: 6
+
+        Box {
+        weight: 1
+        padding: [8, 10]
+        radius: 8 * corners
+        align: center
+        background: (futOn ? #08576b : #6b081b)
+        border: 1
+        borderColor: (futOn ? #33d1ff : #ff3355)
+        onTap: {
+        haptic()
+        terminal("pacman -Syu; echo; read -p 'Press Enter to close...'", "SITH · SYSTEM UPDATE")
+        }
+        Text { font: uiFont; text: "PACMAN -SYU"; fontSize: 10; color: (futOn ? #66d1ff : #ff6677); bold: true; letterSpacing: 1.0; align: center }
+        }
+
+        Box {
+        weight: 1
+        padding: [8, 10]
+        radius: 8 * corners
+        align: center
+        background: alpha((futOn ? #032028 : #28030c), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.55)
+        onTap: {
+        haptic()
+        busy = true
+        statusOk = true
+        statusMsg = "Purging pacman cache…"
+        cmdOut = ""
+        cmdOut = run("python3 ~/.local/share/omalauncher/synth-pads/sith_panel.py clean-cache")
+        }
+        Text { font: uiFont; text: "CLEAN CACHE"; fontSize: 10; color: (futOn ? #66d1ff : #ff6680); bold: true; letterSpacing: 1.0; align: center }
+        }
+        }
+
+        Row {
+        fill: width
+        gap: 6
+
+        Box {
+        weight: 1
+        padding: [8, 10]
+        radius: 8 * corners
+        align: center
+        background: alpha((futOn ? #02171d : #1d0208), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.40)
+        onTap: {
+        haptic()
+        terminal("btop", "SITH · BTOP")
+        }
+        Text { font: uiFont; text: "BTOP"; fontSize: 10; color: (futOn ? #77d1ff : #ff7788); bold: true; letterSpacing: 1.1; align: center }
+        }
+
+        Box {
+        weight: 1
+        padding: [8, 10]
+        radius: 8 * corners
+        align: center
+        background: alpha((futOn ? #02171d : #1d0208), 0.95)
+        border: 1
+        borderColor: alpha((futOn ? #2ed1ff : #ff2e4d), 0.40)
+        onTap: {
+        haptic()
+        terminal("bash", "SITH · ROOT SHELL")
+        }
+        Text { font: uiFont; text: "ROOT SHELL"; fontSize: 10; color: (futOn ? #77d1ff : #ff7788); bold: true; letterSpacing: 1.1; align: center }
+        }
+        }
+        }
+        }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,930 @@
+panel "app drawer" {
+  // The app drawer: swiping up on home opens it, above the prompt bar. It's a panel like any other, so it's yours to
+  // change: ask your agent to edit it, or pick another panel in settings › gestures. .stock-drawer.owl next to it is
+  // this file as the launcher ships it, kept up to date: compare the two to see what changed in a newer launcher.
+  // The chamber around the grid is the Sith red-black skin: a breathing seal, embers, and (in storm) lightning at the edges.
+  // ≡ beside the gear opens Customization: red accents, animation life (still / breathe / storm), voice, order, density.
+  meta { description: "Infernal AMOLED red & black app drawer with favorites, custom folders, filter tabs, and live customization"; version: "2.0"; license: "MIT"; category: "system"; owl: 19 }
+
+  // The launcher's gear, as its settings buttons draw it; currentColor takes the accent.
+  // Shared theme switch (set from the infernal face pill): "infernal" or "future"
+  source uiCfg = file("~/.config/omalauncher/ui-mode.json") json optional
+  let futOn = (uiCfg.mode ?? "infernal") == "future"
+  let uiFont = futOn ? "~/.local/share/fonts/RussoOne-Regular.ttf" : "~/.local/share/fonts/GrenzeGotisch.ttf"
+  asset gear = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTkuMTQsMTIuOTRjMC4wNCwtMC4zIDAuMDYsLTAuNjEgMC4wNiwtMC45NGMwLC0wLjMyIC0wLjAyLC0wLjY0IC0wLjA3LC0wLjk0bDIuMDMsLTEuNThjMC4xOCwtMC4xNCAwLjIzLC0wLjQxIDAuMTIsLTAuNjFsLTEuOTIsLTMuMzJjLTAuMTIsLTAuMjIgLTAuMzcsLTAuMjkgLTAuNTksLTAuMjJsLTIuMzksMC45NmMtMC41LC0wLjM4IC0xLjAzLC0wLjcgLTEuNjIsLTAuOTRMMTQuNCwyLjgxYy0wLjA0LC0wLjI0IC0wLjI0LC0wLjQxIC0wLjQ4LC0wLjQxaC0zLjg0Yy0wLjI0LDAgLTAuNDMsMC4xNyAtMC40NywwLjQxTDkuMjUsNS4zNUM4LjY2LDUuNTkgOC4xMiw1LjkyIDcuNjMsNi4yOUw1LjI0LDUuMzNjLTAuMjIsLTAuMDggLTAuNDcsMCAtMC41OSwwLjIyTDIuNzQsOC44N0MyLjYyLDkuMDggMi42Niw5LjM0IDIuODYsOS40OGwyLjAzLDEuNThDNC44NCwxMS4zNiA0LjgsMTEuNjkgNC44LDEyczAuMDIsMC42NCAwLjA3LDAuOTRsLTIuMDMsMS41OGMtMC4xOCwwLjE0IC0wLjIzLDAuNDEgLTAuMTIsMC42MWwxLjkyLDMuMzJjMC4xMiwwLjIyIDAuMzcsMC4yOSAwLjU5LDAuMjJsMi4zOSwtMC45NmMwLjUsMC4zOCAxLjAzLDAuNyAxLjYyLDAuOTRsMC4zNiwyLjU0YzAuMDUsMC4yNCAwLjI0LDAuNDEgMC40OCwwLjQxaDMuODRjMC4yNCwwIDAuNDQsLTAuMTcgMC40NywtMC40MWwwLjM2LC0yLjU0YzAuNTksLTAuMjQgMS4xMywtMC41NiAxLjYyLC0wLjk0bDIuMzksMC45NmMwLjIyLDAuMDggMC40NywwIDAuNTksLTAuMjJsMS45MiwtMy4zMmMwLjEyLC0wLjIyIDAuMDcsLTAuNDcgLTAuMTIsLTAuNjFMMTkuMTQsMTIuOTR6TTEyLDE1LjZjLTEuOTgsMCAtMy42LC0xLjYyIC0zLjYsLTMuNnMxLjYyLC0zLjYgMy42LC0zLjZzMy42LDEuNjIgMy42LDMuNlMxMy45OCwxNS42IDEyLDE1LjZ6Ii8+PC9zdmc+"
+
+  strings {
+    en {
+      personal: "personal"; work: "work"; apps: "apps"; linux: "linux"; shortcuts: "shortcuts"; android: "android"
+      workApps: "work apps"; workPaused: "work apps paused"; linuxApps: "linux apps"
+      pin: "add to home"; info: "app info"; uninstall: "uninstall"; remove: "remove"; edit: "edit"; share: "share"
+      settings: "settings"; turnOn: "turn on"; pause: "pause"; installing: "installing…"; installLinux: "install linux"
+      folders: "folders"; folderName: "folder name"; newFolder: "new folder"; unfile: "remove from folder"
+      density: "density"; compact: "compact"; normal: "normal"; wide: "wide"; workTab: "work tab"
+      vault: "CINDER VAULT"; motto: "through fire, into night"
+      life: "animation"; still: "still"; breathe: "breathe"; storm: "storm"
+      voice: "voice"; plain: "plain"; sith: "sith"; order: "order"; byKind: "kind"; byName: "name"
+      favored: "favorites"; favor: "favorite"; unfavor: "unfavorite"
+      sithFolders: "reliquary"; sithApps: "holocron"; sithLinux: "forge"; sithShortcuts: "sigil"
+      sithAndroid: "legion"; sithWork: "garrison"; sithWorkPaused: "stilled"; sithFavored: "the chosen"
+      open: "open"; ask: "ask"; askInstallLinux: "ask an agent · install linux"; askInstallAgent: "ask an agent · install one"
+      accent: "accent"; crimson: "crimson"; blood: "blood"; scarlet: "scarlet"; ember: "ember"; cyber: "cyber"
+      filterAll: "ALL"; filterFav: "FAVORITES"; filterFolders: "FOLDERS"; createFolder: "+ FOLDER"
+      emptyFav: "NO FAVORITES YET"; emptyFavSub: "LONG PRESS ANY APP TO FAVORITE"
+      emptyFld: "NO FOLDERS YET"; emptyFldSub: "TAP + FOLDER ABOVE TO CREATE"
+      askAgent: (bin, text) => "ask ${bin}: ${text}"
+    }
+    id {
+      personal: "pribadi"; work: "kerja"; apps: "aplikasi"; linux: "linux"; shortcuts: "pintasan"; android: "android"
+      workApps: "aplikasi kerja"; workPaused: "aplikasi kerja dijeda"; linuxApps: "aplikasi linux"
+      pin: "tambah ke layar utama"; info: "info aplikasi"; uninstall: "uninstal"; remove: "hapus"; edit: "edit"; share: "bagikan"
+      settings: "setelan"; turnOn: "aktifkan"; pause: "jeda"; installing: "menginstal…"; installLinux: "instal linux"
+      folders: "folder"; folderName: "nama folder"; newFolder: "folder baru"; unfile: "keluarkan dari folder"
+      density: "kepadatan"; compact: "kompak"; normal: "normal"; wide: "lebar"; workTab: "tab kerja"
+      vault: "CINDER VAULT"; motto: "through fire, into night"
+      life: "animasi"; still: "diam"; breathe: "napas"; storm: "badai"
+      voice: "suara"; plain: "biasa"; sith: "sith"; order: "urutan"; byKind: "jenis"; byName: "nama"
+      favored: "favorit"; favor: "favoritkan"; unfavor: "hapus favorit"
+      sithFolders: "relik"; sithApps: "holokron"; sithLinux: "tempa"; sithShortcuts: "sigil"
+      sithAndroid: "legiun"; sithWork: "garnisun"; sithWorkPaused: "diam"; sithFavored: "yang terpilih"
+      open: "buka"; ask: "tanya"; askInstallLinux: "tanya agen · instal linux"; askInstallAgent: "tanya agen · instal satu"
+      accent: "aksen"; crimson: "crimson"; blood: "darah"; scarlet: "scarlet"; ember: "bara"; cyber: "siber"
+      filterAll: "SEMUA"; filterFav: "FAVORIT"; filterFolders: "FOLDER"; createFolder: "+ FOLDER"
+      emptyFav: "BELUM ADA FAVORIT"; emptyFavSub: "TEKAN LAMA APLIKASI UNTUK FAVORITKAN"
+      emptyFld: "BELUM ADA FOLDER"; emptyFldSub: "KETUK + FOLDER DI ATAS UNTUK MEMBUAT"
+      askAgent: (bin, text) => "tanya ${bin}: ${text}"
+    }
+    es {
+      personal: "personal"; work: "trabajo"; apps: "apps"; linux: "linux"; shortcuts: "accesos directos"; android: "android"
+      workApps: "apps de trabajo"; workPaused: "apps de trabajo en pausa"; linuxApps: "apps de linux"
+      pin: "agregar a inicio"; info: "info de la app"; uninstall: "desinstalar"; remove: "quitar"; edit: "editar"; share: "compartir"
+      settings: "configuración"; turnOn: "activar"; pause: "pausar"; installing: "instalando…"; installLinux: "instalar linux"
+      folders: "carpetas"; folderName: "nombre de carpeta"; newFolder: "carpeta nueva"; unfile: "sacar de la carpeta"
+      density: "densidad"; compact: "compacta"; normal: "normal"; wide: "ancha"; workTab: "pestaña trabajo"
+      vault: "CINDER VAULT"; motto: "through fire, into night"
+      life: "animación"; still: "quieto"; breathe: "aliento"; storm: "tormenta"
+      voice: "voz"; plain: "llano"; sith: "sith"; order: "orden"; byKind: "tipo"; byName: "nombre"
+      favored: "favoritos"; favor: "favorito"; unfavor: "quitar favorito"
+      sithFolders: "relicario"; sithApps: "holocrón"; sithLinux: "forja"; sithShortcuts: "sigilo"
+      sithAndroid: "legión"; sithWork: "guarnición"; sithWorkPaused: "quieta"; sithFavored: "los elegidos"
+      open: "abrir"; ask: "preguntar"; askInstallLinux: "preguntar a un agente · instalar linux"; askInstallAgent: "preguntar a un agente · instalar uno"
+      accent: "acento"; crimson: "carmesí"; blood: "sangre"; scarlet: "escarlata"; ember: "brasa"; cyber: "ciber"
+      filterAll: "TODAS"; filterFav: "FAVORITAS"; filterFolders: "CARPETAS"; createFolder: "+ CARPETA"
+      emptyFav: "SIN FAVORITOS AÚN"; emptyFavSub: "MANTÉN PULSADA UNA APP PARA FAVORITA"
+      emptyFld: "SIN CARPETAS AÚN"; emptyFldSub: "TOCA + CARPETA ARRIBA PARA CREAR"
+      askAgent: (bin, text) => "preguntar a ${bin}: ${text}"
+    }
+    pt {
+      personal: "pessoal"; work: "trabalho"; apps: "apps"; linux: "linux"; shortcuts: "atalhos"; android: "android"
+      workApps: "apps de trabalho"; workPaused: "apps de trabalho pausados"; linuxApps: "apps linux"
+      pin: "adicionar à tela inicial"; info: "informações do app"; uninstall: "desinstalar"; remove: "remover"; edit: "editar"; share: "compartilhar"
+      settings: "configurações"; turnOn: "ativar"; pause: "pausar"; installing: "instalando…"; installLinux: "instalar linux"
+      folders: "pastas"; folderName: "nome da pasta"; newFolder: "nova pasta"; unfile: "tirar da pasta"
+      density: "densidade"; compact: "compacta"; normal: "normal"; wide: "ampla"; workTab: "aba trabalho"
+      vault: "CINDER VAULT"; motto: "through fire, into night"
+      life: "animação"; still: "quieto"; breathe: "sopro"; storm: "tempestade"
+      voice: "voz"; plain: "simples"; sith: "sith"; order: "ordem"; byKind: "tipo"; byName: "nome"
+      favored: "favoritos"; favor: "favoritar"; unfavor: "desfavoritar"
+      sithFolders: "relicário"; sithApps: "holocron"; sithLinux: "forja"; sithShortcuts: "sigilo"
+      sithAndroid: "legião"; sithWork: "guarnição"; sithWorkPaused: "quieta"; sithFavored: "os eleitos"
+      open: "abrir"; ask: "perguntar"; askInstallLinux: "perguntar a um agente · instalar linux"; askInstallAgent: "perguntar a um agente · instalar um"
+      accent: "acento"; crimson: "carmesim"; blood: "sangue"; scarlet: "escarlate"; ember: "brasa"; cyber: "cyber"
+      filterAll: "TODOS"; filterFav: "FAVORITOS"; filterFolders: "PASTAS"; createFolder: "+ PASTA"
+      emptyFav: "NENHUM FAVORITO AINDA"; emptyFavSub: "SEGURE UM APP PARA FAVORITAR"
+      emptyFld: "NENHUMA PASTA AINDA"; emptyFldSub: "TOQUE EM + PASTA PARA CRIAR"
+      askAgent: (bin, text) => "perguntar ao ${bin}: ${text}"
+    }
+    de {
+      personal: "persönlich"; work: "arbeit"; apps: "apps"; linux: "linux"; shortcuts: "verknüpfungen"; android: "android"
+      workApps: "arbeits-apps"; workPaused: "arbeits-apps pausiert"; linuxApps: "linux-apps"
+      pin: "zum startbildschirm hinzufügen"; info: "app-info"; uninstall: "deinstallieren"; remove: "entfernen"; edit: "bearbeiten"; share: "teilen"
+      settings: "einstellungen"; turnOn: "aktivieren"; pause: "pausieren"; installing: "wird installiert…"; installLinux: "linux installieren"
+      folders: "ordner"; folderName: "ordnername"; newFolder: "neuer ordner"; unfile: "aus ordner nehmen"
+      density: "dichte"; compact: "kompakt"; normal: "normal"; wide: "breit"; workTab: "arbeits-tab"
+      vault: "CINDER VAULT"; motto: "through fire, into night"
+      life: "animation"; still: "still"; breathe: "atem"; storm: "sturm"
+      voice: "stimme"; plain: "schlicht"; sith: "sith"; order: "ordnung"; byKind: "art"; byName: "name"
+      favored: "favoriten"; favor: "favorisieren"; unfavor: "entfernen"
+      sithFolders: "reliquiar"; sithApps: "holocron"; sithLinux: "schmiede"; sithShortcuts: "siegel"
+      sithAndroid: "legion"; sithWork: "garnison"; sithWorkPaused: "still"; sithFavored: "die erwählten"
+      open: "öffnen"; ask: "fragen"; askInstallLinux: "einen agenten fragen · linux installieren"; askInstallAgent: "einen agenten fragen · einen installieren"
+      accent: "akzent"; crimson: "karmesin"; blood: "blutrot"; scarlet: "scharlach"; ember: "glut"; cyber: "cyber"
+      filterAll: "ALLE"; filterFav: "FAVORITEN"; filterFolders: "ORDNER"; createFolder: "+ ORDNER"
+      emptyFav: "NOCH KEINE FAVORITEN"; emptyFavSub: "LANGE AUF EINE APP DRÜCKEN"
+      emptyFld: "NOCH KEINE ORDNER"; emptyFldSub: "OBEN AUF + ORDNER TIPPEN"
+      askAgent: (bin, text) => "${bin} fragen: ${text}"
+    }
+    zh {
+      personal: "个人"; work: "工作"; apps: "应用"; linux: "linux"; shortcuts: "快捷方式"; android: "android"
+      workApps: "工作应用"; workPaused: "工作应用已暂停"; linuxApps: "linux 应用"
+      pin: "添加到主屏幕"; info: "应用信息"; uninstall: "卸载"; remove: "移除"; edit: "编辑"; share: "分享"
+      settings: "设置"; turnOn: "开启"; pause: "暂停"; installing: "正在安装…"; installLinux: "安装 linux"
+      folders: "文件夹"; folderName: "文件夹名称"; newFolder: "新建文件夹"; unfile: "移出文件夹"
+      density: "密度"; compact: "紧凑"; normal: "标准"; wide: "宽松"; workTab: "工作标签页"
+      vault: "CINDER VAULT"; motto: "through fire, into night"
+      life: "动效"; still: "静止"; breathe: "呼吸"; storm: "风暴"
+      voice: "风格"; plain: "平常"; sith: "西斯"; order: "排序"; byKind: "种类"; byName: "名称"
+      favored: "收藏"; favor: "收藏"; unfavor: "取消收藏"
+      sithFolders: "圣匣"; sithApps: "水晶"; sithLinux: "熔炉"; sithShortcuts: "印记"
+      sithAndroid: "军团"; sithWork: "驻军"; sithWorkPaused: "已静"; sithFavored: "天选"
+      open: "打开"; ask: "提问"; askInstallLinux: "问智能体 · 安装 linux"; askInstallAgent: "问智能体 · 先装一个"
+      accent: "强调色"; crimson: "绯红"; blood: "血红"; scarlet: "猩红"; ember: "余烬"; cyber: "霓虹"
+      filterAll: "全部"; filterFav: "收藏"; filterFolders: "文件夹"; createFolder: "+ 新建文件夹"
+      emptyFav: "暂无收藏"; emptyFavSub: "长按应用即可添加收藏"
+      emptyFld: "暂无文件夹"; emptyFldSub: "点击上方 + 即可新建"
+      askAgent: (bin, text) => "问 ${bin}：${text}"
+    }
+  }
+
+  source d = android.drawer
+  source ag = android.agents
+  source ecoCfg = file("~/.config/omalauncher/eco-mode.json") json
+  source animCfg = file("~/.config/omalauncher/animations.json") json
+
+  // App popup menu state
+  state menu = ""
+  state menuShortcuts = null
+  state menuNaming = ""
+  state tab = "personal"
+  state pick = null
+
+  // Persistent Folders & Favorites state
+  state folderMap = {} persist
+  state customFolders = [] persist
+  state folderOpen = ""
+  state folderRenaming = false
+  state favored = [] persist
+
+  // Customization & Display options
+  state cellDp = 76 persist
+  state showWork = true persist
+  state prefs = false
+  state motion = "breathe" persist
+  state voice = "sith" persist
+  state byName = false persist
+  state accentChoice = "crimson" persist
+
+  let ecoOn = (ecoCfg.enabled ?? false) == true
+  let animMaster = (animCfg.master ?? true) == true && !ecoOn
+  let animHaptics = (animCfg.haptics ?? true) == true
+  let animSpeed = clamp(num(animCfg.speed, 1.0), 0.25, 3.0)
+  let drawerFxOn = animMaster && (animCfg.drawer_fx ?? true) == true
+  let effMotion = drawerFxOn ? (animSpeed >= 1.5 ? "storm" : "breathe") : "still"
+
+  // FPS: Off/Still costs 1 FPS (no CPU/battery drain); Breathe animates slowly; Storm animates fast with lightning
+  fps: !drawerFxOn ? 1 : (effMotion == "storm" ? 20 : 12)
+
+  // Dynamic Aesthetic Colors (strictly red & black even in Eco mode)
+  let redAccent = ecoOn ? (futOn ? #00819e : #9e001c) : (accentChoice == "scarlet" ? (futOn ? #38d1ff : #ff384c) : accentChoice == "blood" ? (futOn ? #0092b3 : #b30018) : (accentChoice == "cyber" || accentChoice == "neon") ? (futOn ? #00d1ff : #ff002b) : accentChoice == "ember" ? (futOn ? #04b1d9 : #d90429) : (futOn ? #22d1ff : #ff2236))
+  let darkCard = ecoOn ? (futOn ? #010608 : #080102) : (futOn ? #020e12 : #120205)
+  let darkCardBorder = alpha(redAccent, 0.25)
+  let glowColor = alpha(redAccent, 0.45)
+
+  // Layout geometry
+  let cols = max(1, floor(((screenWidth ?? 400) - 24) / cellDp))
+  let iconPx = round(cellDp * 0.68)
+  let typed = trim(query)
+  let searching = typed != ""
+  let mine = d.apps.filter(a => (tab == "work") == (a.profile == "work"))
+  let sortedApps = byName ? mine.sortBy(a => lower(a.name)) : mine
+
+  // Folders list
+  let folderNames = unique(flatten([customFolders, values(folderMap)])).filter(n => n != "")
+  let folders = folderNames.map(n => {key: "f:" + n, name: n, apps: d.apps.filter(a => get(folderMap, a.key) == n)})
+  let shownFolders = byName ? folders.sortBy(f => lower(f.name)) : folders
+  let folderCellRows = chunk(shownFolders, cols).map((cells, r) => {key: "fd:" + r, fcells: cells})
+
+  // Favorites list
+  let favoredApps = sortedApps.filter(a => indexOf(favored, a.key) >= 0)
+  let favoredRows = chunk(favoredApps, cols).map((cells, r) => {key: "fv:" + r, cells: cells})
+
+  // Open folder view apps
+  let openFolderApps = byName ? d.apps.filter(a => get(folderMap, a.key) == folderOpen).sortBy(a => lower(a.name)) : d.apps.filter(a => get(folderMap, a.key) == folderOpen)
+  let folderRows = chunk(openFolderApps, cols).map((cells, r) => {key: "fo:" + r, cells: cells})
+
+  // Sections
+  let sections = tab == "work" ? [
+      {id: "shortcuts", plain: str.shortcuts, epithet: str.sithShortcuts, apps: sortedApps.filter(a => a.kind == "shortcut" && get(folderMap, a.key, "") == "" && indexOf(favored, a.key) < 0)},
+      {id: "work", plain: d.work.paused ? str.workPaused : str.workApps, epithet: d.work.paused ? str.sithWorkPaused : str.sithWork, apps: sortedApps.filter(a => a.kind == "android" && get(folderMap, a.key, "") == "" && indexOf(favored, a.key) < 0), work: true}
+    ] : [
+      {id: "apps", plain: str.apps, epithet: str.sithApps, apps: sortedApps.filter(a => a.kind == "owl" && get(folderMap, a.key, "") == "" && indexOf(favored, a.key) < 0)},
+      {id: "linux", plain: str.linux, epithet: str.sithLinux, apps: sortedApps.filter(a => a.kind == "linux" && get(folderMap, a.key, "") == "" && indexOf(favored, a.key) < 0), linux: true},
+      {id: "shortcuts", plain: str.shortcuts, epithet: str.sithShortcuts, apps: sortedApps.filter(a => a.kind == "shortcut" && get(folderMap, a.key, "") == "" && indexOf(favored, a.key) < 0)},
+      {id: "android", plain: str.android, epithet: str.sithAndroid, apps: sortedApps.filter(a => a.kind == "android" && get(folderMap, a.key, "") == "" && indexOf(favored, a.key) < 0)}
+    ]
+
+  let sectionRows = flatten(sections.filter(s => len(s.apps) > 0 || s.work || (s.linux && !linux)).map(s => flatten([
+      [{key: "h:" + s.id, plain: s.linux && !linux ? str.linuxApps : s.plain, epithet: s.epithet, work: s.work, offer: s.linux && !linux}],
+      chunk(s.apps, cols).map((cells, r) => {key: s.id + ":" + r, cells: cells})
+    ])))
+
+  // Grid rows: favorites, folders, then sections
+  let rows = (len(favoredApps) > 0 ? [{key: "h:favored", plain: str.favored, epithet: str.sithFavored, count: len(favoredApps)}] + favoredRows : []) +
+    (len(shownFolders) > 0 ? [{key: "h:folders", plain: str.folders, epithet: str.sithFolders, count: len(shownFolders)}] + folderCellRows : []) +
+    sectionRows
+
+  // Search hits
+  let hits = searching ? rank(d.apps, typed) : []
+  let hitRows = chunk(hits, cols).map((cells, r) => {key: "q:" + r, start: r * cols, cells: cells})
+  let opens = len(hits) > 0 && strongMatch(hits[0], typed)
+  let chosen = pick ?? (opens ? 0 : -1)
+  let agent = ag.default
+  let track = lang() == "zh" ? 0.4 : 1.4
+
+  onKey: {
+    if searching {
+      pick = clamp(chosen + (value == "up" || value == "tab" ? 1 : -1), -1, len(hits) - 1)
+    }
+  }
+
+  on typed { pick = null }
+
+  opacity: 0.98
+  enter: searching ? (chosen >= 0 ? "▸ " + str.open : "⏎ " + str.ask) : ""
+
+  onSubmit: {
+    if searching {
+      if chosen >= 0 {
+        open(hits[chosen].key)
+      } else if !linux {
+        launcher("linux")
+      } else {
+        ask(value)
+      }
+    }
+  }
+
+  // The horned Sith seal with glowing ruby embers
+  component Seal() {
+    Canvas {
+      size: 48
+      let cx = width / 2
+      let cy = height / 2 + 1
+      let r = min(width, height) * 0.32
+      if effMotion == "still" {
+        circle(cx, cy, r * 1.45, fill: radial(cx, cy, r * 1.45, [alpha(redAccent, 0.28), alpha(#000000, 0)]))
+        circle(cx, cy, r * 1.08, stroke: alpha(redAccent, 0.6), width: 1.2)
+      } else {
+        let pulse = 0.5 + 0.5 * sin(time * 1.6 * animSpeed)
+        circle(cx, cy, r * 1.5, fill: radial(cx, cy, r * 1.5, [alpha(redAccent, 0.2 + pulse * 0.2), alpha(#000000, 0)]))
+        circle(cx, cy, r * 1.08, stroke: alpha(redAccent, 0.4 + pulse * 0.5), width: 1.3)
+        for i in range(8) {
+          let a = i * 0.7854 + time * 0.5 * animSpeed
+          circle(cx + cos(a) * r * 1.28, cy + sin(a) * r * 1.28, i % 2 == 0 ? 1.5 : 1, fill: alpha(redAccent, 0.35 + pulse * 0.55))
+        }
+      }
+      path([[cx - r * 0.42, cy - r * 0.2], [cx - r * 0.95, cy - r * 1.05], [cx - r * 0.62, cy - r * 0.02]], closed: true, fill: (futOn ? #074b5c : #5c0712), stroke: redAccent, width: 0.8)
+      path([[cx + r * 0.42, cy - r * 0.2], [cx + r * 0.95, cy - r * 1.05], [cx + r * 0.62, cy - r * 0.02]], closed: true, fill: (futOn ? #074b5c : #5c0712), stroke: redAccent, width: 0.8)
+      path([[cx - r * 0.5, cy - r * 0.42], [cx, cy - r * 0.62], [cx + r * 0.5, cy - r * 0.42], [cx + r * 0.42, cy + r * 0.42], [cx, cy + r * 0.66], [cx - r * 0.42, cy + r * 0.42]], closed: true, fill: (futOn ? #041014 : #140408), stroke: redAccent, width: 1)
+      path([[cx - r * 0.24, cy - r * 0.02], [cx + r * 0.24, cy - r * 0.02], [cx + r * 0.16, cy + r * 0.1], [cx - r * 0.16, cy + r * 0.1]], closed: true, fill: redAccent)
+      rect(cx - 0.7, cy + r * 0.18, 1.4, r * 0.28, radius: 0.6, fill: (futOn ? #80d1ff : #ff808c))
+    }
+  }
+
+  // Infernal-tray style app icon: red glyph in a static sigil ring (no per-frame redraw)
+  component TraySigil(src, sz, lbl = "", ini = "") {
+    Box {
+      size: sz
+      align: center
+      Canvas {
+        fill: true
+        let cx = width / 2
+        let cy = height / 2
+        let r = min(width, height) * 0.42
+        circle(cx, cy, r * 1.12, fill: radial(cx, cy, r * 1.2, [alpha((futOn ? #1ad1ff : #ff1a34), 0.26), alpha(#000000, 0)]))
+        circle(cx, cy, r, stroke: alpha((futOn ? #24d1ff : #ff243c), 0.8), width: 1.35)
+        circle(cx, cy, r * 0.85, stroke: alpha((futOn ? #0e647a : #7a0e20), 0.65), width: 0.8)
+        for i in range(4) {
+          rotate(i * 90, cx, cy) {
+            line(cx, cy - r * 1.11, cx, cy - r * 0.93, stroke: (futOn ? #38d1ff : #ff384e), width: 1.4, cap: round)
+          }
+        }
+      }
+      if src != null {
+        Image { src: src; size: round(sz * 0.5); tint: (futOn ? #2ed1ff : #ff2e44); label: lbl }
+      } else {
+        Text { font: uiFont; text: ini; fontSize: round(sz * 0.3); color: (futOn ? #2ed1ff : #ff2e44); bold: true; align: center }
+      }
+    }
+  }
+
+  // App icon with red coin badge and ruby star for favorites
+  component AppIcon(a, isFav = false) {
+    Box {
+      size: iconPx
+      align: topEnd
+      Box {
+        size: iconPx
+        align: center
+        radius: (iconPx / 2) * corners
+        background: transparent
+        border: isFav ? 2 : 0
+        borderColor: isFav ? redAccent : alpha(redAccent, 0.5)
+        TraySigil { src: a.hasIcon ? a.icon : null; sz: iconPx; lbl: a.label; ini: a.initials }
+      }
+      if isFav {
+        Box {
+          size: 16
+          radius: 8
+          offset: [3, -3]
+          background: (futOn ? #021014 : #140205)
+          border: 1
+          borderColor: redAccent
+          align: center
+          Text { font: uiFont; text: "★"; fontSize: 9; color: redAccent }
+        }
+      }
+      if a.dot && !isFav {
+        Box { size: 12; radius: 6; offset: [-2, 2]; background: redAccent; border: 2; borderColor: background }
+      }
+    }
+  }
+
+  component Cell(a, picked) {
+    let isFav = indexOf(favored, a.key) >= 0
+    Column {
+      weight: 1
+      align: center
+      gap: 5
+      padding: [4, 8]
+      radius: 14 * corners
+      border: picked ? 2 : 1
+      borderColor: picked ? redAccent : isFav ? alpha(redAccent, 0.4) : alpha((futOn ? #22d1ff : #ff2236), 0.08)
+      background: picked ? alpha(redAccent, 0.22) : isFav ? alpha((futOn ? #041b22 : #220409), 0.6) : alpha((futOn ? #020d10 : #100204), 0.35)
+      opacity: a.paused ? 0.4 : 1
+      onTap: open(a.key)
+      onLongPress: {
+        if animHaptics { haptic() }
+        menuShortcuts = null
+        menuNaming = ""
+        menu = a.key
+        menuShortcuts = shortcuts(a.key)
+      }
+      if effMotion == "still" {
+        AppIcon { a: a; isFav: isFav }
+      } else {
+        Box {
+          size: iconPx
+          align: center
+          scale: 1 + (effMotion == "storm" ? 0.05 : 0.035) * sin(time * animSpeed * (effMotion == "storm" ? 2.6 : 1.5) + hash(a.key) * 6.2832)
+          AppIcon { a: a; isFav: isFav }
+        }
+      }
+      Text { font: uiFont; text: upper(a.name ?? ""); fontSize: 11; align: center; maxLines: 2; minLines: 2; fill: width; color: isFav ? (futOn ? #44d1ff : #ff4455) : (futOn ? #80d1ff : #ff808c) }
+
+      // Long press context menu with folders & favorites actions
+      Popup {
+        visible: menu == a.key && menuShortcuts != null
+        position: above
+        onDismiss: { menu = ""; menuNaming = "" }
+        width: 240
+        gap: 0
+        background: (futOn ? #031014 : #140306)
+        border: 1
+        borderColor: alpha(redAccent, 0.7)
+        radius: 14 * corners
+
+        // App Shortcuts
+        for s in menuShortcuts key s.key {
+          Row {
+            fill: width
+            align: center
+            gap: 10
+            padding: [12, 12]
+            onTap: { menu = ""; open(s.key) }
+            Image { src: s.icon; size: 22; tint: d.monochrome ? redAccent : null; label: s.name }
+            Text { font: uiFont; text: s.name; weight: 1; maxLines: 1; color: (futOn ? #80d1ff : #ff808c) }
+            Text { font: uiFont; text: "[+]"; color: redAccent; onTap: { menu = ""; appAction("pin", s.key) } }
+          }
+        }
+        Spacer { visible: len(menuShortcuts) > 0; height: 1; fill: width; background: alpha(redAccent, 0.3) }
+
+        // Standard App Actions
+        for w in a.actions {
+          Text { font: uiFont; text: get(str, w, w); fontSize: 14; fill: width; padding: [10, 14]; color: (futOn ? #80d1ff : #ff808c); onTap: { menu = ""; appAction(w, a.key) } }
+        }
+        Spacer { height: 1; fill: width; background: alpha(redAccent, 0.25) }
+
+        // FAVORITES TOGGLE
+        Row {
+          fill: width
+          align: center
+          gap: 10
+          padding: [10, 14]
+          background: isFav ? alpha(redAccent, 0.2) : transparent
+          onTap: {
+            menu = ""
+            favored = isFav ? favored.filter(k => k != a.key) : flatten([favored, [a.key]])
+          }
+          Text { font: uiFont; text: isFav ? "★" : "☆"; color: redAccent; fontSize: 16 }
+          Text { font: uiFont; text: isFav ? str.unfavor : str.favor; color: isFav ? (futOn ? #44d1ff : #ff4455) : (futOn ? #80d1ff : #ff808c); weight: 1 }
+          Text { font: uiFont; text: isFav ? "ACTIVE" : "ADD"; fontSize: 9; color: alpha(redAccent, 0.8); letterSpacing: 0.8 }
+        }
+
+        Spacer { height: 1; fill: width; background: alpha(redAccent, 0.25) }
+
+        // FOLDERS SECTION
+        Row {
+          fill: width
+          padding: [8, 14, 4, 14]
+          Text { font: uiFont; text: upper(str.folders); color: (futOn ? #44d1ff : #ff4455); fontSize: 11; letterSpacing: 1.2; weight: 1 }
+        }
+
+        for f in folders key f.key {
+          Row {
+            fill: width
+            align: center
+            gap: 8
+            padding: [8, 14]
+            background: get(folderMap, a.key, "") == f.name ? alpha(redAccent, 0.2) : transparent
+            onTap: { menu = ""; folderMap = set(folderMap, a.key, f.name) }
+            Text { font: uiFont; text: "📁"; color: redAccent; fontSize: 13 }
+            Text { font: uiFont; text: f.name; weight: 1; maxLines: 1; color: (futOn ? #80d1ff : #ff808c) }
+            Text { font: uiFont; text: "✓"; visible: get(folderMap, a.key, "") == f.name; color: redAccent }
+          }
+        }
+
+        // New folder row
+        Row {
+          fill: width
+          align: center
+          gap: 8
+          padding: [8, 14]
+          onTap: menuNaming = a.key
+          Text { font: uiFont; text: "+"; color: redAccent; fontSize: 15 }
+          Text { font: uiFont; text: str.newFolder; color: redAccent; weight: 1 }
+        }
+
+        Row {
+          visible: menuNaming == a.key
+          fill: width
+          gap: 8
+          padding: [4, 14, 10, 14]
+          Input {
+            weight: 1
+            placeholder: str.folderName
+            underline: false
+            background: (futOn ? #04181e : #1e0409)
+            border: 1
+            borderColor: redAccent
+            radius: 8 * corners
+            padding: [6, 10]
+            color: (futOn ? #80d1ff : #ff808c)
+            onSubmit: {
+              let n = trim(value)
+              if n != "" {
+                folderMap = set(folderMap, a.key, n)
+                if indexOf(customFolders, n) < 0 {
+                  customFolders = flatten([customFolders, [n]])
+                }
+              }
+              menu = ""
+              menuNaming = ""
+            }
+          }
+        }
+
+        // Remove from folder option
+        Row {
+          visible: get(folderMap, a.key, "") != ""
+          fill: width
+          align: center
+          gap: 8
+          padding: [8, 14, 12, 14]
+          onTap: { menu = ""; folderMap = remove(folderMap, a.key) }
+          Text { font: uiFont; text: "✕"; color: (futOn ? #52d1ff : #ff5264); fontSize: 12 }
+          Text { font: uiFont; text: str.unfile; color: (futOn ? #52d1ff : #ff5264); weight: 1 }
+        }
+      }
+    }
+  }
+
+  // Geometric turning ruby Holocron for folders
+  component Holocron() {
+    Canvas {
+      size: iconPx
+      let cx = width / 2
+      let cy = height / 2
+      let s = min(width, height) * 0.27
+      circle(cx, cy, s * 1.6, fill: radial(cx, cy, s * 1.6, [alpha(redAccent, 0.35), alpha(#000000, 0)]))
+      if effMotion == "still" {
+        rotate(45, cx, cy) { rect(cx - s, cy - s, s * 2, s * 2, radius: 2, stroke: redAccent, width: 1.5) }
+        rotate(45, cx, cy) { rect(cx - s * 0.58, cy - s * 0.58, s * 1.16, s * 1.16, stroke: alpha((futOn ? #80d1ff : #ff808c), 0.8), width: 1) }
+        circle(cx, cy, 3, fill: (futOn ? #80d1ff : #ff808c))
+      } else {
+        let spin = time * 22 * animSpeed
+        rotate(spin, cx, cy) { rect(cx - s, cy - s, s * 2, s * 2, radius: 2, stroke: redAccent, width: 1.5) }
+        rotate(-spin * 0.7, cx, cy) { rect(cx - s * 0.58, cy - s * 0.58, s * 1.16, s * 1.16, stroke: alpha((futOn ? #80d1ff : #ff808c), 0.85), width: 1.1) }
+        circle(cx, cy, 2.5 + sin(time * 3 * animSpeed) * 0.8, fill: (futOn ? #80d1ff : #ff808c))
+      }
+    }
+  }
+
+  component FolderCell(f) {
+    Column {
+      weight: 1
+      align: center
+      gap: 5
+      padding: [6, 8]
+      radius: 14 * corners
+      background: alpha((futOn ? #031216 : #160307), 0.65)
+      border: 1
+      borderColor: alpha(redAccent, 0.35)
+      onTap: { if animHaptics { haptic() }; folderOpen = f.name }
+      Holocron {}
+      Text { font: uiFont; text: upper(f.name ?? ""); fontSize: 11; align: center; maxLines: 2; minLines: 2; fill: width; color: (futOn ? #e8e8ff : #ffe8eb) }
+      Row {
+        gap: 2
+        align: center
+        padding: [1, 6]
+        radius: 8 * corners
+        background: alpha(redAccent, 0.2)
+        Text { font: uiFont; text: "${len(f.apps)}"; color: redAccent; fontSize: 10 }
+      }
+    }
+  }
+
+  // Section header with glowing animated ruby ember bar
+  component SectionHead(plain, epithet = "", work = false, offer = false, count = null) {
+    let title = voice == "sith" && epithet != "" ? upper("${plain} · ${epithet}") : upper(plain)
+    Column {
+      gap: 3
+      fill: width
+      padding: [10, 14, 0, 2]
+      Row {
+        fill: width
+        gap: 6
+        align: center
+        Text { font: uiFont; text: "✦"; color: redAccent; fontSize: 11 }
+        Text { font: uiFont; text: title; color: (futOn ? #b8d1ff : #ffb8c0); letterSpacing: track; fontSize: 12; weight: 1; maxLines: 1 }
+        if count != null {
+          Text { font: uiFont; text: "[${count}]"; color: alpha(redAccent, 0.8); fontSize: 11 }
+        }
+        Text { font: uiFont; text: "[" + (d.work.paused ? str.turnOn : str.pause) + "]"; visible: work == true; color: redAccent; onTap: workApps("toggle") }
+        Text { font: uiFont; text: "[" + (d.linux == "installing" ? str.installing : str.installLinux) + "]"; visible: offer == true; color: redAccent; onTap: launcher("linux") }
+      }
+      if effMotion == "still" {
+        Spacer { height: 1; fill: width; background: linear(0, 0, 1, 0, [alpha(redAccent, 0.05), alpha(redAccent, 0.7), alpha(redAccent, 0.05)]) }
+      } else {
+        Canvas {
+          height: 3
+          fill: width
+          rect(0, 1, width, 1, fill: alpha(redAccent, 0.4))
+          let x = (time * 56 * animSpeed) % (width + 40) - 20
+          rect(x, 0, 24, 3, radius: 1.5, fill: alpha((futOn ? #d0d1ff : #ffd0d6), 0.95))
+        }
+      }
+    }
+  }
+
+  Box {
+    fill: true
+
+    // Sith chamber AMOLED background
+    Canvas {
+      fill: true
+      circle(width * 0.5, 36, width * 0.65, fill: radial(width * 0.5, 36, width * 0.65, [alpha(redAccent, 0.18), alpha(#000000, 0)]))
+      rect(0, 0, width, height, fill: linear(0, 0, 0, height, [alpha((futOn ? #031a20 : #200307), 0.25), alpha(#000000, 0), alpha((futOn ? #020d10 : #100204), 0.4)]))
+    }
+
+    // Embers and electric lightning effects
+    if effMotion != "still" {
+      Canvas {
+        fill: true
+        let breath = 0.5 + 0.5 * sin(time * 1.5 * animSpeed)
+        let band = height * (0.06 + 0.8 * breath)
+        rect(0, band - 30, width, 60, fill: linear(0, band - 30, 0, band + 30, [alpha(redAccent, 0), alpha(redAccent, 0.045 + breath * 0.04), alpha(redAccent, 0)]))
+        for i in range(16) {
+          let speed = ((effMotion == "storm" ? 46 : 22) + hash(i, 4) * (effMotion == "storm" ? 70 : 34)) * animSpeed
+          let y = (height + 20) - ((time * speed + hash(i, 5) * height) % (height + 20))
+          circle(hash(i, 3) * width, y, 0.7 + hash(i, 6) * 1.7, fill: alpha(redAccent, 0.16 + hash(i, 7) * 0.4))
+        }
+        if effMotion == "storm" {
+          let phase = (time * animSpeed) % 5.2
+          let flash = phase < 0.42 ? 1 - phase / 0.42 : phase > 2.55 && phase < 2.92 ? 1 - (phase - 2.55) / 0.37 : 0
+          if flash > 0.04 {
+            let n = floor(time * 10 * animSpeed)
+            let left = range(8).map(i => [4 + hash(n, i) * 26, i * height / 7])
+            let right = range(8).map(i => [width - 4 - hash(n, i + 11) * 26, i * height / 7])
+            path(left, stroke: alpha(redAccent, 0.55 * flash), width: 3.4)
+            path(left, stroke: alpha((futOn ? #e4e4ff : #ffe4e8), 0.9 * flash), width: 1.15)
+            path(right, stroke: alpha(redAccent, 0.45 * flash), width: 3)
+            path(right, stroke: alpha((futOn ? #e4e4ff : #ffe4e8), 0.8 * flash), width: 1.05)
+          }
+        }
+      }
+    }
+
+    Column {
+      fill: true
+      gap: 0
+      padding: [8, 0]
+
+      // Header Banner
+      Row {
+        visible: !searching && folderOpen == ""
+        align: center
+        padding: [2, 14, 2, 0]
+        gap: 10
+        Seal {}
+        Column {
+          weight: 1
+          gap: 1
+          Text { font: uiFont; text: str.vault; color: redAccent; letterSpacing: track + 0.8; fontSize: 14; maxLines: 1; fontWeight: "bold" }
+          Text { font: uiFont; text: upper(str.motto); color: (futOn ? #4a728c : #8c4a54); letterSpacing: track; fontSize: 10; maxLines: 1 }
+        }
+      }
+
+      // Tabs & Actions Bar (Personal / Work + Customization ≡ + Settings ⚙)
+      Row {
+        align: center
+        padding: [2, 12, 4, 12]
+        gap: 8
+
+        for t in d.work != null && showWork && !searching ? ["personal", "work"] : [] {
+          Text { font: uiFont; text: get(str, t); color: tab == t ? redAccent : muted; background: tab == t ? alpha((futOn ? #0a2f3a : #3a0a12), 0.9) : transparent; radius: 18 * corners; padding: [12, 8]; letterSpacing: 0.6; onTap: tab = t }
+        }
+        Spacer { weight: 1 }
+
+        // ≡ CUSTOMIZATION BUTTON & POPUP
+        Box {
+          size: 40
+          radius: 20 * corners
+          background: alpha((futOn ? #06222a : #2a060c), 0.92)
+          border: 1
+          borderColor: alpha(redAccent, prefs ? 0.9 : 0.45)
+          align: center
+          onTap: prefs = !prefs
+          Text { font: uiFont; text: "≡"; fontSize: 18; color: redAccent; align: center }
+
+          Popup {
+            visible: prefs
+            onDismiss: prefs = false
+            width: 250
+            gap: 0
+            background: (futOn ? #031014 : #140306)
+            border: 1
+            borderColor: alpha(redAccent, 0.8)
+            radius: 14 * corners
+
+            Text { font: uiFont; text: "CUSTOMIZATION"; color: redAccent; padding: [10, 14, 2, 6]; fontSize: 12; letterSpacing: 1.5; fontWeight: "bold" }
+
+            // Accent Red Palette
+            Text { font: uiFont; text: str.accent; color: muted; padding: [6, 14, 2, 4]; fontSize: 11 }
+            Row {
+              fill: width
+              gap: 2
+              padding: [0, 8]
+              Text { font: uiFont; text: "crimson"; weight: 1; align: center; padding: [6, 0]; fontSize: 10; color: accentChoice == "crimson" ? #ffffff : (futOn ? #8ad1ff : #ff8a96); background: accentChoice == "crimson" ? (futOn ? #10728c : #8c1020) : transparent; radius: 6 * corners; onTap: accentChoice = "crimson" }
+              Text { font: uiFont; text: "blood"; weight: 1; align: center; padding: [6, 0]; fontSize: 10; color: accentChoice == "blood" ? #ffffff : (futOn ? #8ad1ff : #ff8a96); background: accentChoice == "blood" ? (futOn ? #10728c : #8c1020) : transparent; radius: 6 * corners; onTap: accentChoice = "blood" }
+              Text { font: uiFont; text: "scarlet"; weight: 1; align: center; padding: [6, 0]; fontSize: 10; color: accentChoice == "scarlet" ? #ffffff : (futOn ? #8ad1ff : #ff8a96); background: accentChoice == "scarlet" ? (futOn ? #10728c : #8c1020) : transparent; radius: 6 * corners; onTap: accentChoice = "scarlet" }
+              Text { font: uiFont; text: "ember"; weight: 1; align: center; padding: [6, 0]; fontSize: 10; color: accentChoice == "ember" ? #ffffff : (futOn ? #8ad1ff : #ff8a96); background: accentChoice == "ember" ? (futOn ? #10728c : #8c1020) : transparent; radius: 6 * corners; onTap: accentChoice = "ember" }
+              Text { font: uiFont; text: "cyber"; weight: 1; align: center; padding: [6, 0]; fontSize: 10; color: accentChoice == "cyber" ? #ffffff : (futOn ? #8ad1ff : #ff8a96); background: accentChoice == "cyber" ? (futOn ? #10728c : #8c1020) : transparent; radius: 6 * corners; onTap: accentChoice = "cyber" }
+            }
+
+            // Life / Motion (managed centrally in Deck Forge animations.json)
+            Text { font: uiFont; text: str.life; color: muted; padding: [6, 14, 2, 4]; fontSize: 11 }
+            Row {
+              fill: width
+              padding: [0, 8]
+              Text {
+                font: uiFont
+                text: "FX: ${effMotion == "still" ? "OFF" : upper(effMotion)} · DECK FORGE"
+                weight: 1
+                align: center
+                padding: [6, 4]
+                fontSize: 10
+                color: effMotion == "still" ? muted : redAccent
+                background: alpha(redAccent, effMotion == "still" ? 0.08 : 0.18)
+                radius: 6 * corners
+              }
+            }
+
+            // Voice / Lore
+            Text { font: uiFont; text: str.voice; color: muted; padding: [6, 14, 2, 4]; fontSize: 11 }
+            Row {
+              fill: width
+              gap: 2
+              padding: [0, 8]
+              Text { font: uiFont; text: str.plain; weight: 1; align: center; padding: [6, 0]; color: voice == "plain" ? redAccent : foreground; background: voice == "plain" ? alpha(redAccent, 0.25) : transparent; radius: 6 * corners; onTap: voice = "plain" }
+              Text { font: uiFont; text: str.sith; weight: 1; align: center; padding: [6, 0]; color: voice == "sith" ? redAccent : foreground; background: voice == "sith" ? alpha(redAccent, 0.25) : transparent; radius: 6 * corners; onTap: voice = "sith" }
+            }
+
+            // App Order
+            Text { font: uiFont; text: str.order; color: muted; padding: [6, 14, 2, 4]; fontSize: 11 }
+            Row {
+              fill: width
+              gap: 2
+              padding: [0, 8]
+              Text { font: uiFont; text: str.byKind; weight: 1; align: center; padding: [6, 0]; color: !byName ? redAccent : foreground; background: !byName ? alpha(redAccent, 0.25) : transparent; radius: 6 * corners; onTap: byName = false }
+              Text { font: uiFont; text: str.byName; weight: 1; align: center; padding: [6, 0]; color: byName ? redAccent : foreground; background: byName ? alpha(redAccent, 0.25) : transparent; radius: 6 * corners; onTap: byName = true }
+            }
+
+            // Grid Density
+            Text { font: uiFont; text: str.density; color: muted; padding: [6, 14, 2, 4]; fontSize: 11 }
+            Row {
+              fill: width
+              gap: 2
+              padding: [0, 8]
+              Text { font: uiFont; text: str.compact; weight: 1; align: center; padding: [6, 0]; color: cellDp == 64 ? redAccent : foreground; background: cellDp == 64 ? alpha(redAccent, 0.25) : transparent; radius: 6 * corners; onTap: cellDp = 64 }
+              Text { font: uiFont; text: str.normal; weight: 1; align: center; padding: [6, 0]; color: cellDp == 76 ? redAccent : foreground; background: cellDp == 76 ? alpha(redAccent, 0.25) : transparent; radius: 6 * corners; onTap: cellDp = 76 }
+              Text { font: uiFont; text: str.wide; weight: 1; align: center; padding: [6, 0]; color: cellDp == 88 ? redAccent : foreground; background: cellDp == 88 ? alpha(redAccent, 0.25) : transparent; radius: 6 * corners; onTap: cellDp = 88 }
+            }
+
+            Row {
+              visible: d.work != null
+              fill: width
+              align: center
+              padding: [10, 14]
+              onTap: { showWork = !showWork; if !showWork { tab = "personal" } }
+              Text { font: uiFont; text: str.workTab; weight: 1; color: (futOn ? #e8e8ff : #ffe8ec) }
+              Text { font: uiFont; text: showWork ? "✓" : ""; color: redAccent }
+            }
+          }
+        }
+
+        // Settings button
+        Box {
+          size: 40
+          radius: 20 * corners
+          background: alpha((futOn ? #06222a : #2a060c), 0.92)
+          border: 1
+          borderColor: alpha(redAccent, 0.45)
+          align: center
+          onTap: launcher("settings")
+          Image { src: gear; size: 20; tint: redAccent; label: str.settings }
+          Box { visible: d.updates > 0; align: topEnd; size: 40; padding: 6; Box { size: 8; radius: 4; background: redAccent } }
+        }
+      }
+
+      // Main App Grid List
+      Column {
+        visible: !searching && folderOpen == ""
+        lazy: true
+        weight: 1
+        fill: width
+        gap: 0
+
+        for row in rows key row.key {
+          if row.fcells != null {
+            Row {
+              fill: width
+              gap: 0
+              for f in row.fcells { FolderCell { f: f } }
+              for s in range(0, cols - len(row.fcells)) { Spacer { weight: 1 } }
+            }
+          } else if row.plain != null {
+            SectionHead { plain: row.plain; epithet: row.epithet; work: row.work; offer: row.offer; count: row.count }
+          } else {
+            Row {
+              fill: width
+              gap: 0
+              for a in row.cells { Cell { a: a; picked: false } }
+              for s in range(0, cols - len(row.cells)) { Spacer { weight: 1 } }
+            }
+          }
+        }
+      }
+
+      // Folder Page View (Opened Folder)
+      Column {
+        visible: !searching && folderOpen != ""
+        weight: 1
+        fill: width
+        gap: 0
+
+        Row {
+          fill: width
+          align: center
+          gap: 6
+          padding: [8, 14, 2, 8]
+          Text { font: uiFont; text: "‹"; fontSize: 24; color: redAccent; onTap: { folderOpen = ""; folderRenaming = false } }
+          Text { font: uiFont; text: "📁 " + upper(folderOpen); color: (futOn ? #e8e8ff : #ffe8eb); letterSpacing: track; weight: 1; maxLines: 1; fontSize: 14; fontWeight: "bold" }
+          Text { font: uiFont; text: "[${len(openFolderApps)}]"; color: redAccent; fontSize: 12 }
+          Text { font: uiFont; text: "✎"; fontSize: 16; color: redAccent; onTap: folderRenaming = !folderRenaming }
+          Text {
+            font: uiFont
+            text: "✕"; fontSize: 16; color: (futOn ? #52d1ff : #ff5264)
+            onTap: {
+              folderMap = reduce(entries(folderMap), (m, e) => e.value == folderOpen ? m : set(m, e.key, e.value), {})
+              customFolders = customFolders.filter(n => n != folderOpen)
+              folderOpen = ""
+              folderRenaming = false
+            }
+          }
+        }
+
+        if effMotion == "still" {
+          Spacer { height: 1; fill: width; background: linear(0, 0, 1, 0, [alpha(redAccent, 0.05), alpha(redAccent, 0.7), alpha(redAccent, 0.05)]) }
+        } else {
+          Canvas {
+            height: 3
+            fill: width
+            rect(0, 1, width, 1, fill: alpha(redAccent, 0.4))
+            let x = (time * 56 * animSpeed) % (width + 40) - 20
+            rect(x, 0, 24, 3, radius: 1.5, fill: alpha((futOn ? #d0d1ff : #ffd0d6), 0.95))
+          }
+        }
+
+        // Rename folder input row
+        Row {
+          visible: folderRenaming
+          fill: width
+          gap: 8
+          padding: [6, 14, 6, 14]
+          Input {
+            weight: 1
+            placeholder: str.folderName
+            underline: false
+            background: (futOn ? #031318 : #180307)
+            border: 1
+            borderColor: redAccent
+            radius: 8 * corners
+            padding: [6, 10]
+            color: #ffffff
+            onSubmit: {
+              let n = trim(value)
+              if n != "" && n != folderOpen {
+                folderMap = reduce(entries(folderMap), (m, e) => e.value == folderOpen ? set(m, e.key, n) : set(m, e.key, e.value), {})
+                customFolders = customFolders.map(c => c == folderOpen ? n : c)
+                folderOpen = n
+              }
+              folderRenaming = false
+            }
+          }
+          Box {
+            padding: [6, 10]
+            radius: 8 * corners
+            background: alpha(redAccent, 0.3)
+            align: center
+            onTap: folderRenaming = false
+            Text { font: uiFont; text: "✕"; color: redAccent }
+          }
+        }
+
+        // Open Folder App Grid
+        Column {
+          lazy: true
+          weight: 1
+          fill: width
+          gap: 0
+          for row in folderRows key row.key {
+            Row {
+              fill: width
+              gap: 0
+              for a in row.cells { Cell { a: a; picked: false } }
+              for s in range(0, cols - len(row.cells)) { Spacer { weight: 1 } }
+            }
+          }
+        }
+      }
+
+      // Search Results Grid
+      Column {
+        visible: searching
+        lazy: true
+        reverse: true
+        weight: 1
+        fill: width
+        gap: 0
+        for row in hitRows key row.key {
+          Row {
+            fill: width
+            gap: 0
+            for a, i in row.cells { Cell { a: a; picked: row.start + i == chosen } }
+            for s in range(0, cols - len(row.cells)) { Spacer { weight: 1 } }
+          }
+        }
+      }
+
+      // Prompt Bar Ask Row
+      Row {
+        visible: searching
+        fill: width
+        gap: 6
+        padding: [12, 10]
+        border: chosen == -1 ? 2 : 1
+        borderColor: chosen == -1 ? redAccent : alpha(redAccent, 0.3)
+        radius: 14 * corners
+        background: chosen == -1 ? alpha(redAccent, 0.15) : alpha((futOn ? #031014 : #140306), 0.8)
+        onTap: {
+          if !linux {
+            launcher("linux")
+          } else if agent == null {
+            launcher("agents")
+          } else {
+            ask(typed)
+          }
+        }
+        Text { font: uiFont; text: "⏎"; color: chosen == -1 ? redAccent : muted }
+        Text {
+          font: uiFont
+          text: !linux ? str.askInstallLinux : agent == null ? str.askInstallAgent : str.askAgent(agent.bin, typed)
+          color: chosen == -1 ? #ffffff : muted
+          maxLines: 1
+          weight: 1
+        }
+      }
+    }
+  }
+}

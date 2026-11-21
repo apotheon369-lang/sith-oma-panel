@@ -1,0 +1,70 @@
+{
+  "active": "vader",
+  "preset": "vader",
+  "accent": "#ff1e3c",
+  "hot": "#ff6677",
+  "speed": 0.5,
+  "eco": false,
+  "presets": {
+    "vader": {
+      "id": "vader",
+      "name": "Darth Vader",
+      "label": "VADER",
+      "crystal": "Crimson Synthetic Kyber",
+      "accent": "#ff1e3c",
+      "hot": "#ff6677",
+      "primary": "#ff1e3c",
+      "secondary": "#ff6677",
+      "dim": "#7a1420",
+      "bg": "#050001"
+    },
+    "maul": {
+      "id": "maul",
+      "name": "Darth Maul",
+      "label": "MAUL",
+      "crystal": "Dathomir Bloodfire Kyber",
+      "accent": "#ff3b1f",
+      "hot": "#ff8066",
+      "primary": "#ff3b1f",
+      "secondary": "#ff8066",
+      "dim": "#801b0d",
+      "bg": "#060100"
+    },
+    "revan": {
+      "id": "revan",
+      "name": "Darth Revan",
+      "label": "REVAN",
+      "crystal": "HURRIKANE Violet Kyber",
+      "accent": "#b517ff",
+      "hot": "#d980ff",
+      "primary": "#b517ff",
+      "secondary": "#d980ff",
+      "dim": "#580a80",
+      "bg": "#040008"
+    },
+    "bane": {
+      "id": "bane",
+      "name": "Darth Bane",
+      "label": "BANE",
+      "crystal": "Rule of Two Amber Kyber",
+      "accent": "#ffae00",
+      "hot": "#ffd266",
+      "primary": "#ffae00",
+      "secondary": "#ffd266",
+      "dim": "#805700",
+      "bg": "#060400"
+    },
+    "matrix": {
+      "id": "matrix",
+      "name": "Sith Matrix",
+      "label": "MATRIX",
+      "crystal": "Holonet Cyber Emerald",
+      "accent": "#00ff88",
+      "hot": "#66ffb3",
+      "primary": "#00ff88",
+      "secondary": "#66ffb3",
+      "dim": "#007a41",
+      "bg": "#000603"
+    }
+  }
+}

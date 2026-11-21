@@ -1,0 +1,305 @@
+face "sith calendar altar" {
+  meta { owl: 22; description: "Crimson Sith calendar altar — a scrollable obsidian page of the phone's next 14 days, with a pentagram date sigil, day-grouped event cards, and a loopless AMOLED backdrop glow. Nothing is read until you tap to allow the calendar." }
+  page: 0
+  order: 0
+  statusBar: false
+  padding: 0
+
+  // ---------------- SOURCES ----------------
+  // Shared theme switch (set from the infernal face pill): "infernal" or "future"
+  source uiCfg = file("~/.config/omalauncher/ui-mode.json") json optional
+  let futOn = (uiCfg.mode ?? "infernal") == "future"
+  let uiFont = futOn ? "~/.local/share/fonts/RussoOne-Regular.ttf" : "~/.local/share/fonts/GrenzeGotisch.ttf"
+  source now    = clock every 30s
+  source cal    = android.calendar
+  source bat    = android.battery
+  source animCfg = file("~/.config/omalauncher/animations.json") json
+  source ecoCfg  = file("~/.config/omalauncher/eco-mode.json") json
+
+  // ---------------- FX / ECO (mirror the command deck's master switches) ----------------
+  let ecoOn        = (ecoCfg.enabled ?? false) == true
+  let animMasterRaw = (animCfg.master ?? true) == true
+  let animMaster   = animMasterRaw && !ecoOn
+  let animSpeed    = clamp(num(animCfg.speed, 1.0), 0.25, 3.0)
+  let calFxRaw     = (animCfg.calendar_fx ?? true) == true
+  let fxOn         = animMaster && calFxRaw
+
+  // ---------------- PALETTE (crimson/obsidian Sith) ----------------
+  let accentCol  = ecoOn ? (futOn ? #00758f : #8f0018) : (futOn ? #11d1ff : #ff1133)
+  let accentHot  = ecoOn ? (futOn ? #33a7cc : #cc3344) : (futOn ? #66d1ff : #ff6677)
+  let accentDark = ecoOn ? (futOn ? #00080a : #0a0002) : (futOn ? #021d24 : #240206)
+  let accentGhost = ecoOn ? (futOn ? #003f4d : #4d000e) : (futOn ? #00758f : #8f0018)
+  let inkText    = (futOn ? #e8e8ff : #ffe8ec)
+  let inkSoft    = (futOn ? #b3d1ff : #ffb3c0)
+  let inkMuted   = alpha((futOn ? #8fd1ff : #ff8fa3), 0.6)
+
+  // ---------------- DATE SIGIL VALUES ----------------
+  let dName   = upper(fmtTime(now, "EEEE"))
+  let dNum    = fmtTime(now, "d")
+  let dMon    = upper(fmtTime(now, "MMM"))
+  let dYear   = fmtTime(now, "yyyy")
+  let dTime   = fmtTime(now, "HH:mm")
+  let todayKey = fmtTime(now, "yyyyMMdd")
+
+  // ---------------- EVENT SUMMARY ----------------
+  let evAll    = cal.granted ? cal.events : []
+  let evCount  = len(evAll)
+  let todayCount = count(evAll, e => fmtTime(e.start, "yyyyMMdd") == todayKey)
+
+  // ---------------- FX CLOCK (only advances while FX on) ----------------
+  state fxT = 0
+  every frame {
+    if fxOn { fxT = fxT + dt * animSpeed }
+  }
+
+  // ================= COMPONENTS =================
+
+  // Section header: ◈ tiny caps + optional right hint
+  component Header(label, hint = "") {
+    Row {
+      fill: width
+      align: center
+      gap: 8
+      padding: [2, 0, 2, 0]
+      Text { font: uiFont; text: "◈ ${upper(label)}"; fontSize: 11; bold: true; color: accentHot; letterSpacing: 2; weight: 1; maxLines: 1 }
+      Text { text: hint; fontSize: 10; font: mono; letterSpacing: 1; color: inkMuted; maxLines: 1 }
+    }
+  }
+
+  // A single event row rendered as a Sith card with accent bar + glow border
+  component EventCard(title, when, loc, dot, isNow) {
+    Row {
+      fill: width
+      radius: 16
+      border: 1
+      borderColor: isNow ? alpha(accentCol, 0.72) : alpha((futOn ? #22d1ff : #ff2244), 0.34)
+      background: isNow ? alpha((futOn ? #021d24 : #240206), 0.92) : alpha((futOn ? #010709 : #090103), 0.82)
+      padding: 0
+      // crimson accent bar
+      Box {
+        width: 4
+        fill: height
+        radius: 16
+        background: dot != "" ? dot : accentCol
+      }
+      Column {
+        weight: 1
+        gap: 2
+        padding: [11, 12, 11, 12]
+        Text { text: when; fontSize: 10.5; font: mono; letterSpacing: 1; color: inkMuted; maxLines: 1 }
+        Text { font: uiFont; text: title != "" ? title : "(untitled rite)"; fontSize: 15; fontWeight: 700; color: inkText; maxLines: 2 }
+        if loc != "" {
+          Text { font: uiFont; text: "⌖ " + loc; fontSize: 11; color: inkSoft; maxLines: 1 }
+        }
+      }
+    }
+  }
+
+  // ================= PAGE =================
+  Box {
+    fill: true
+    background: linear(0, 0, 0, 1, [(futOn ? #000406 : #060002), (futOn ? #00080a : #0a0002), (futOn ? #000406 : #060002)])
+
+    // ---- loopless AMOLED backdrop glow (behind the scroll) ----
+    if fxOn {
+      Shader {
+        fill: true
+        fallback: (futOn ? #000406 : #060002)
+        uniforms: { uFut: futOn ? 1.0 : 0.0,
+          uT: fxT,
+          uCol: accentCol,
+          uGhost: accentGhost
+        }
+        code: """
+          uniform float uFut;
+          uniform float uT;
+          uniform half4 uCol;
+          uniform half4 uGhost;
+
+          half4 mainOrig(float2 p) {
+            float2 uv = p / max(size, float2(1.0));
+            float t = uT;
+            half3 base = uCol.rgb;
+            half3 ghost = uGhost.rgb;
+            // two slow crimson auras drifting on an obsidian field
+            float2 d1 = uv - float2(0.50 + 0.14 * sin(t * 0.18), 0.16 + 0.08 * cos(t * 0.15));
+            float2 d2 = uv - float2(0.42 + 0.12 * cos(t * 0.13), 0.80 + 0.08 * sin(t * 0.17));
+            half g1 = half(exp(-dot(d1, d1) * 5.2));
+            half g2 = half(exp(-dot(d2, d2) * 6.0));
+            half3 col = base * (g1 * half(0.30)) + mix(base, ghost, half(0.4)) * (g2 * half(0.22));
+            // faint vertical vignette toward black
+            half v = half(1.0 - 0.25 * uv.y);
+            col = col * v;
+            return half4(col, 1.0);
+          }
+          half4 main(float2 fc) { half4 c = mainOrig(fc); half3 m = half3(min(c.g, c.b), max(c.g, c.r * 0.82), c.r); return half4(mix(c.rgb, m, half(uFut)), c.a); }
+        """
+      }
+    }
+
+    // ---- scrollable altar content ----
+    Column {
+      fill: true
+      scroll: true
+      align: start
+      gap: 14
+      padding: [18, 20, 18, 20]
+
+      // ===== HEADER: big date over pentagram sigil =====
+      Box {
+        fill: width
+        align: center
+        height: 150
+        // pentagram ring sigil behind the big date (static — no per-frame redraw)
+        Box {
+          size: 150
+          align: center
+          Canvas {
+            fill: true
+            circle(75, 75, 69, stroke: alpha(accentCol, 0.55), width: 1.4)
+            circle(75, 75, 60, stroke: alpha(accentHot, 0.22), width: 1.0)
+            path([
+              [75 + 60 * sin(rad(0)),   75 - 60 * cos(rad(0))],
+              [75 + 60 * sin(rad(144)), 75 - 60 * cos(rad(144))],
+              [75 + 60 * sin(rad(288)), 75 - 60 * cos(rad(288))],
+              [75 + 60 * sin(rad(72)),  75 - 60 * cos(rad(72))],
+              [75 + 60 * sin(rad(216)), 75 - 60 * cos(rad(216))]
+            ], stroke: alpha(accentCol, 0.42), width: 1.2, closed: true)
+          }
+        }
+        Column {
+          align: center
+          justify: center
+          gap: 0
+          Text { font: uiFont; text: dName; fontSize: 12; bold: true; letterSpacing: 3; color: accentHot; align: center }
+          Text { font: uiFont; text: dNum; fontSize: 56; fontWeight: 800; color: inkText; align: center }
+          Text { text: "${dMon} ${dYear}  ·  ${dTime}"; fontSize: 12; font: mono; letterSpacing: 1; color: inkSoft; align: center }
+        }
+      }
+
+      // ===== STAT LINE =====
+      Row {
+        fill: width
+        gap: 10
+        Box {
+          weight: 1
+          radius: 14
+          border: 1
+          borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.34)
+          background: alpha((futOn ? #010709 : #090103), 0.82)
+          padding: [10, 12, 10, 12]
+          Column {
+            gap: 1
+            Text { font: uiFont; text: "TODAY"; fontSize: 9; letterSpacing: 2; color: inkMuted }
+            Text { font: uiFont; text: "${todayCount}"; fontSize: 22; fontWeight: 800; color: accentHot }
+          }
+        }
+        Box {
+          weight: 1
+          radius: 14
+          border: 1
+          borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.34)
+          background: alpha((futOn ? #010709 : #090103), 0.82)
+          padding: [10, 12, 10, 12]
+          Column {
+            gap: 1
+            Text { font: uiFont; text: "14 DAYS"; fontSize: 9; letterSpacing: 2; color: inkMuted }
+            Text { font: uiFont; text: "${evCount}"; fontSize: 22; fontWeight: 800; color: inkText }
+          }
+        }
+        Box {
+          weight: 1
+          radius: 14
+          border: 1
+          borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.34)
+          background: alpha((futOn ? #010709 : #090103), 0.82)
+          padding: [10, 12, 10, 12]
+          onTap: calendar("open")
+          Column {
+            gap: 1
+            Text { font: uiFont; text: "OPEN"; fontSize: 9; letterSpacing: 2; color: inkMuted }
+            Text { font: uiFont; text: "☾"; fontSize: 22; color: inkSoft }
+          }
+        }
+      }
+
+      // ===== PERMISSION GATE =====
+      if !cal.granted {
+        Column {
+          fill: width
+          gap: 10
+          radius: 18
+          border: 1
+          borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.42)
+          background: alpha((futOn ? #010709 : #090103), 0.82)
+          padding: [20, 18, 20, 18]
+          align: center
+          Text { font: uiFont; text: "✶"; fontSize: 30; color: accentCol; align: center }
+          Text { font: uiFont; text: "THE ALTAR IS SEALED"; fontSize: 13; bold: true; letterSpacing: 2; color: accentHot; align: center }
+          Text { font: uiFont; text: "Grant the calendar to read your next 14 days. Nothing is read until you allow it."; fontSize: 12; color: inkSoft; align: center }
+          Row {
+            radius: 99
+            border: 1.2
+            borderColor: accentHot
+            background: alpha(accentCol, 0.2)
+            padding: [10, 20, 10, 20]
+            onTap: calendar("request")
+            Text { font: uiFont; text: "⛧ UNSEAL THE CALENDAR"; fontSize: 12.5; bold: true; letterSpacing: 1; color: inkText }
+          }
+        }
+      } else {
+        // ===== EVENT LIST (day-grouped) =====
+        Header { label: "coming rites"; hint: "${evCount} marked" }
+
+        if evCount == 0 {
+          Column {
+            fill: width
+            radius: 18
+            border: 1
+            borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.3)
+            background: alpha((futOn ? #010709 : #090103), 0.7)
+            padding: [22, 18, 22, 18]
+            align: center
+            Text { font: uiFont; text: "☠"; fontSize: 26; color: inkMuted; align: center }
+            Text { font: uiFont; text: "the next two weeks are silent"; fontSize: 12.5; color: inkSoft; align: center }
+          }
+        }
+
+        Column {
+          fill: width
+          gap: 10
+          for e, i in cal.events key e.id {
+            let dayKey  = fmtTime(e.start, "yyyyMMdd")
+            let prevKey = i > 0 ? fmtTime(cal.events[i - 1].start, "yyyyMMdd") : ""
+            let newDay  = dayKey != prevKey
+            let isToday = dayKey == todayKey
+            let dayLbl  = isToday ? "TODAY" : upper(fmtTime(e.start, "EEE d MMM"))
+            let when    = e.allDay ? "ALL DAY" : fmtTime(e.start, "HH:mm") + " – " + fmtTime(e.end, "HH:mm")
+
+            if newDay {
+              Row {
+                fill: width
+                align: center
+                gap: 8
+                padding: [10, 2, 2, 2]
+                Text { font: uiFont; text: dayLbl; fontSize: 10.5; bold: true; letterSpacing: 2; color: isToday ? accentHot : inkMuted; maxLines: 1 }
+                Box { height: 1; weight: 1; background: alpha((futOn ? #22d1ff : #ff2244), 0.22) }
+              }
+            }
+
+            Box {
+              fill: width
+              onTap: calendar("open", e)
+              EventCard { title: e.title; when: when; loc: e.location; dot: e.color; isNow: isToday && !e.allDay }
+            }
+          }
+        }
+      }
+
+      // bottom breathing room above the nav bar / keyboard
+      Spacer { height: screenInset + 24 }
+    }
+  }
+
+  fps: fxOn ? 10 : 1
+}

@@ -1,0 +1,48 @@
+# The launcher's style. The Style menu writes it too; settings left out have
+# their default, and defaults.toml next to this file lists them all.
+# Changes show on the phone within a second; errors.txt says what was ignored.
+
+version = 1
+theme = "chill-battery"
+font = "Grenze Gotisch"
+
+[home]
+empty-page-left = false
+empty-page-right = false
+home-page = 0
+columns = 5
+
+[widgets]
+gaps-in = 5
+gaps-out = 0
+opacity = 1
+frost = true
+border-width = 1
+border = "#7a1420"
+border-focused = "#ff1e3c"
+
+[screens]
+gaps-out = 0
+border-width = 1
+
+[icons]
+monochrome = true
+
+[corners]
+scale = 1
+
+[status-bar]
+framed = true
+opacity = 1
+border = "#5c0b18"
+
+[navigation-bar]
+framed = true
+opacity = 1
+border = "#5c0b18"
+
+[terminal]
+text = 10
+
+[gestures]
+swipe-down = "sith-music-panel.owl"
