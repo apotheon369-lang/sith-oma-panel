@@ -1,0 +1,166 @@
+app "global board" {
+  meta {
+    owl: 22
+    description: "Stylish Global Notifications & Global Email Board — adapts live to all themes (Sith, Ultron, Mask, Skeletor, Psycho-Neo, Pluto, Chad)."
+  }
+
+  icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" rx="56" fill="#0a0002"/><path d="M128 48c-32 0-56 24-56 56v36l-18 22v10h148v-10l-18-22v-36c0-32-24-56-56-56z" fill="#ff2a44"/><circle cx="128" cy="196" r="18" fill="#ff8596"/></svg>"""
+
+  title: ""
+  edge: true
+  fps: fxOn ? 20 : 0
+
+  source hub = file("~/.config/omalauncher/hub.json") json
+  source notifs = android.notifications
+  state tab = "all" persist
+  state fxOn = true persist
+  state t = 0
+
+  every frame {
+    if fxOn { t = t + dt }
+  }
+
+  let hx = hub.tok.hex ?? {}
+  let cPri = hx.pri ?? #ff1e3c
+  let cSec = hx.sec ?? #00f0ff
+  let cObs = hx.obs ?? #060002
+  let cCard = hx.card ?? #0c0104
+  let cInk = hx.ink ?? #ffe8ec
+  let cMuted = hx.muted ?? #ffb3c0
+  let uiFont = hub.tok.bodyFont ?? "sans"
+
+  let allNotifs = notifs ?? []
+  let emailNotifs = allNotifs.filter(n =>
+    contains(lower(n.package ?? ""), "mail") ||
+    contains(lower(n.package ?? ""), "gmail") ||
+    contains(lower(n.package ?? ""), "outlook") ||
+    contains(lower(n.package ?? ""), "proton") ||
+    contains(lower(n.title ?? ""), "@")
+  )
+  let shown = tab == "mail" ? emailNotifs : allNotifs
+
+  Box {
+    fill: true
+    background: cObs
+
+    Column {
+      fill: true
+      padding: [16, screenTop + 10, 16, 0]
+      gap: 10
+
+      // ─── STYLISH HEADER WITH PULSING SIGIL ───
+      Row {
+        fill: width; align: center; gap: 8
+
+        Box {
+          width: 32; height: 32; radius: 10 * corners
+          background: cCard; border: 1; borderColor: alpha(cPri, 0.55)
+          onTap: { haptic(); close() }
+          Column { fill: true; justify: center; Text { text: "✕"; align: center; fontSize: 13; bold: true; color: cPri } }
+        }
+
+        Box {
+          width: 28; height: 28
+          Canvas {
+            fill: true
+            let cx = width / 2
+            let cy = height / 2
+            let ang = fxOn ? (t * 48) % 360 : 0
+            circle(cx, cy, 11, stroke: alpha(cPri, 0.7), width: 1.5)
+            arc(cx, cy, 8, ang, 140, stroke: cSec, width: 1.6)
+            circle(cx, cy, 3, fill: len(allNotifs) > 0 ? cPri : cMuted)
+          }
+        }
+
+        Column {
+          weight: 1; gap: 1
+          Text { font: uiFont; text: "◈ GLOBAL COMMS BOARD"; fontSize: 12; bold: true; letterSpacing: 1.8; color: cPri }
+          Text { font: uiFont; text: "${len(allNotifs)} NOTIFS · ${len(emailNotifs)} EMAILS"; fontSize: 9.5; letterSpacing: 1.1; color: cMuted }
+        }
+
+        Row {
+          padding: [9, 6]; radius: 12 * corners
+          background: fxOn ? alpha(cPri, 0.22) : cCard
+          border: 1; borderColor: alpha(cPri, fxOn ? 0.8 : 0.35)
+          onTap: { haptic(); fxOn = !fxOn }
+          Text { font: mono; text: fxOn ? "FX" : "OFF"; fontSize: 9.5; bold: true; color: cInk }
+        }
+      }
+
+      // ─── SEGMENTED TABS: GLOBAL NOTIFS | GLOBAL EMAIL | THEME VAULT ───
+      Row {
+        fill: width; gap: 6
+        Box {
+          weight: 1; padding: [6, 9]; radius: 12 * corners
+          background: tab == "all" ? cPri : cCard
+          border: 1; borderColor: alpha(cPri, tab == "all" ? 1.0 : 0.4)
+          onTap: { haptic(); tab = "all" }
+          Text { font: uiFont; text: "🔔 NOTIFS (${len(allNotifs)})"; align: center; fontSize: 10; bold: true; color: tab == "all" ? cObs : cInk }
+        }
+        Box {
+          weight: 1; padding: [6, 9]; radius: 12 * corners
+          background: tab == "mail" ? cSec : cCard
+          border: 1; borderColor: alpha(cSec, tab == "mail" ? 1.0 : 0.4)
+          onTap: { haptic(); tab = "mail" }
+          Text { font: uiFont; text: "✉ EMAIL (${len(emailNotifs)})"; align: center; fontSize: 10; bold: true; color: tab == "mail" ? cObs : cInk }
+        }
+        Box {
+          width: 72; padding: [6, 9]; radius: 12 * corners
+          background: cCard; border: 1; borderColor: alpha(cPri, 0.5)
+          onTap: { haptic(); open("o:themes-vault.owl") }
+          Text { font: uiFont; text: "◈ VAULT"; align: center; fontSize: 9.5; bold: true; color: cPri }
+        }
+      }
+
+      // ─── LIVE FEED ───
+      Column {
+        weight: 1; fill: width; scroll: true; gap: 8
+
+        if len(shown) == 0 {
+          Column {
+            fill: width; padding: 24; gap: 6; radius: 16 * corners
+            background: cCard; border: 1; borderColor: alpha(cPri, 0.3)
+            Text { font: uiFont; text: tab == "mail" ? "✉ INBOX CLEAR" : "🔔 ALL CLEAR"; align: center; fontSize: 14; bold: true; color: cPri }
+            Text { font: uiFont; text: "No active items right now."; align: center; fontSize: 11; color: cMuted }
+          }
+        }
+
+        for n in shown key (n.key ?? "${n.package}_${n.title}") {
+          Row {
+            fill: width; padding: 12; gap: 10; align: center; radius: 16 * corners
+            background: linear(0, 0, 1, 1, [alpha(cPri, 0.10), cCard])
+            border: 1; borderColor: alpha(cPri, 0.38)
+
+            Column {
+              weight: 1; gap: 3
+              Text { font: mono; text: upper(n.app ?? n.package ?? "SYSTEM"); fontSize: 8.5; bold: true; letterSpacing: 1.2; color: cSec; maxLines: 1 }
+              Text { font: uiFont; text: n.title ?? "(no title)"; fontSize: 12.5; bold: true; color: cInk; maxLines: 1 }
+              if (n.text ?? "") != "" {
+                Text { font: uiFont; text: n.text ?? ""; fontSize: 11; color: cMuted; maxLines: 2 }
+              }
+            }
+
+            // Right-side action rail (no drop-downs)
+            Column {
+              gap: 5
+              Box {
+                width: 44; height: 26; radius: 8 * corners
+                background: alpha(cPri, 0.22); border: 1; borderColor: alpha(cPri, 0.7)
+                onTap: { haptic(); notification("open", n.key) }
+                Column { fill: true; justify: center; Text { font: mono; text: "OPEN"; align: center; fontSize: 8.5; bold: true; color: cInk } }
+              }
+              Box {
+                width: 44; height: 24; radius: 8 * corners
+                background: cObs; border: 1; borderColor: alpha(cMuted, 0.35)
+                onTap: { haptic(); notification("dismiss", n.key) }
+                Column { fill: true; justify: center; Text { font: mono; text: "✕"; align: center; fontSize: 9; bold: true; color: cMuted } }
+              }
+            }
+          }
+        }
+      }
+
+      Spacer { height: screenInset + 6 }
+    }
+  }
+}

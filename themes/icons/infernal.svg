@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <clipPath id="tile">
+      <rect x="2" y="2" width="252" height="252" rx="56"/>
+    </clipPath>
+    <radialGradient id="abyssGlow" cx="50%" cy="46%" r="54%">
+      <stop offset="0%" stop-color="#ff1e3c" stop-opacity="0.34"/>
+      <stop offset="48%" stop-color="#5c0014" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#060002" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="armorBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#22020a"/>
+      <stop offset="55%" stop-color="#0e0004"/>
+      <stop offset="100%" stop-color="#060002"/>
+    </linearGradient>
+    <linearGradient id="visageFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2a030c"/>
+      <stop offset="52%" stop-color="#120106"/>
+      <stop offset="100%" stop-color="#080003"/>
+    </linearGradient>
+    <linearGradient id="hornGrad" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#190107"/>
+      <stop offset="58%" stop-color="#3a0311"/>
+      <stop offset="86%" stop-color="#ff1e3c"/>
+      <stop offset="100%" stop-color="#ff8596"/>
+    </linearGradient>
+    <linearGradient id="crimsonRim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff8596"/>
+      <stop offset="45%" stop-color="#ff1e3c"/>
+      <stop offset="100%" stop-color="#a8001c"/>
+    </linearGradient>
+    <linearGradient id="rimOuter" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff1e3c"/>
+      <stop offset="50%" stop-color="#ff8596"/>
+      <stop offset="100%" stop-color="#ff1e3c"/>
+    </linearGradient>
+    <linearGradient id="eyeFire" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ff1e3c"/>
+      <stop offset="50%" stop-color="#ff8596"/>
+      <stop offset="100%" stop-color="#fff0f3"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="1" y="1" width="254" height="254" rx="56" fill="#060002"/>
+
+  <g clip-path="url(#tile)">
+    <rect width="256" height="256" fill="#060002"/>
+    <rect width="256" height="256" fill="url(#abyssGlow)"/>
+
+    <!-- Subtle glowing inverted pentagram halo -->
+    <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <circle cx="128" cy="118" r="85" stroke="#ff1e3c" stroke-width="4" opacity="0.16"/>
+      <circle cx="128" cy="118" r="85" stroke="#ff8596" stroke-width="1.3" opacity="0.52"/>
+      <circle cx="128" cy="118" r="76" stroke="#ff1e3c" stroke-width="2" opacity="0.45"/>
+      <polygon points="128,194 83.3,56.5 200.3,141.5 55.7,141.5 172.7,56.5" stroke="#ff1e3c" stroke-width="4.5" opacity="0.18"/>
+      <polygon points="128,194 83.3,56.5 200.3,141.5 55.7,141.5 172.7,56.5" stroke="#ff8596" stroke-width="1.4" opacity="0.62"/>
+    </g>
+
+    <!-- Abyssal embers -->
+    <g fill="#ff8596">
+      <circle cx="38" cy="54" r="1.4" opacity="0.7"/>
+      <circle cx="218" cy="52" r="1.5" opacity="0.75"/>
+      <circle cx="32" cy="164" r="1.2" opacity="0.55"/>
+      <circle cx="224" cy="160" r="1.2" opacity="0.55"/>
+    </g>
+    <path d="M44 82 L46 87 L51 89 L46 91 L44 96 L42 91 L37 89 L42 87 Z" fill="#ff1e3c" opacity="0.78"/>
+    <path d="M212 82 L214 87 L219 89 L214 91 L212 96 L210 91 L205 89 L210 87 Z" fill="#ff8596" opacity="0.78"/>
+
+    <!-- Sith Armored Shoulders & Spiked Collar -->
+    <path d="M28 256 L42 212 L72 192 L64 166 L94 182 L128 192 L162 182 L192 166 L184 192 L214 212 L228 256 Z" fill="url(#armorBody)"/>
+    <path d="M30 256 L43 212 L72 192 L64 166 L94 182 L128 194 L162 182 L192 166 L184 192 L213 212 L226 256" fill="none" stroke="url(#crimsonRim)" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M98 186 L128 236 L158 186 L142 246 L128 254 L114 246 Z" fill="#060002" stroke="#ff1e3c" stroke-width="1.6" opacity="0.9"/>
+    <path d="M52 218 L86 202 L98 228" fill="none" stroke="#ff8596" stroke-width="1.4" opacity="0.55" stroke-linecap="round"/>
+    <path d="M204 218 L170 202 L158 228" fill="none" stroke="#ff8596" stroke-width="1.4" opacity="0.55" stroke-linecap="round"/>
+
+    <!-- Twin Sweeping Demon Horns -->
+    <path d="M100 94 C72 88 50 64 56 26 C67 48 84 68 112 80 Z" fill="url(#hornGrad)"/>
+    <path d="M100 94 C72 88 50 64 56 26 C67 48 84 68 112 80" fill="none" stroke="#ff8596" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M76 76 C68 64 63 52 60 39" fill="none" stroke="#ff1e3c" stroke-width="1.6" stroke-linecap="round" opacity="0.75"/>
+
+    <path d="M156 94 C184 88 206 64 200 26 C189 48 172 68 144 80 Z" fill="url(#hornGrad)"/>
+    <path d="M156 94 C184 88 206 64 200 26 C189 48 172 68 144 80" fill="none" stroke="#ff8596" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M180 76 C188 64 193 52 196 39" fill="none" stroke="#ff1e3c" stroke-width="1.6" stroke-linecap="round" opacity="0.75"/>
+
+    <!-- Inner Crown Spikes -->
+    <path d="M108 82 L102 58 L118 76 L128 52 L138 76 L154 58 L148 82 Z" fill="#180107" stroke="#ff1e3c" stroke-width="2.1" stroke-linejoin="round"/>
+
+    <!-- Sith Demon Visage -->
+    <path d="M88 94 L83 122 L90 152 L114 180 L128 188 L142 180 L166 152 L173 122 L168 94 L148 76 L108 76 Z" fill="url(#visageFill)"/>
+    <path d="M88 94 L83 122 L90 152 L114 180 L128 188 L142 180 L166 152 L173 122 L168 94" fill="none" stroke="url(#crimsonRim)" stroke-width="2.7" stroke-linejoin="round"/>
+
+    <!-- Sculpted Cheekbone & Brow Plates -->
+    <path d="M90 112 L118 122 L128 115 L138 122 L166 112" fill="none" stroke="#ff8596" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M92 140 L108 148 L104 162" fill="none" stroke="#ff1e3c" stroke-width="1.6" opacity="0.75" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M164 140 L148 148 L152 162" fill="none" stroke="#ff1e3c" stroke-width="1.6" opacity="0.75" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M128 122 L123 142 L128 147 L133 142 Z" fill="#060002" stroke="#ff1e3c" stroke-width="1.4" stroke-linejoin="round"/>
+
+    <!-- Forehead Sith Sigil Crest -->
+    <polygon points="128,84 134,98 128,110 122,98" fill="#ff1e3c" stroke="#ff8596" stroke-width="1.3"/>
+
+    <!-- Blazing Sith Eyes -->
+    <path d="M94 118 L120 127 L115 133 L97 128 Z" fill="#ff1e3c" opacity="0.45"/>
+    <path d="M96 120 L118 127 L114 131 L98 127 Z" fill="url(#eyeFire)"/>
+    <path d="M162 118 L136 127 L141 133 L159 128 Z" fill="#ff1e3c" opacity="0.45"/>
+    <path d="M160 120 L138 127 L142 131 L158 127 Z" fill="url(#eyeFire)"/>
+
+    <!-- Fierce Snarling Jawline & Fang Accents -->
+    <path d="M108 158 L118 154 L128 157 L138 154 L148 158 L142 165 L128 163 L114 165 Z" fill="#060002" stroke="#ff1e3c" stroke-width="1.5" stroke-linejoin="round"/>
+    <polygon points="113,157 116,164 119,156" fill="#ff8596"/>
+    <polygon points="143,157 140,164 137,156" fill="#ff8596"/>
+    <path d="M120 174 L128 178 L136 174" fill="none" stroke="#ff8596" stroke-width="1.6" stroke-linecap="round"/>
+  </g>
+
+  <rect x="2.5" y="2.5" width="251" height="251" rx="54.5" fill="none" stroke="url(#rimOuter)" stroke-width="3"/>
+  <rect x="7.5" y="7.5" width="241" height="241" rx="49.5" fill="none" stroke="#ff1e3c" stroke-width="1.3" opacity="0.72"/>
+</svg>

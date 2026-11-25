@@ -13,10 +13,4 @@ version = 1
 columns = 5
 
 [[page]]
-face = "10-sith-calendar.owl"
-
-[[page]]
-face = "25-sith-command-deck.owl"
-
-[[page]]
 face = "00-infernal.owl"

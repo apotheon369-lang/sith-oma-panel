@@ -1,16 +1,32 @@
 panel "app drawer" {
-  // The app drawer: swiping up on home opens it, above the prompt bar. It's a panel like any other, so it's yours to
-  // change: ask your agent to edit it, or pick another panel in settings › gestures. .stock-drawer.owl next to it is
-  // this file as the launcher ships it, kept up to date: compare the two to see what changed in a newer launcher.
-  // The chamber around the grid is the Sith red-black skin: a breathing seal, embers, and (in storm) lightning at the edges.
-  // ≡ beside the gear opens Customization: red accents, animation life (still / breathe / storm), voice, order, density.
-  meta { description: "Infernal AMOLED red & black app drawer with favorites, custom folders, filter tabs, and live customization"; version: "2.0"; license: "MIT"; category: "system"; owl: 19 }
+  // Infernal Obsidian App Drawer — OWL 22 GPU-accelerated overhaul.
+  // Swiping up on home opens this panel above the prompt bar.
+  // Features: 0-loop GPU AGSL surface textures & volumetric glow, 4 card skins, 8 Kyber accents,
+  // filter tabs (All / Favorites / Folders), quick folder creation, settings via the Command Deck HUB,
+  // upgraded long-press context menu, and strict <4ms/frame optimization.
+  meta { description: "Infernal Obsidian AMOLED app drawer with GPU AGSL surface textures, card skins, Kyber accents, filter tabs, custom folders, and <4ms optimization"; version: "3.0"; license: "MIT"; category: "system"; owl: 22 }
 
-  // The launcher's gear, as its settings buttons draw it; currentColor takes the accent.
-  // Shared theme switch (set from the infernal face pill): "infernal" or "future"
-  source uiCfg = file("~/.config/omalauncher/ui-mode.json") json optional
-  let futOn = (uiCfg.mode ?? "infernal") == "future"
-  let uiFont = futOn ? "~/.local/share/fonts/RussoOne-Regular.ttf" : "~/.local/share/fonts/GrenzeGotisch.ttf"
+  // Unified 4-Theme Token Engine (hub.json -> hub.tok: infernal / future / mask / skeletor)
+  source hub = file("~/.config/omalauncher/hub.json") json optional
+  let curMode  = hub.mode ?? "infernal"
+  let ecoOn    = (hub.eco ?? false) == true
+  let T        = hub.tok ?? {}
+  let tc       = T.copy ?? {}
+  let cPri     = ecoOn ? (T.ecoPri != null ? rgb(T.ecoPri[0], T.ecoPri[1], T.ecoPri[2]) : #b8263a) : (T.pri != null ? rgb(T.pri[0], T.pri[1], T.pri[2]) : #ff1e3c)
+  let cMid     = T.mid   != null ? rgb(T.mid[0],   T.mid[1],   T.mid[2])   : #ff3850
+  let cHot     = ecoOn ? (T.ecoHot != null ? rgb(T.ecoHot[0], T.ecoHot[1], T.ecoHot[2]) : #d94c5e) : (T.hot != null ? rgb(T.hot[0], T.hot[1], T.hot[2]) : #ff8596)
+  let cSec     = T.sec   != null ? rgb(T.sec[0],   T.sec[1],   T.sec[2])   : #ff6a1a
+  let cBone    = ecoOn ? (T.ecoBone != null ? rgb(T.ecoBone[0], T.ecoBone[1], T.ecoBone[2]) : #c7a3a8) : (T.bone != null ? rgb(T.bone[0], T.bone[1], T.bone[2]) : #fff0f2)
+  let cDim     = ecoOn ? (T.ecoDim != null ? rgb(T.ecoDim[0], T.ecoDim[1], T.ecoDim[2]) : #4d0c18) : (T.dim != null ? rgb(T.dim[0], T.dim[1], T.dim[2]) : #6b0918)
+  let cDeep    = T.deep  != null ? rgb(T.deep[0],  T.deep[1],  T.deep[2])  : #170206
+  let cCard    = T.card  != null ? rgb(T.card[0],  T.card[1],  T.card[2])  : #0c0104
+  let cObs     = T.obs   != null ? rgb(T.obs[0],   T.obs[1],   T.obs[2])   : #050002
+  let cInk     = T.ink   != null ? rgb(T.ink[0],   T.ink[1],   T.ink[2])   : #fff0f2
+  let cMuted   = T.muted != null ? rgb(T.muted[0], T.muted[1], T.muted[2]) : #c77c88
+  let uiFont   = T.fontPath ?? "sans"
+  let dispFont = T.displayFontPath ?? uiFont
+  let bodyFont = T.bodyFont ?? (hub.font == "mono" ? "mono" : "sans")
+  let modeIdx  = num(T.modeIdx, 0)
   asset gear = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTkuMTQsMTIuOTRjMC4wNCwtMC4zIDAuMDYsLTAuNjEgMC4wNiwtMC45NGMwLC0wLjMyIC0wLjAyLC0wLjY0IC0wLjA3LC0wLjk0bDIuMDMsLTEuNThjMC4xOCwtMC4xNCAwLjIzLC0wLjQxIDAuMTIsLTAuNjFsLTEuOTIsLTMuMzJjLTAuMTIsLTAuMjIgLTAuMzcsLTAuMjkgLTAuNTksLTAuMjJsLTIuMzksMC45NmMtMC41LC0wLjM4IC0xLjAzLC0wLjcgLTEuNjIsLTAuOTRMMTQuNCwyLjgxYy0wLjA0LC0wLjI0IC0wLjI0LC0wLjQxIC0wLjQ4LC0wLjQxaC0zLjg0Yy0wLjI0LDAgLTAuNDMsMC4xNyAtMC40NywwLjQxTDkuMjUsNS4zNUM4LjY2LDUuNTkgOC4xMiw1LjkyIDcuNjMsNi4yOUw1LjI0LDUuMzNjLTAuMjIsLTAuMDggLTAuNDcsMCAtMC41OSwwLjIyTDIuNzQsOC44N0MyLjYyLDkuMDggMi42Niw5LjM0IDIuODYsOS40OGwyLjAzLDEuNThDNC44NCwxMS4zNiA0LjgsMTEuNjkgNC44LDEyczAuMDIsMC42NCAwLjA3LDAuOTRsLTIuMDMsMS41OGMtMC4xOCwwLjE0IC0wLjIzLDAuNDEgLTAuMTIsMC42MWwxLjkyLDMuMzJjMC4xMiwwLjIyIDAuMzcsMC4yOSAwLjU5LDAuMjJsMi4zOSwtMC45NmMwLjUsMC4zOCAxLjAzLDAuNyAxLjYyLDAuOTRsMC4zNiwyLjU0YzAuMDUsMC4yNCAwLjI0LDAuNDEgMC40OCwwLjQxaDMuODRjMC4yNCwwIDAuNDQsLTAuMTcgMC40NywtMC40MWwwLjM2LC0yLjU0YzAuNTksLTAuMjQgMS4xMywtMC41NiAxLjYyLC0wLjk0bDIuMzksMC45NmMwLjIyLDAuMDggMC40NywwIDAuNTksLTAuMjJsMS45MiwtMy4zMmMwLjEyLC0wLjIyIDAuMDcsLTAuNDcgLTAuMTIsLTAuNjFMMTkuMTQsMTIuOTR6TTEyLDE1LjZjLTEuOTgsMCAtMy42LC0xLjYyIC0zLjYsLTMuNnMxLjYyLC0zLjYgMy42LC0zLjZzMy42LDEuNjIgMy42LDMuNlMxMy45OCwxNS42IDEyLDE1LjZ6Ii8+PC9zdmc+"
 
   strings {
@@ -25,11 +41,24 @@ panel "app drawer" {
       life: "animation"; still: "still"; breathe: "breathe"; storm: "storm"
       voice: "voice"; plain: "plain"; sith: "sith"; order: "order"; byKind: "kind"; byName: "name"
       favored: "favorites"; favor: "favorite"; unfavor: "unfavorite"
-      sithFolders: "reliquary"; sithApps: "holocron"; sithLinux: "forge"; sithShortcuts: "sigil"
+      sithFolders: "reliquary"; sithApps: "holocron"; sithLinux: "crucible"; sithShortcuts: "sigil"
       sithAndroid: "legion"; sithWork: "garrison"; sithWorkPaused: "stilled"; sithFavored: "the chosen"
+      catCyber: "cyber & ai"; catComms: "comms & web"; catMedia: "media & audio"
+      catFiles: "files & tools"; catFinance: "finance & nav"; catSystem: "system & os"
+      sithCyber: "cortex"; sithComms: "holonet"; sithMedia: "resonator"
+      sithFiles: "archive"; sithFinance: "vault"; sithSystem: "chassis"; category: "category"
       open: "open"; ask: "ask"; askInstallLinux: "ask an agent · install linux"; askInstallAgent: "ask an agent · install one"
       accent: "accent"; crimson: "crimson"; blood: "blood"; scarlet: "scarlet"; ember: "ember"; cyber: "cyber"
+      revan: "revan"; bane: "bane"; venom: "venom"
+      surface: "surface texture"; texGrid: "grid"; texCarbon: "carbon"; texHex: "hex"; texVoid: "void"
+      skin: "card skin"; skinObsidian: "obsidian"; skinGlass: "glass"; skinCyber: "cyber"; skinMinimal: "minimal"
+      glow: "glow intensity"; glowLow: "stealth"; glowMed: "ember"; glowHigh: "overdrive"
+      tabStyle: "style"; tabTheme: "theme"; tabLayout: "layout"
       filterAll: "ALL"; filterFav: "FAVORITES"; filterFolders: "FOLDERS"; createFolder: "+ FOLDER"
+      customize: "STYLE"; iconSize: "icon size"; sizeSm: "small"; sizeMd: "medium"; sizeLg: "large"
+      iconColor: "icon color"; iconShape: "icon shape"; themeAuto: "theme"
+      colCrimson: "crimson"; colEmber: "ember"; colVenom: "venom"; colCyber: "cyber"; colRevan: "revan"; colIce: "ice"
+      allAppsAz: "all apps · a–z"
       emptyFav: "NO FAVORITES YET"; emptyFavSub: "LONG PRESS ANY APP TO FAVORITE"
       emptyFld: "NO FOLDERS YET"; emptyFldSub: "TAP + FOLDER ABOVE TO CREATE"
       askAgent: (bin, text) => "ask ${bin}: ${text}"
@@ -47,9 +76,22 @@ panel "app drawer" {
       favored: "favorit"; favor: "favoritkan"; unfavor: "hapus favorit"
       sithFolders: "relik"; sithApps: "holokron"; sithLinux: "tempa"; sithShortcuts: "sigil"
       sithAndroid: "legiun"; sithWork: "garnisun"; sithWorkPaused: "diam"; sithFavored: "yang terpilih"
+      catCyber: "siber & ai"; catComms: "komunikasi & web"; catMedia: "media & audio"
+      catFiles: "berkas & alat"; catFinance: "keuangan & peta"; catSystem: "sistem & os"
+      sithCyber: "korteks"; sithComms: "holonet"; sithMedia: "resonator"
+      sithFiles: "arsip"; sithFinance: "kubah"; sithSystem: "sasis"; category: "kategori"
       open: "buka"; ask: "tanya"; askInstallLinux: "tanya agen · instal linux"; askInstallAgent: "tanya agen · instal satu"
       accent: "aksen"; crimson: "crimson"; blood: "darah"; scarlet: "scarlet"; ember: "bara"; cyber: "siber"
+      revan: "revan"; bane: "bane"; venom: "venom"
+      surface: "tekstur permukaan"; texGrid: "kisi"; texCarbon: "karbon"; texHex: "heks"; texVoid: "hampa"
+      skin: "gaya kartu"; skinObsidian: "obsidian"; skinGlass: "kaca"; skinCyber: "siber"; skinMinimal: "minimal"
+      glow: "intensitas cahaya"; glowLow: "senyap"; glowMed: "bara"; glowHigh: "maks"
+      tabStyle: "gaya"; tabTheme: "tema"; tabLayout: "tata letak"
       filterAll: "SEMUA"; filterFav: "FAVORIT"; filterFolders: "FOLDER"; createFolder: "+ FOLDER"
+      customize: "GAYA"; iconSize: "ukuran ikon"; sizeSm: "kecil"; sizeMd: "sedang"; sizeLg: "besar"
+      iconColor: "warna ikon"; iconShape: "bentuk ikon"; themeAuto: "tema"
+      colCrimson: "crimson"; colEmber: "bara"; colVenom: "venom"; colCyber: "siber"; colRevan: "revan"; colIce: "es"
+      allAppsAz: "semua aplikasi · a–z"
       emptyFav: "BELUM ADA FAVORIT"; emptyFavSub: "TEKAN LAMA APLIKASI UNTUK FAVORITKAN"
       emptyFld: "BELUM ADA FOLDER"; emptyFldSub: "KETUK + FOLDER DI ATAS UNTUK MEMBUAT"
       askAgent: (bin, text) => "tanya ${bin}: ${text}"
@@ -67,9 +109,22 @@ panel "app drawer" {
       favored: "favoritos"; favor: "favorito"; unfavor: "quitar favorito"
       sithFolders: "relicario"; sithApps: "holocrón"; sithLinux: "forja"; sithShortcuts: "sigilo"
       sithAndroid: "legión"; sithWork: "guarnición"; sithWorkPaused: "quieta"; sithFavored: "los elegidos"
+      catCyber: "ciber y ia"; catComms: "social y web"; catMedia: "medios y audio"
+      catFiles: "archivos y útiles"; catFinance: "finanzas y rutas"; catSystem: "sistema y os"
+      sithCyber: "córtex"; sithComms: "holored"; sithMedia: "resonador"
+      sithFiles: "archivo"; sithFinance: "bóveda"; sithSystem: "chasis"; category: "categoría"
       open: "abrir"; ask: "preguntar"; askInstallLinux: "preguntar a un agente · instalar linux"; askInstallAgent: "preguntar a un agente · instalar uno"
       accent: "acento"; crimson: "carmesí"; blood: "sangre"; scarlet: "escarlata"; ember: "brasa"; cyber: "ciber"
+      revan: "revan"; bane: "bane"; venom: "veneno"
+      surface: "textura"; texGrid: "malla"; texCarbon: "carbono"; texHex: "hex"; texVoid: "vacío"
+      skin: "estilo de tarjeta"; skinObsidian: "obsidiana"; skinGlass: "cristal"; skinCyber: "ciber"; skinMinimal: "mínimo"
+      glow: "brillo"; glowLow: "sigilo"; glowMed: "brasa"; glowHigh: "máximo"
+      tabStyle: "estilo"; tabTheme: "tema"; tabLayout: "diseño"
       filterAll: "TODAS"; filterFav: "FAVORITAS"; filterFolders: "CARPETAS"; createFolder: "+ CARPETA"
+      customize: "ESTILO"; iconSize: "tamaño"; sizeSm: "peq"; sizeMd: "med"; sizeLg: "grande"
+      iconColor: "color de icono"; iconShape: "forma"; themeAuto: "tema"
+      colCrimson: "carmesí"; colEmber: "brasa"; colVenom: "veneno"; colCyber: "ciber"; colRevan: "revan"; colIce: "hielo"
+      allAppsAz: "todas las apps · a–z"
       emptyFav: "SIN FAVORITOS AÚN"; emptyFavSub: "MANTÉN PULSADA UNA APP PARA FAVORITA"
       emptyFld: "SIN CARPETAS AÚN"; emptyFldSub: "TOCA + CARPETA ARRIBA PARA CREAR"
       askAgent: (bin, text) => "preguntar a ${bin}: ${text}"
@@ -87,9 +142,22 @@ panel "app drawer" {
       favored: "favoritos"; favor: "favoritar"; unfavor: "desfavoritar"
       sithFolders: "relicário"; sithApps: "holocron"; sithLinux: "forja"; sithShortcuts: "sigilo"
       sithAndroid: "legião"; sithWork: "guarnição"; sithWorkPaused: "quieta"; sithFavored: "os eleitos"
+      catCyber: "cyber e ia"; catComms: "social e web"; catMedia: "mídia e áudio"
+      catFiles: "arquivos e ferramentas"; catFinance: "finanças e rotas"; catSystem: "sistema e os"
+      sithCyber: "córtex"; sithComms: "holonet"; sithMedia: "ressonador"
+      sithFiles: "arquivo"; sithFinance: "cofre"; sithSystem: "chassi"; category: "categoria"
       open: "abrir"; ask: "perguntar"; askInstallLinux: "perguntar a um agente · instalar linux"; askInstallAgent: "perguntar a um agente · instalar um"
       accent: "acento"; crimson: "carmesim"; blood: "sangue"; scarlet: "escarlate"; ember: "brasa"; cyber: "cyber"
+      revan: "revan"; bane: "bane"; venom: "veneno"
+      surface: "textura"; texGrid: "grade"; texCarbon: "carbono"; texHex: "hex"; texVoid: "vazio"
+      skin: "estilo de cartão"; skinObsidian: "obsidiana"; skinGlass: "vidro"; skinCyber: "cyber"; skinMinimal: "mínimo"
+      glow: "brilho"; glowLow: "furtivo"; glowMed: "brasa"; glowHigh: "máximo"
+      tabStyle: "estilo"; tabTheme: "tema"; tabLayout: "layout"
       filterAll: "TODOS"; filterFav: "FAVORITOS"; filterFolders: "PASTAS"; createFolder: "+ PASTA"
+      customize: "ESTILO"; iconSize: "tamanho"; sizeSm: "peq"; sizeMd: "méd"; sizeLg: "grande"
+      iconColor: "cor do ícone"; iconShape: "forma"; themeAuto: "tema"
+      colCrimson: "carmesim"; colEmber: "brasa"; colVenom: "veneno"; colCyber: "cyber"; colRevan: "revan"; colIce: "gelo"
+      allAppsAz: "todos os apps · a–z"
       emptyFav: "NENHUM FAVORITO AINDA"; emptyFavSub: "SEGURE UM APP PARA FAVORITAR"
       emptyFld: "NENHUMA PASTA AINDA"; emptyFldSub: "TOQUE EM + PASTA PARA CRIAR"
       askAgent: (bin, text) => "perguntar ao ${bin}: ${text}"
@@ -107,9 +175,22 @@ panel "app drawer" {
       favored: "favoriten"; favor: "favorisieren"; unfavor: "entfernen"
       sithFolders: "reliquiar"; sithApps: "holocron"; sithLinux: "schmiede"; sithShortcuts: "siegel"
       sithAndroid: "legion"; sithWork: "garnison"; sithWorkPaused: "still"; sithFavored: "die erwählten"
+      catCyber: "cyber & ki"; catComms: "komm & web"; catMedia: "medien & audio"
+      catFiles: "dateien & tools"; catFinance: "finanzen & nav"; catSystem: "system & os"
+      sithCyber: "kortex"; sithComms: "holonetz"; sithMedia: "resonator"
+      sithFiles: "archiv"; sithFinance: "tresor"; sithSystem: "chassis"; category: "kategorie"
       open: "öffnen"; ask: "fragen"; askInstallLinux: "einen agenten fragen · linux installieren"; askInstallAgent: "einen agenten fragen · einen installieren"
       accent: "akzent"; crimson: "karmesin"; blood: "blutrot"; scarlet: "scharlach"; ember: "glut"; cyber: "cyber"
+      revan: "revan"; bane: "bane"; venom: "gift"
+      surface: "oberfläche"; texGrid: "raster"; texCarbon: "karbon"; texHex: "hex"; texVoid: "leere"
+      skin: "kartenstil"; skinObsidian: "obsidian"; skinGlass: "glas"; skinCyber: "cyber"; skinMinimal: "minimal"
+      glow: "leuchtkraft"; glowLow: "dezent"; glowMed: "glut"; glowHigh: "max"
+      tabStyle: "stil"; tabTheme: "thema"; tabLayout: "layout"
       filterAll: "ALLE"; filterFav: "FAVORITEN"; filterFolders: "ORDNER"; createFolder: "+ ORDNER"
+      customize: "STIL"; iconSize: "größe"; sizeSm: "klein"; sizeMd: "mittel"; sizeLg: "groß"
+      iconColor: "symbolfarbe"; iconShape: "form"; themeAuto: "thema"
+      colCrimson: "karmesin"; colEmber: "glut"; colVenom: "gift"; colCyber: "cyber"; colRevan: "revan"; colIce: "eis"
+      allAppsAz: "alle apps · a–z"
       emptyFav: "NOCH KEINE FAVORITEN"; emptyFavSub: "LANGE AUF EINE APP DRÜCKEN"
       emptyFld: "NOCH KEINE ORDNER"; emptyFldSub: "OBEN AUF + ORDNER TIPPEN"
       askAgent: (bin, text) => "${bin} fragen: ${text}"
@@ -127,9 +208,22 @@ panel "app drawer" {
       favored: "收藏"; favor: "收藏"; unfavor: "取消收藏"
       sithFolders: "圣匣"; sithApps: "水晶"; sithLinux: "熔炉"; sithShortcuts: "印记"
       sithAndroid: "军团"; sithWork: "驻军"; sithWorkPaused: "已静"; sithFavored: "天选"
+      catCyber: "极客与智能"; catComms: "通讯与网络"; catMedia: "影音与创作"
+      catFiles: "文件与工具"; catFinance: "金融与出行"; catSystem: "系统与设备"
+      sithCyber: "中枢"; sithComms: "星网"; sithMedia: "共鸣"
+      sithFiles: "秘档"; sithFinance: "金库"; sithSystem: "机甲"; category: "分类"
       open: "打开"; ask: "提问"; askInstallLinux: "问智能体 · 安装 linux"; askInstallAgent: "问智能体 · 先装一个"
       accent: "强调色"; crimson: "绯红"; blood: "血红"; scarlet: "猩红"; ember: "余烬"; cyber: "霓虹"
+      revan: "紫晶"; bane: "琥珀"; venom: "矩阵"
+      surface: "表面纹理"; texGrid: "网格"; texCarbon: "碳纤"; texHex: "蜂巢"; texVoid: "纯黑"
+      skin: "卡片材质"; skinObsidian: "黑曜"; skinGlass: "磨砂"; skinCyber: "赛博"; skinMinimal: "极简"
+      glow: "辉光强度"; glowLow: "潜行"; glowMed: "余烬"; glowHigh: "过载"
+      tabStyle: "材质"; tabTheme: "主题"; tabLayout: "布局"
       filterAll: "全部"; filterFav: "收藏"; filterFolders: "文件夹"; createFolder: "+ 新建文件夹"
+      customize: "样式"; iconSize: "图标大小"; sizeSm: "小"; sizeMd: "中"; sizeLg: "大"
+      iconColor: "图标颜色"; iconShape: "图标形状"; themeAuto: "主题"
+      colCrimson: "绯红"; colEmber: "余烬"; colVenom: "矩阵"; colCyber: "霓虹"; colRevan: "紫晶"; colIce: "冰白"
+      allAppsAz: "全部应用 · a–z"
       emptyFav: "暂无收藏"; emptyFavSub: "长按应用即可添加收藏"
       emptyFld: "暂无文件夹"; emptyFldSub: "点击上方 + 即可新建"
       askAgent: (bin, text) => "问 ${bin}：${text}"
@@ -137,94 +231,169 @@ panel "app drawer" {
   }
 
   source d = android.drawer
+  source bat = android.battery every 2m
+  source osSaver = android.modes   // event-driven; Android Battery Saver freezes ambient FX
   source ag = android.agents
-  source ecoCfg = file("~/.config/omalauncher/eco-mode.json") json
-  source animCfg = file("~/.config/omalauncher/animations.json") json
 
-  // App popup menu state
+  // App popup menu & UI interaction state
+  state tapBounce = ""   // press-bounce: which tappable is held (springs back on release)
   state menu = ""
   state menuShortcuts = null
   state menuNaming = ""
   state tab = "personal"
   state pick = null
+  state filterTab = "all"
+  state creatingFolder = false
+  state pressedBtn = ""
 
-  // Persistent Folders & Favorites state
+  // Persistent Folders, Favorites & Icon Customization state (preserves all existing user data)
   state folderMap = {} persist
   state customFolders = [] persist
   state folderOpen = ""
   state folderRenaming = false
   state favored = [] persist
+  state fxEnabled = true persist      // drawer-local animation switch (persisted)
+  state customizerOpen = false
+  state iconSize = "md" persist       // "sm" | "md" | "lg" (3 icon sizes)
+  state iconColor = "theme" persist   // "theme" | "crimson" | "ember" | "venom" | "cyber" | "revan" | "ice" (6 colors + theme auto)
+  state iconShape = "circle" persist  // "circle" | "hex" | "diamond" | "square" | "shield" | "pentagon"
+  state appColorMap = {} persist      // per-app color override
+  state appSizeMap = {} persist       // per-app size override ("sm" | "md" | "lg")
+  state shapeMap = {} persist         // per-app shape override
+  state warp = 0   // scroll-warp energy: kicked to 1 when a drag turns into a scroll, decays to 0
 
-  // Customization & Display options
-  state cellDp = 76 persist
-  state showWork = true persist
-  state prefs = false
-  state motion = "breathe" persist
-  state voice = "sith" persist
-  state byName = false persist
-  state accentChoice = "crimson" persist
+  // Persistent Customization & Display options (single-source from hub.json)
+  let rzBusy = (hub.busy ?? false) == true
+  let rzRes = rzBusy ? 0.34 : 1
+  let gpuRes = clamp(num(hub.res, 0.38), 0.25, 0.38)   // capped ≤0.38 full-screen shader resolution (<1ms GPU cost)
+  let hubDr = hub.drawer ?? {}
+  let showWork = (hubDr.showWork ?? true) == true
+  let voice = hubDr.voice ?? "sith"
+  let hubTex = hub.texture ?? "grid"
+  let surfaceTex = hubTex == "none" ? "void" : hubTex
+  let hubSurf = hub.surface ?? "obsidian"
+  let cardSkin = hubSurf == "glass" ? "glass" : (hubSurf == "oled" ? "minimal" : "obsidian")
+  let glowLvl = num(hub.glow, 1)
+  let motion = (hub.fx ?? true) == false ? "still" : (num(hub.fxLevel, 1) >= 2 ? "storm" : "breathe")
 
-  let ecoOn = (ecoCfg.enabled ?? false) == true
-  let animMaster = (animCfg.master ?? true) == true && !ecoOn
-  let animHaptics = (animCfg.haptics ?? true) == true
-  let animSpeed = clamp(num(animCfg.speed, 1.0), 0.25, 3.0)
-  let drawerFxOn = animMaster && (animCfg.drawer_fx ?? true) == true
-  let effMotion = drawerFxOn ? (animSpeed >= 1.5 ? "storm" : "breathe") : "still"
+  on hubDr.cellDp {
+    let v = num(value, 80)
+    iconSize = v <= 76 ? "sm" : (v >= 96 ? "lg" : "md")
+  }
 
-  // FPS: Off/Still costs 1 FPS (no CPU/battery drain); Breathe animates slowly; Storm animates fast with lightning
-  fps: !drawerFxOn ? 1 : (effMotion == "storm" ? 20 : 12)
+  // Master animation & eco gating (100% from hub.json)
+  let saver = ((bat.level ?? 100) < 20 && !((bat.charging ?? false) == true)) || (osSaver.saver ?? false) == true   // low battery or Android Battery Saver: hold still instead of stutter
+  let animMaster = (hub.fx ?? true) == true && !ecoOn && !saver
+  let animHaptics = (hub.haptics ?? true) != false
+  let animSpeed = clamp(num(hub.speed, 1.0), 0.25, 3.0)
+  let drawerFxOn = animMaster && fxEnabled
+  let effMotion = !drawerFxOn ? "still" : (motion == "still" ? "still" : (motion == "storm" || animSpeed >= 1.75 ? "storm" : "breathe"))
+  // Icon shimmer: on by default; set "shimmer": false under "drawer" in hub.json to turn it off
+  let shimOn = effMotion != "still" && !rzBusy && (hubDr.shimmer ?? true) == true
+  let shimSpeed = clamp(num(hubDr.shimSpeed, 1), 0.3, 3)
+  let shimCycle = 3.6   // seconds between glints on one icon
+  let shimSweep = 0.9   // seconds the band takes to cross
 
-  // Dynamic Aesthetic Colors (strictly red & black even in Eco mode)
-  let redAccent = ecoOn ? (futOn ? #00819e : #9e001c) : (accentChoice == "scarlet" ? (futOn ? #38d1ff : #ff384c) : accentChoice == "blood" ? (futOn ? #0092b3 : #b30018) : (accentChoice == "cyber" || accentChoice == "neon") ? (futOn ? #00d1ff : #ff002b) : accentChoice == "ember" ? (futOn ? #04b1d9 : #d90429) : (futOn ? #22d1ff : #ff2236))
-  let darkCard = ecoOn ? (futOn ? #010608 : #080102) : (futOn ? #020e12 : #120205)
-  let darkCardBorder = alpha(redAccent, 0.25)
-  let glowColor = alpha(redAccent, 0.45)
+  // ◈ ICON GLITCH (hub drawer.glitch 0 off / 1 subtle / 2 chaos) + SCROLL WARP (drawer.scrollFx 0/1/2)
+  let fxLive = effMotion != "still" && !rzBusy
+  let glitchLvl = fxLive ? clamp(num(hubDr.glitch, 1), 0, 2) : 0
+  let scrollLvl = fxLive ? clamp(num(hubDr.scrollFx, 1), 0, 2) : 0
+  let glCycle = glitchLvl >= 2 ? 2.6 : 5.2     // seconds between bursts on one icon
+  let glBurst = glitchLvl >= 2 ? 0.45 : 0.28   // burst length
+  let wMul = scrollLvl >= 2 ? 1.7 : 1
+  let wLive = warp > 0.02
+  let gTick = glitchLvl > 0 || wLive ? floor(time * 18) : 0   // stepped 18Hz noise clock
+  let wTick = wLive ? gTick : 0                               // idle cells never wake at 18Hz when not scrolling
+  let shimClock = shimOn ? time * animSpeed * shimSpeed : 0
+  let glClock = glitchLvl > 0 ? time * animSpeed : 0
+  let glCyan = #00e5ff
 
-  // Layout geometry
-  let cols = max(1, floor(((screenWidth ?? 400) - 24) / cellDp))
-  let iconPx = round(cellDp * 0.68)
+  // Strict <4ms adaptive FPS ladder (0 wakeups in still/eco, smooth 12fps ambient, 24fps active scroll warp)
+  fps: (rzBusy || effMotion == "still") ? 1 : (wLive ? 24 : 12)
+
+  every frame {
+    if warp > 0.01 { warp = max(0, warp - dt * (scrollLvl >= 2 ? 0.95 : 1.4)) } else if warp != 0 { warp = 0 }
+  }
+
+  // Semantic 4-theme palette mapped directly from hub.tok
+  let redAccent   = cPri
+  let hotAccent   = cHot
+  let labelTone   = cInk
+  let mutedTone   = cMuted
+  let darkCard    = cCard
+  let deepSurface = cObs
+
+  // Surface shader & glow parameters
+  let texIdx = surfaceTex == "carbon" ? 1.0 : (surfaceTex == "hex" ? 2.0 : (surfaceTex == "void" ? 3.0 : 0.0))
+  let glowAmp = ecoOn ? 0.45 : (glowLvl == 0 ? 0.42 : (glowLvl == 2 ? 1.48 : 1.0))
+  let skinRadius = cardSkin == "cyber" ? 6 * corners : (cardSkin == "glass" ? 16 * corners : 13 * corners)
+  let skinFrost = cardSkin == "glass" && !ecoOn ? 14 : 0
+  let skinBorderW = cardSkin == "cyber" ? 1.4 : (cardSkin == "minimal" ? 0.6 : 1)
+
+  // 6 Icon Colors + 3 Icon Sizes + 6 Icon Shapes (global drawer & per-app customization)
+  let iconColorList = [
+    {id: "crimson", lbl: str.colCrimson, pri: #ff1e3c, hot: #ff8596},
+    {id: "ember",   lbl: str.colEmber,   pri: #ff9f1a, hot: #ffe07d},
+    {id: "venom",   lbl: str.colVenom,   pri: #1aff5c, hot: #adff6e},
+    {id: "cyber",   lbl: str.colCyber,   pri: #18d8ff, hot: #9ceeff},
+    {id: "revan",   lbl: str.colRevan,   pri: #b44aff, hot: #e89eff},
+    {id: "ice",     lbl: str.colIce,     pri: #eaf4ff, hot: #ffffff}
+  ]
+  let shapeMeta = ["circle", "hex", "diamond", "square", "shield", "pentagon"]
+  let gColObj = iconColorList.find(c => c.id == iconColor)
+  let gIconPri = gColObj != null ? gColObj.pri : redAccent
+  let gIconHot = gColObj != null ? gColObj.hot : hotAccent
+
+  // 3 Icon Sizes: Small (5-col compact), Medium (4-col balanced), Large (3-col showcase)
+  let cellDp = iconSize == "sm" ? 72 : (iconSize == "lg" ? 120 : 92)
+  let cols = max(1, floor(((screenWidth ?? 390) - 24) / cellDp))
+  let iconPx = iconSize == "sm" ? 44 : (iconSize == "lg" ? 74 : 56)
+  let labelSize = iconSize == "sm" ? 8.6 : (iconSize == "lg" ? 10.8 : 9.8)
+  let labelTrack = iconSize == "sm" ? -0.22 : (iconSize == "lg" ? 0.0 : -0.1)
   let typed = trim(query)
   let searching = typed != ""
-  let mine = d.apps.filter(a => (tab == "work") == (a.profile == "work"))
-  let sortedApps = byName ? mine.sortBy(a => lower(a.name)) : mine
 
-  // Folders list
-  let folderNames = unique(flatten([customFolders, values(folderMap)])).filter(n => n != "")
-  let folders = folderNames.map(n => {key: "f:" + n, name: n, apps: d.apps.filter(a => get(folderMap, a.key) == n)})
-  let shownFolders = byName ? folders.sortBy(f => lower(f.name)) : folders
+  // Strict A–Z Alphabetical Apps (no categories; folders preserved intact)
+  let allApps = d.apps
+  let mine = allApps.filter(a => (tab == "work") == (a.profile == "work"))
+  let sortedApps = mine.sortBy(a => lower(a.name ?? ""))
+
+  // Folders list (safely filters out null/empty ghost keys, sorted A–Z)
+  let folderNames = unique(flatten([customFolders, values(folderMap)])).filter(n => n != null && n != "" && lower("${n}") != "null")
+  let folders = folderNames.map(n => {key: "f:" + n, name: n, apps: allApps.filter(a => get(folderMap, a.key) == n)})
+  let shownFolders = folders.sortBy(f => lower(f.name ?? ""))
   let folderCellRows = chunk(shownFolders, cols).map((cells, r) => {key: "fd:" + r, fcells: cells})
 
-  // Favorites list
+  // Favorites list (sorted A–Z)
   let favoredApps = sortedApps.filter(a => indexOf(favored, a.key) >= 0)
   let favoredRows = chunk(favoredApps, cols).map((cells, r) => {key: "fv:" + r, cells: cells})
 
-  // Open folder view apps
-  let openFolderApps = byName ? d.apps.filter(a => get(folderMap, a.key) == folderOpen).sortBy(a => lower(a.name)) : d.apps.filter(a => get(folderMap, a.key) == folderOpen)
+  // Open folder view apps (sorted A–Z)
+  let openFolderRaw = allApps.filter(a => get(folderMap, a.key) == folderOpen)
+  let openFolderApps = openFolderRaw.sortBy(a => lower(a.name ?? ""))
   let folderRows = chunk(openFolderApps, cols).map((cells, r) => {key: "fo:" + r, cells: cells})
 
-  // Sections
-  let sections = tab == "work" ? [
-      {id: "shortcuts", plain: str.shortcuts, epithet: str.sithShortcuts, apps: sortedApps.filter(a => a.kind == "shortcut" && get(folderMap, a.key, "") == "" && indexOf(favored, a.key) < 0)},
-      {id: "work", plain: d.work.paused ? str.workPaused : str.workApps, epithet: d.work.paused ? str.sithWorkPaused : str.sithWork, apps: sortedApps.filter(a => a.kind == "android" && get(folderMap, a.key, "") == "" && indexOf(favored, a.key) < 0), work: true}
-    ] : [
-      {id: "apps", plain: str.apps, epithet: str.sithApps, apps: sortedApps.filter(a => a.kind == "owl" && get(folderMap, a.key, "") == "" && indexOf(favored, a.key) < 0)},
-      {id: "linux", plain: str.linux, epithet: str.sithLinux, apps: sortedApps.filter(a => a.kind == "linux" && get(folderMap, a.key, "") == "" && indexOf(favored, a.key) < 0), linux: true},
-      {id: "shortcuts", plain: str.shortcuts, epithet: str.sithShortcuts, apps: sortedApps.filter(a => a.kind == "shortcut" && get(folderMap, a.key, "") == "" && indexOf(favored, a.key) < 0)},
-      {id: "android", plain: str.android, epithet: str.sithAndroid, apps: sortedApps.filter(a => a.kind == "android" && get(folderMap, a.key, "") == "" && indexOf(favored, a.key) < 0)}
-    ]
+  // Single Alphabetical App Grid (all unfiled apps A–Z, zero categories)
+  let unfiledApps = sortedApps.filter(a => get(folderMap, a.key, "") == "")
+  let appGridRows = chunk(unfiledApps, cols).map((cells, r) => {key: "az:" + r, cells: cells})
+  let mainAppSection = tab == "work"
+    ? [{key: "h:work", cat: "", plain: d.work.paused ? str.workPaused : str.workApps, epithet: d.work.paused ? str.sithWorkPaused : str.sithWork, work: true, count: len(unfiledApps)}] + appGridRows
+    : (len(unfiledApps) > 0
+      ? (len(shownFolders) > 0 ? [{key: "h:all", cat: "", plain: str.allAppsAz, epithet: "", count: len(unfiledApps)}] + appGridRows : appGridRows)
+      : [])
 
-  let sectionRows = flatten(sections.filter(s => len(s.apps) > 0 || s.work || (s.linux && !linux)).map(s => flatten([
-      [{key: "h:" + s.id, plain: s.linux && !linux ? str.linuxApps : s.plain, epithet: s.epithet, work: s.work, offer: s.linux && !linux}],
-      chunk(s.apps, cols).map((cells, r) => {key: s.id + ":" + r, cells: cells})
-    ])))
+  // Filtered Grid Rows (ALL / FAVORITES / FOLDERS)
+  let allRows = (len(shownFolders) > 0 ? [{key: "h:folders", cat: "folders", plain: str.folders, epithet: str.sithFolders, count: len(shownFolders)}] + folderCellRows : []) +
+    mainAppSection
 
-  // Grid rows: favorites, folders, then sections
-  let rows = (len(favoredApps) > 0 ? [{key: "h:favored", plain: str.favored, epithet: str.sithFavored, count: len(favoredApps)}] + favoredRows : []) +
-    (len(shownFolders) > 0 ? [{key: "h:folders", plain: str.folders, epithet: str.sithFolders, count: len(shownFolders)}] + folderCellRows : []) +
-    sectionRows
+  let rows = filterTab == "fav"
+    ? (len(favoredApps) > 0 ? [{key: "h:favored", cat: "favored", plain: str.favored, epithet: str.sithFavored, count: len(favoredApps)}] + favoredRows : [])
+    : filterTab == "folders"
+    ? (len(shownFolders) > 0 ? [{key: "h:folders", cat: "folders", plain: str.folders, epithet: str.sithFolders, count: len(shownFolders)}] + folderCellRows : [])
+    : allRows
 
   // Search hits
-  let hits = searching ? rank(d.apps, typed) : []
+  let hits = searching ? rank(allApps, typed) : []
   let hitRows = chunk(hits, cols).map((cells, r) => {key: "q:" + r, start: r * cols, cells: cells})
   let opens = len(hits) > 0 && strongMatch(hits[0], typed)
   let chosen = pick ?? (opens ? 0 : -1)
@@ -254,104 +423,438 @@ panel "app drawer" {
     }
   }
 
-  // The horned Sith seal with glowing ruby embers
-  component Seal() {
-    Canvas {
-      size: 48
-      let cx = width / 2
-      let cy = height / 2 + 1
-      let r = min(width, height) * 0.32
-      if effMotion == "still" {
-        circle(cx, cy, r * 1.45, fill: radial(cx, cy, r * 1.45, [alpha(redAccent, 0.28), alpha(#000000, 0)]))
-        circle(cx, cy, r * 1.08, stroke: alpha(redAccent, 0.6), width: 1.2)
-      } else {
-        let pulse = 0.5 + 0.5 * sin(time * 1.6 * animSpeed)
-        circle(cx, cy, r * 1.5, fill: radial(cx, cy, r * 1.5, [alpha(redAccent, 0.2 + pulse * 0.2), alpha(#000000, 0)]))
-        circle(cx, cy, r * 1.08, stroke: alpha(redAccent, 0.4 + pulse * 0.5), width: 1.3)
-        for i in range(8) {
-          let a = i * 0.7854 + time * 0.5 * animSpeed
-          circle(cx + cos(a) * r * 1.28, cy + sin(a) * r * 1.28, i % 2 == 0 ? 1.5 : 1, fill: alpha(redAccent, 0.35 + pulse * 0.55))
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 0-LOOP GPU AGSL OBSIDIAN CHAMBER BACKDROP (<0.25ms/frame, true AMOLED #000)
+  // Supports 4 procedural textures (grid / carbon / hex / void), volumetric top
+  // kyber bloom, rim edge rails, storm plasma arcs, filmic tonemap & anti-banding.
+  // ═══════════════════════════════════════════════════════════════════════════
+  component ChamberBackdrop(tVal, stormLvl, warpLvl = 0) {
+    Box {
+      fill: true; align: center; clip: true
+      if false {
+      Shader {
+        // low-res render (hub.res), scaled up to fill: ~1/res^2 the GPU work
+        width: (screenWidth ?? 420) * gpuRes; height: (screenHeight ?? 900) * gpuRes; scale: 1 / gpuRes
+        fallback: linear(0, 0, 0, 1, [alpha(redAccent, 0.06 * glowAmp), #000000, #000000])
+        uniforms: { uRes: rzRes,
+          uT: tVal,
+          uCol: redAccent,
+          uHot: hotAccent,
+          uTex: texIdx,
+          uGlow: glowAmp,
+          uStorm: stormLvl,
+          uWarp: warpLvl
         }
+        code: """
+            uniform float uRes;
+          uniform float uT;
+          uniform half4 uCol;
+          uniform half4 uHot;
+          uniform float uTex;
+          uniform float uGlow;
+          uniform float uStorm;
+          uniform float uWarp;
+
+          float hash12(float2 p) {
+            float3 p3 = fract(float3(p.xyx) * 0.1031);
+            p3 += dot(p3, p3.yzx + 33.33);
+            return fract((p3.x + p3.y) * p3.z);
+          }
+
+          // 0-loop analytical hex grid edge distance
+          float hexEdge(float2 p) {
+            const float2 s = float2(1.0, 1.7320508);
+            float2 a = mod(p, s) - s * 0.5;
+            float2 b = mod(p - s * 0.5, s) - s * 0.5;
+            float2 g = dot(a, a) < dot(b, b) ? a : b;
+            float2 ag = abs(g);
+            float d = max(dot(ag, normalize(s)), ag.x);
+            return 0.5 - d;
+          }
+
+          half4 main(float2 p) {
+              p = (floor(p * uRes) + 0.5) / uRes;
+            float2 safe = max(size, float2(1.0));
+            float2 uv = p / safe;
+            float aspect = safe.x / safe.y;
+            float dpr = max(1.0, safe.x / 380.0);
+
+            // 1. True AMOLED pure black base
+            half3 col = half3(0.0);
+            half3 acc = uCol.rgb;
+            half3 hot = uHot.rgb;
+
+            // 2. Volumetric top obsidian chamber bloom (around Seal & Header)
+            float2 topD = float2((uv.x - 0.24) * aspect * 1.15, (uv.y - 0.03) * 1.75);
+            float topBloom = exp(-dot(topD, topD) * 4.4);
+            float2 topWide = float2((uv.x - 0.50) * aspect * 0.85, (uv.y - 0.0) * 2.1);
+            float headerSheen = exp(-dot(topWide, topWide) * 2.8);
+            float breath = 0.88 + 0.12 * sin(uT * 1.45);
+            col += acc * half((topBloom * 0.24 + headerSheen * 0.13) * uGlow * breath);
+            col += hot * half(topBloom * 0.06 * uGlow * breath);
+
+            // Subtle lower depth glow
+            float botGlow = exp(-((1.0 - uv.y) * 3.8) * ((1.0 - uv.y) * 3.8));
+            col += acc * half(botGlow * 0.055 * uGlow);
+
+            // 3. Procedural GPU Surface Texture (0 loops!)
+            float texEnergy = 0.0;
+            if (uTex < 0.5) {
+              // GRID: Precision tactical dot-grid + 4x4 major reticles
+              float stepPx = 22.0 * dpr;
+              float2 cell = mod(p + stepPx * 0.5, stepPx) - stepPx * 0.5;
+              float r = 0.95 * dpr;
+              float dotM = 1.0 - smoothstep(r - 0.55, r + 0.55, length(cell));
+              float2 idx = floor((p + stepPx * 0.5) / stepPx);
+              float isMaj = step(mod(abs(idx.x) + 0.5, 4.0), 1.0)
+                          * step(mod(abs(idx.y) + 0.5, 4.0), 1.0);
+              float cross = (1.0 - smoothstep(0.0, 1.1 * dpr, abs(cell.x))) * (1.0 - smoothstep(3.0 * dpr, 4.5 * dpr, abs(cell.y)))
+                          + (1.0 - smoothstep(0.0, 1.1 * dpr, abs(cell.y))) * (1.0 - smoothstep(3.0 * dpr, 4.5 * dpr, abs(cell.x)));
+              texEnergy = dotM * (0.045 + isMaj * 0.075) + isMaj * min(cross, 1.0) * 0.032;
+            } else if (uTex < 1.5) {
+              // CARBON: Diagonal woven carbon-fiber micro-hatch + anisotropic sheen
+              float sc = 1.0 / (4.5 * dpr);
+              float d1 = sin((p.x + p.y) * sc);
+              float d2 = sin((p.x - p.y) * sc);
+              float weave = smoothstep(0.15, 0.85, d1 * d2 * 0.5 + 0.5);
+              float diagBand = exp(-((uv.x * 0.7 + uv.y * 0.5 - 0.42) * 3.2) * ((uv.x * 0.7 + uv.y * 0.5 - 0.42) * 3.2));
+              texEnergy = weave * (0.028 + diagBand * 0.055);
+            } else if (uTex < 2.5) {
+              // HEX: Analytical obsidian hex lattice
+              float hexScale = 26.0 * dpr;
+              float he = hexEdge(p / hexScale);
+              float lineM = 1.0 - smoothstep(0.015, 0.068, he);
+              float pulse = 0.75 + 0.25 * sin(uv.y * 7.0 - uT * 1.6);
+              texEnergy = lineM * 0.055 * pulse;
+            }
+            // uTex >= 2.5 => VOID (pure AMOLED pitch black, texEnergy = 0)
+
+            // Modulate texture visibility subtly by top/edge light so deep center stays true AMOLED
+            float texMask = 0.42 + 0.58 * clamp(headerSheen * 1.4 + botGlow * 0.7 + (1.0 - abs(uv.x - 0.5) * 2.0) * 0.25, 0.0, 1.0);
+            col += mix(acc, hot, half(0.28)) * half(texEnergy * texMask * (0.65 + 0.45 * uGlow));
+
+            // 4. Precision Left/Right Edge Plasma Bevel Rails
+            float edgeDist = min(p.x, safe.x - p.x) / dpr;
+            float rimLine = exp(-edgeDist * 0.55);
+            float rimGlow = exp(-edgeDist * 0.065);
+            col += acc * half((rimGlow * 0.065 + rimLine * 0.14) * uGlow);
+
+            // 5. Living Motion: Breathing sweep + Storm plasma arcs (0 loops!)
+            if (uStorm > 0.05) {
+              float sweepY = fract(uT * 0.11);
+              float dy = (uv.y - sweepY) * 7.5;
+              float scan = exp(-(dy * dy)) * 0.055 * uGlow * uStorm;
+
+              // Storm lateral plasma crackle along outer rails
+              if (uStorm > 0.65) {
+                float phase = mod(uT, 4.4);
+                float flash = phase < 0.38 ? (1.0 - phase / 0.38) : (phase > 2.2 && phase < 2.52 ? (1.0 - (phase - 2.2) / 0.32) : 0.0);
+                float jitter = sin(uv.y * 34.0 + floor(uT * 14.0) * 3.7) * 6.0 * dpr
+                             + cos(uv.y * 71.0 - floor(uT * 14.0) * 5.1) * 3.0 * dpr;
+                float arcD = abs(min(p.x, safe.x - p.x) - (10.0 * dpr + jitter));
+                float arcCore = exp(-arcD * (0.48 / dpr)) * flash * uGlow;
+                float arcHalo = exp(-arcD * (0.11 / dpr)) * flash * 0.35 * uGlow;
+                col += acc * half(arcHalo) + hot * half(arcCore * 0.85);
+              }
+            }
+
+            // 6. Soft Filmic Reinhard Tonemap + Anti-Banding OLED Dither
+            col = col / (half3(1.0) + half(0.42) * col);
+            half dither = half((hash12(p) - 0.5) * 0.004);
+            col = col * half(0.22);
+            col = max(col - half3(0.012), half3(0.0));
+
+            // 7. SCROLL WARP (0 loops): torn horizontal bands, RGB tear streaks, rolling scanlines
+            if (uWarp > 0.01) {
+              float tk = floor(uT * 22.0);
+              float band = floor(uv.y * 56.0);
+              float rb = hash12(float2(band, tk));
+              float tear = step(1.0 - 0.32 * uWarp, rb);
+              float xr = hash12(float2(band + 7.0, tk));
+              float streak = tear * smoothstep(0.0, 0.25, abs(uv.x - xr)) * (1.0 - smoothstep(0.25, 0.9, abs(uv.x - xr)));
+              half3 tearCol = rb > 0.5 ? half3(0.0, 0.9, 1.0) : hot;
+              col += tearCol * half(streak * uWarp * 0.22);
+              float scanl = 0.5 + 0.5 * sin(p.y * 1.4 - uT * 60.0);
+              col += acc * half(scanl * uWarp * 0.035);
+              col *= half(1.0 - 0.25 * uWarp * step(0.93, hash12(float2(tk, 3.0))));   // frame drop flicker
+            }
+            col = clamp(col + dither, half3(0.0), half3(1.0));
+            return half4(col, half(1.0));
+          }
+        """
       }
-      path([[cx - r * 0.42, cy - r * 0.2], [cx - r * 0.95, cy - r * 1.05], [cx - r * 0.62, cy - r * 0.02]], closed: true, fill: (futOn ? #074b5c : #5c0712), stroke: redAccent, width: 0.8)
-      path([[cx + r * 0.42, cy - r * 0.2], [cx + r * 0.95, cy - r * 1.05], [cx + r * 0.62, cy - r * 0.02]], closed: true, fill: (futOn ? #074b5c : #5c0712), stroke: redAccent, width: 0.8)
-      path([[cx - r * 0.5, cy - r * 0.42], [cx, cy - r * 0.62], [cx + r * 0.5, cy - r * 0.42], [cx + r * 0.42, cy + r * 0.42], [cx, cy + r * 0.66], [cx - r * 0.42, cy + r * 0.42]], closed: true, fill: (futOn ? #041014 : #140408), stroke: redAccent, width: 1)
-      path([[cx - r * 0.24, cy - r * 0.02], [cx + r * 0.24, cy - r * 0.02], [cx + r * 0.16, cy + r * 0.1], [cx - r * 0.16, cy + r * 0.1]], closed: true, fill: redAccent)
-      rect(cx - 0.7, cy + r * 0.18, 1.4, r * 0.28, radius: 0.6, fill: (futOn ? #80d1ff : #ff808c))
+      }
     }
   }
 
-  // Infernal-tray style app icon: red glyph in a static sigil ring (no per-frame redraw)
-  component TraySigil(src, sz, lbl = "", ini = "") {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 4-MODE ADAPTIVE HEADER SEAL — Infernal / Future / Mask / Skeletor (Havoc Ram-Skull)
+  // ═══════════════════════════════════════════════════════════════════════════
+  component Seal(animOn) {
+    Canvas {
+      size: 46
+      let cx = width / 2
+      let cy = height / 2 + 1
+      let r = min(width, height) * 0.32
+      let pulse = animOn ? 0.5 + 0.5 * sin(time * 1.6 * animSpeed) : 0.5
+      circle(cx, cy, r * 1.52, fill: radial(cx, cy, r * 1.52, [alpha(cPri, (0.24 + pulse * 0.16) * glowAmp), alpha(#000000, 0)]))
+      circle(cx, cy, r * 1.12, stroke: alpha(cPri, 0.58 + pulse * 0.34), width: 1.35)
+      circle(cx, cy, r * 0.94, stroke: alpha(cHot, 0.24), width: 0.7)
+      // Cardinal precision ticks (no rotate() matrix overhead)
+      line(cx, cy - r * 1.28, cx, cy - r * 1.06, stroke: cHot, width: 1.3, cap: round)
+      line(cx, cy + r * 1.06, cx, cy + r * 1.28, stroke: cHot, width: 1.3, cap: round)
+      line(cx - r * 1.28, cy, cx - r * 1.06, cy, stroke: alpha(cPri, 0.8), width: 1.2, cap: round)
+      line(cx + r * 1.06, cy, cx + r * 1.28, cy, stroke: alpha(cPri, 0.8), width: 1.2, cap: round)
+
+      if curMode == "skeletor" {
+        // HAVOC RAM-SKULL: curled ram horns + faceted bone-ivory ram skull + blazing arcane crystal
+        path([[cx - r * 0.28, cy - r * 0.34], [cx - r * 0.76, cy - r * 0.84], [cx - r * 1.04, cy - r * 0.32], [cx - r * 0.86, cy + r * 0.22], [cx - r * 0.56, cy + r * 0.08], [cx - r * 0.72, cy - r * 0.28], [cx - r * 0.44, cy - r * 0.06]], closed: true, fill: cDim, stroke: cHot, width: 1.0)
+        path([[cx + r * 0.28, cy - r * 0.34], [cx + r * 0.76, cy - r * 0.84], [cx + r * 1.04, cy - r * 0.32], [cx + r * 0.86, cy + r * 0.22], [cx + r * 0.56, cy + r * 0.08], [cx + r * 0.72, cy - r * 0.28], [cx + r * 0.44, cy - r * 0.06]], closed: true, fill: cDim, stroke: cHot, width: 1.0)
+        path([[cx, cy - r * 0.58], [cx + r * 0.46, cy - r * 0.20], [cx + r * 0.34, cy + r * 0.36], [cx, cy + r * 0.74], [cx - r * 0.34, cy + r * 0.36], [cx - r * 0.46, cy - r * 0.20]], closed: true, fill: cBone, stroke: cObs, width: 1.05)
+        // Recessed eye sockets + blazing forehead amethyst crystal
+        path([[cx - r * 0.32, cy - r * 0.06], [cx - r * 0.09, cy + r * 0.04], [cx - r * 0.24, cy + r * 0.16]], closed: true, fill: cObs)
+        path([[cx + r * 0.32, cy - r * 0.06], [cx + r * 0.09, cy + r * 0.04], [cx + r * 0.24, cy + r * 0.16]], closed: true, fill: cObs)
+        circle(cx, cy - r * 0.24, r * 0.16, fill: cSec)
+        circle(cx, cy - r * 0.24, r * 0.06, fill: #ffffff)
+        line(cx - r * 0.18, cy + r * 0.44, cx + r * 0.18, cy + r * 0.44, stroke: cObs, width: 1.1, cap: round)
+      } else if curMode == "future" {
+        // ULTRON HEX VISOR: armored Stark hexagon + angled dual cyber visor + energy core
+        path([[cx, cy - r * 0.74], [cx + r * 0.64, cy - r * 0.37], [cx + r * 0.64, cy + r * 0.37], [cx, cy + r * 0.74], [cx - r * 0.64, cy + r * 0.37], [cx - r * 0.64, cy - r * 0.37]], closed: true, fill: cObs, stroke: cPri, width: 1.25)
+        path([[cx - r * 0.44, cy - r * 0.14], [cx - r * 0.08, cy - r * 0.02], [cx - r * 0.16, cy + r * 0.10], [cx - r * 0.40, cy + r * 0.02]], closed: true, fill: cHot)
+        path([[cx + r * 0.44, cy - r * 0.14], [cx + r * 0.08, cy - r * 0.02], [cx + r * 0.16, cy + r * 0.10], [cx + r * 0.40, cy + r * 0.02]], closed: true, fill: cHot)
+        path([[cx - r * 0.26, cy + r * 0.30], [cx, cy + r * 0.44], [cx + r * 0.26, cy + r * 0.30]], stroke: cSec, width: 1.2, cap: round)
+        circle(cx, cy - r * 0.36, r * 0.11, fill: cBone)
+      } else if curMode == "mask" {
+        // CYBER-MASK VORTEX: triple vortex blades + neon mask silhouette + Zoot-gold grin
+        path([[cx - r * 0.74, cy - r * 0.46], [cx - r * 0.18, cy - r * 0.76], [cx + r * 0.48, cy - r * 0.52]], stroke: alpha(cHot, 0.85), width: 1.25, cap: round)
+        path([[cx + r * 0.76, cy - r * 0.16], [cx + r * 0.56, cy + r * 0.56], [cx - r * 0.16, cy + r * 0.76]], stroke: alpha(cPri, 0.9), width: 1.25, cap: round)
+        path([[cx - r * 0.46, cy - r * 0.48], [cx, cy - r * 0.64], [cx + r * 0.46, cy - r * 0.48], [cx + r * 0.38, cy + r * 0.36], [cx, cy + r * 0.64], [cx - r * 0.38, cy + r * 0.36]], closed: true, fill: cObs, stroke: cPri, width: 1.15)
+        path([[cx - r * 0.28, cy - r * 0.12], [cx - r * 0.08, cy - r * 0.04], [cx - r * 0.22, cy + r * 0.06]], closed: true, fill: cHot)
+        path([[cx + r * 0.28, cy - r * 0.12], [cx + r * 0.08, cy - r * 0.04], [cx + r * 0.22, cy + r * 0.06]], closed: true, fill: cHot)
+        path([[cx - r * 0.26, cy + r * 0.22], [cx, cy + r * 0.38], [cx + r * 0.26, cy + r * 0.22]], stroke: cSec, width: 1.6, cap: round)
+      } else {
+        // INFERNAL: Horned Sith Crest
+        path([[cx - r * 0.42, cy - r * 0.2], [cx - r * 0.96, cy - r * 1.06], [cx - r * 0.62, cy - r * 0.02]], closed: true, fill: alpha(cPri, 0.35), stroke: cPri, width: 0.9)
+        path([[cx + r * 0.42, cy - r * 0.2], [cx + r * 0.96, cy - r * 1.06], [cx + r * 0.62, cy - r * 0.02]], closed: true, fill: alpha(cPri, 0.35), stroke: cPri, width: 0.9)
+        path([[cx - r * 0.5, cy - r * 0.42], [cx, cy - r * 0.64], [cx + r * 0.5, cy - r * 0.42], [cx + r * 0.42, cy + r * 0.42], [cx, cy + r * 0.66], [cx - r * 0.42, cy + r * 0.42]], closed: true, fill: deepSurface, stroke: cPri, width: 1.1)
+        path([[cx - r * 0.25, cy - r * 0.03], [cx + r * 0.25, cy - r * 0.03], [cx + r * 0.17, cy + r * 0.11], [cx - r * 0.17, cy + r * 0.11]], closed: true, fill: cPri)
+        rect(cx - 0.8, cy + r * 0.19, 1.6, r * 0.28, radius: 0.7, fill: cHot)
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MINI SHAPE & FOLDER VECTOR BADGES (font-independent crisp Canvas shapes)
+  // ═══════════════════════════════════════════════════════════════════════════
+  component CatBadge(cat, sz = 14, col = hotAccent) {
+    Canvas {
+      size: sz
+      let cx = width / 2
+      let cy = height / 2
+      let r = min(width, height) * 0.42
+      if cat == "folders" {
+        let w = width * 0.43
+        let h = height * 0.34
+        path([[cx - w, cy - h * 0.92], [cx - w * 0.12, cy - h * 0.92], [cx + w * 0.16, cy - h * 0.46], [cx + w, cy - h * 0.46], [cx + w, cy + h * 0.88], [cx - w, cy + h * 0.88]], closed: true, fill: alpha(col, 0.18), stroke: col, width: 1.25)
+        line(cx - w * 0.55, cy + h * 0.22, cx + w * 0.55, cy + h * 0.22, stroke: col, width: 1.15, cap: round)
+      } else if cat == "hex" {
+        path([[cx - r * 0.52, cy - r * 0.90], [cx + r * 0.52, cy - r * 0.90], [cx + r * 1.04, cy], [cx + r * 0.52, cy + r * 0.90], [cx - r * 0.52, cy + r * 0.90], [cx - r * 1.04, cy]], closed: true, fill: alpha(col, 0.16), stroke: col, width: 1.25)
+      } else if cat == "circle" {
+        circle(cx, cy, r * 0.94, fill: alpha(col, 0.16), stroke: col, width: 1.25)
+      } else if cat == "diamond" {
+        path([[cx, cy - r * 1.06], [cx + r * 1.06, cy], [cx, cy + r * 1.06], [cx - r * 1.06, cy]], closed: true, fill: alpha(col, 0.16), stroke: col, width: 1.25)
+      } else if cat == "square" {
+        rect(cx - r * 0.84, cy - r * 0.84, r * 1.68, r * 1.68, radius: 2, fill: alpha(col, 0.16), stroke: col, width: 1.25)
+      } else if cat == "shield" {
+        path([[cx - r * 0.86, cy - r * 0.84], [cx + r * 0.86, cy - r * 0.84], [cx + r * 0.86, cy + r * 0.08], [cx, cy + r * 1.06], [cx - r * 0.86, cy + r * 0.08]], closed: true, fill: alpha(col, 0.16), stroke: col, width: 1.25)
+      } else {
+        path([[cx, cy - r * 1.02], [cx + r * 0.98, cy - r * 0.22], [cx + r * 0.64, cy + r * 0.92], [cx - r * 0.64, cy + r * 0.92], [cx - r * 0.98, cy - r * 0.22]], closed: true, fill: alpha(col, 0.16), stroke: col, width: 1.25)
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CUSTOMIZABLE TRAY SIGIL — 6 shapes, 6 colors + theme auto, 3 sizes (<4ms!)
+  // ═══════════════════════════════════════════════════════════════════════════
+  component TraySigil(src, sz, lbl = "", ini = "", isFav = false, shape = "circle", priCol = redAccent, hotCol = hotAccent) {
+    let gk = hash(lbl + ini)
+    let gPh = glitchLvl > 0 ? (glClock + gk * glCycle) % glCycle : 99
+    let gI = max(gPh < glBurst ? (glitchLvl >= 2 ? 1 : 0.6) : 0, wLive ? warp * (scrollLvl >= 2 ? 1 : 0.65) : 0)
+    let gOn = gI > 0.04
+    let n1 = gOn ? hash(gk, gTick) - 0.5 : 0
+    let n2 = gOn ? hash(gk, gTick, 1) - 0.5 : 0
+    let n3 = gOn ? hash(gk, gTick, 2) - 0.5 : 0
+    let n4 = gOn ? hash(gk, gTick, 3) : 0.5
+    let sliceY = gOn ? round(n3 * sz * 0.62) : 0
+    let glyph = round(sz * 0.45)
+    let iconOffY = shape == "pentagon" ? 1.5 : (shape == "shield" ? -1.0 : 0)
+    let shU = shimOn ? clamp((((shimClock + gk * shimCycle) % shimCycle) / shimSweep), 0, 1) : 0
+    let shLive = shimOn && shU > 0 && shU < 1
     Box {
       size: sz
       align: center
+      offset: gOn ? [round(n1 * 5 * gI), round(n2 * 2.5 * gI)] : [0, 0]
+      scale: gOn && n4 > 0.82 ? 1 + 0.09 * gI : 1
       Canvas {
         fill: true
         let cx = width / 2
         let cy = height / 2
         let r = min(width, height) * 0.42
-        circle(cx, cy, r * 1.12, fill: radial(cx, cy, r * 1.2, [alpha((futOn ? #1ad1ff : #ff1a34), 0.26), alpha(#000000, 0)]))
-        circle(cx, cy, r, stroke: alpha((futOn ? #24d1ff : #ff243c), 0.8), width: 1.35)
-        circle(cx, cy, r * 0.85, stroke: alpha((futOn ? #0e647a : #7a0e20), 0.65), width: 0.8)
-        for i in range(4) {
-          rotate(i * 90, cx, cy) {
-            line(cx, cy - r * 1.11, cx, cy - r * 0.93, stroke: (futOn ? #38d1ff : #ff384e), width: 1.4, cap: round)
-          }
+        let haloA = clamp((isFav ? 0.22 : 0.13) * glowAmp, 0.06, 0.34)
+        let stCol = alpha(priCol, isFav ? 0.94 : 0.74)
+        let stW = isFav ? 1.55 : 1.25
+        let bgFill = alpha(deepSurface, 0.84)
+        circle(cx, cy, r * 1.12, fill: alpha(priCol, haloA * 0.48))
+
+        if shape == "hex" {
+          path([[cx - r * 0.52, cy - r * 0.90], [cx + r * 0.52, cy - r * 0.90], [cx + r * 1.04, cy], [cx + r * 0.52, cy + r * 0.90], [cx - r * 0.52, cy + r * 0.90], [cx - r * 1.04, cy]], closed: true, fill: bgFill, stroke: stCol, width: stW)
+          line(cx - r * 1.14, cy, cx - r * 0.95, cy, stroke: hotCol, width: 1.4, cap: round)
+          line(cx + r * 0.95, cy, cx + r * 1.14, cy, stroke: hotCol, width: 1.4, cap: round)
+        } else if shape == "diamond" {
+          path([[cx, cy - r * 1.10], [cx + r * 1.10, cy], [cx, cy + r * 1.10], [cx - r * 1.10, cy]], closed: true, fill: bgFill, stroke: stCol, width: stW)
+          circle(cx, cy - r * 1.10, 1.5, fill: hotCol)
+          circle(cx, cy + r * 1.10, 1.5, fill: hotCol)
+        } else if shape == "square" {
+          rect(cx - r * 0.88, cy - r * 0.88, r * 1.76, r * 1.76, radius: 4, fill: bgFill, stroke: stCol, width: stW)
+          line(cx - r * 0.30, cy - r * 0.88, cx + r * 0.30, cy - r * 0.88, stroke: hotCol, width: 1.8, cap: round)
+        } else if shape == "shield" {
+          path([[cx - r * 0.88, cy - r * 0.84], [cx + r * 0.88, cy - r * 0.84], [cx + r * 0.88, cy + r * 0.10], [cx, cy + r * 1.08], [cx - r * 0.88, cy + r * 0.10]], closed: true, fill: bgFill, stroke: stCol, width: stW)
+          line(cx - r * 0.32, cy - r * 0.84, cx + r * 0.32, cy - r * 0.84, stroke: hotCol, width: 1.8, cap: round)
+        } else if shape == "pentagon" {
+          path([[cx, cy - r * 1.04], [cx + r * 0.99, cy - r * 0.24], [cx + r * 0.64, cy + r * 0.92], [cx - r * 0.64, cy + r * 0.92], [cx - r * 0.99, cy - r * 0.24]], closed: true, fill: bgFill, stroke: stCol, width: stW)
+          line(cx - r * 0.28, cy + r * 0.92, cx + r * 0.28, cy + r * 0.92, stroke: hotCol, width: 1.8, cap: round)
+        } else {
+          circle(cx, cy, r * 0.98, fill: bgFill, stroke: stCol, width: stW)
+          line(cx, cy - r * 1.10, cx, cy - r * 0.90, stroke: hotCol, width: 1.4, cap: round)
+          line(cx, cy + r * 0.90, cx, cy + r * 1.10, stroke: hotCol, width: 1.4, cap: round)
+        }
+      }
+      // RGB-split ghosts (cyan left / hot right): nodes exist only during a burst or scroll warp
+      if (glitchLvl > 0 || scrollLvl > 0) && gOn {
+        if src != null {
+          Image { src: src; size: glyph; tint: glCyan; opacity: gOn ? 0.55 : 0; offset: [round(-(1.5 + abs(n1) * 7) * gI), round(n2 * 2 * gI + iconOffY)] }
+          Image { src: src; size: glyph; tint: hotCol; opacity: gOn ? 0.6 : 0; offset: [round((1.5 + abs(n2) * 7) * gI), round(-n1 * 2 * gI + iconOffY)] }
+        } else {
+          Text { font: dispFont; text: ini; fontSize: round(sz * 0.26); color: glCyan; bold: true; align: center; opacity: gOn ? 0.55 : 0; offset: [round(-(1.5 + abs(n1) * 7) * gI), iconOffY] }
+          Text { font: dispFont; text: ini; fontSize: round(sz * 0.26); color: hotCol; bold: true; align: center; opacity: gOn ? 0.6 : 0; offset: [round((1.5 + abs(n2) * 7) * gI), iconOffY] }
         }
       }
       if src != null {
-        Image { src: src; size: round(sz * 0.5); tint: (futOn ? #2ed1ff : #ff2e44); label: lbl }
+        Image { src: src; size: glyph; tint: isFav ? hotCol : priCol; label: lbl; offset: [0, iconOffY]; opacity: gOn && n4 < 0.12 ? 0.25 : 1 }
       } else {
-        Text { font: uiFont; text: ini; fontSize: round(sz * 0.3); color: (futOn ? #2ed1ff : #ff2e44); bold: true; align: center }
+        Text { font: dispFont; text: ini; fontSize: round(sz * 0.26); color: isFav ? hotCol : priCol; bold: true; align: center; offset: [0, iconOffY]; opacity: gOn && n4 < 0.12 ? 0.25 : 1 }
+      }
+      if (glitchLvl > 0 || scrollLvl > 0) && gOn {
+        Box {
+          width: round(sz * 0.86); height: max(3, round(sz * 0.12)); clip: true; align: center
+          offset: [round(n1 * sz * 0.34 * gI), sliceY]
+          opacity: gOn && n4 > 0.3 ? 1 : 0
+          background: alpha(n4 > 0.65 ? glCyan : hotCol, 0.16)
+          if src != null {
+            Image { src: src; size: glyph; tint: n4 > 0.65 ? glCyan : cBone; offset: [0, iconOffY - sliceY] }
+          } else {
+            Text { font: dispFont; text: ini; fontSize: round(sz * 0.26); color: cBone; bold: true; align: center; offset: [0, iconOffY - sliceY] }
+          }
+        }
+      }
+      if shLive {
+        Box {
+          size: round(sz * 0.56); radius: round(sz * 0.28); clip: true; align: center
+          let u = shU
+          Box {
+            width: round(sz * 0.22); height: round(sz * 0.90)
+            rotation: 22
+            offset: [round((-0.65 + 1.3 * u) * sz), 0]
+            opacity: u > 0 && u < 1 ? 1 : 0
+            background: linear(0, 0, 1, 0, [alpha(hotCol, 0), alpha(cBone, isFav ? 0.44 : 0.30), alpha(hotCol, 0)])
+          }
+        }
       }
     }
   }
 
-  // App icon with red coin badge and ruby star for favorites
-  component AppIcon(a, isFav = false) {
+  // App icon with glowing favorite star coin or notification dot
+  component AppIcon(a, isFav = false, icPri = gIconPri, icHot = gIconHot, icShape = iconShape, icPx = iconPx) {
     Box {
       size: iconPx
-      align: topEnd
-      Box {
-        size: iconPx
-        align: center
-        radius: (iconPx / 2) * corners
-        background: transparent
-        border: isFav ? 2 : 0
-        borderColor: isFav ? redAccent : alpha(redAccent, 0.5)
-        TraySigil { src: a.hasIcon ? a.icon : null; sz: iconPx; lbl: a.label; ini: a.initials }
-      }
+      align: center
+      TraySigil { src: a.hasIcon ? a.icon : null; sz: icPx; lbl: a.label; ini: a.initials; isFav: isFav; shape: icShape; priCol: icPri; hotCol: icHot }
       if isFav {
         Box {
-          size: 16
-          radius: 8
-          offset: [3, -3]
-          background: (futOn ? #021014 : #140205)
-          border: 1
-          borderColor: redAccent
-          align: center
-          Text { font: uiFont; text: "★"; fontSize: 9; color: redAccent }
+          size: iconPx
+          align: topEnd
+          Box {
+            size: 16
+            radius: 8
+            offset: [2, -2]
+            background: linear(0, 0, 1, 1, [alpha(icPri, 0.18), deepSurface, #000000, alpha(cSec, 0.10)])
+            border: 1.2
+            borderColor: icHot
+            align: center
+            Text { font: uiFont; text: "★"; fontSize: 9; color: icHot }
+          }
         }
       }
       if a.dot && !isFav {
-        Box { size: 12; radius: 6; offset: [-2, 2]; background: redAccent; border: 2; borderColor: background }
+        Box {
+          size: iconPx
+          align: topEnd
+          Box {
+            size: 11
+            radius: 6
+            offset: [-1, 1]
+            background: linear(1, 0, 0, 1, [alpha(cSec, 0.12), icHot, #000000, alpha(icPri, 0.09)])
+            border: 2
+            borderColor: deepSurface
+          }
+        }
       }
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // APP CELL — Skin-aware obsidian tile + upgraded Long-Press Context Popup
+  // (Zero per-cell `time` binding for strict <4ms/frame!)
+  // ═══════════════════════════════════════════════════════════════════════════
   component Cell(a, picked) {
     let isFav = indexOf(favored, a.key) >= 0
-    Column {
+    let ovColId = get(appColorMap, a.key, "")
+    let ovColObj = ovColId != "" ? iconColorList.find(c => c.id == ovColId) : null
+    let icPri = ovColObj != null ? ovColObj.pri : gIconPri
+    let icHot = ovColObj != null ? ovColObj.hot : gIconHot
+    let icShape = get(shapeMap, a.key, "") != "" ? get(shapeMap, a.key, "") : iconShape
+    let ovSz = get(appSizeMap, a.key, "")
+    let icPx = ovSz == "sm" ? round(iconPx * 0.80) : (ovSz == "lg" ? round(iconPx * 1.14) : iconPx)
+    // Per-app duotone: each tile gets its own stable pairing of the theme's two contrasting colors
+    let hv = hash(a.key)
+    let tileA = hv < 0.34 ? icPri : hv < 0.67 ? cSec : icPri
+    let tileB = hv < 0.34 ? cSec : hv < 0.67 ? icPri : icHot
+    Box {
+      scale: tapBounce == a.key ? 0.9 : 1
+      offset: [0, tapBounce == a.key ? -4 : 0]
+      animate scale: spring(0.32, 520)
+      animate offset: spring(0.32, 520)
+      onPress: tapBounce = a.key
+      onRelease: {
+        tapBounce = ""
+        if scrollLvl > 0 { warp = 1 }   // release-to-scroll (or lift) kicks the scroll warp
+      }
       weight: 1
-      align: center
-      gap: 5
-      padding: [4, 8]
-      radius: 14 * corners
-      border: picked ? 2 : 1
-      borderColor: picked ? redAccent : isFav ? alpha(redAccent, 0.4) : alpha((futOn ? #22d1ff : #ff2236), 0.08)
-      background: picked ? alpha(redAccent, 0.22) : isFav ? alpha((futOn ? #041b22 : #220409), 0.6) : alpha((futOn ? #020d10 : #100204), 0.35)
-      opacity: a.paused ? 0.4 : 1
+      radius: skinRadius
+      clip: true
+      frost: skinFrost
+      border: picked ? 1.8 : (isFav ? max(skinBorderW, 1.2) : skinBorderW)
+      borderColor: picked ? icHot : isFav ? alpha(icPri, clamp(0.45 * glowAmp, 0.25, 0.85)) : (cardSkin == "minimal" ? alpha(icPri, 0.08) : alpha(icPri, cardSkin == "cyber" ? 0.30 : 0.16))
+      background: picked
+        ? linear(0, 0, 1, 1, [alpha(icPri, 0.32), alpha(darkCard, 0.90)])
+        : cardSkin == "minimal"
+        ? (isFav ? alpha(darkCard, 0.42) : transparent)
+        : cardSkin == "glass"
+        ? linear(0, 0, 0, 1, [alpha(darkCard, isFav ? 0.66 : 0.50), alpha(deepSurface, isFav ? 0.76 : 0.60)])
+        : cardSkin == "cyber"
+        ? linear(hv < 0.5 ? 0 : 1, 0, hv < 0.5 ? 1 : 0, 1, [alpha(tileA, isFav ? 0.26 : 0.16), #000000, #000000, alpha(tileB, isFav ? 0.22 : 0.13)])
+        : linear(hv < 0.5 ? 0 : 1, 0, hv < 0.5 ? 1 : 0, 1, [alpha(tileA, isFav ? 0.22 : 0.12), alpha(darkCard, 0.6), #000000, alpha(tileB, isFav ? 0.18 : 0.10)])
+      opacity: a.paused ? 0.38 : 1
       onTap: open(a.key)
       onLongPress: {
         if animHaptics { haptic() }
@@ -360,425 +863,976 @@ panel "app drawer" {
         menu = a.key
         menuShortcuts = shortcuts(a.key)
       }
-      if effMotion == "still" {
-        AppIcon { a: a; isFav: isFav }
-      } else {
+
+      // Top specular glass-obsidian highlight hairline on favorite / cyber / picked cells
+      if cardSkin == "cyber" || picked || isFav {
         Box {
-          size: iconPx
-          align: center
-          scale: 1 + (effMotion == "storm" ? 0.05 : 0.035) * sin(time * animSpeed * (effMotion == "storm" ? 2.6 : 1.5) + hash(a.key) * 6.2832)
-          AppIcon { a: a; isFav: isFav }
+          fill: width
+          height: cardSkin == "cyber" || picked ? 2 : 1.5
+          background: picked
+            ? linear(0, 0, 1, 0, [alpha(icPri, 0.0), icHot, cBone, icHot, alpha(icPri, 0.0)])
+            : isFav
+            ? linear(0, 0, 1, 0, [alpha(icPri, 0.0), alpha(icPri, 0.55), icHot, alpha(cBone, 0.85), alpha(icPri, 0.55), alpha(icPri, 0.0)])
+            : linear(0, 0, 1, 0, [alpha(icPri, 0.0), alpha(icPri, 0.9), alpha(icPri, 0.0)])
         }
       }
-      Text { font: uiFont; text: upper(a.name ?? ""); fontSize: 11; align: center; maxLines: 2; minLines: 2; fill: width; color: isFav ? (futOn ? #44d1ff : #ff4455) : (futOn ? #80d1ff : #ff808c) }
 
-      // Long press context menu with folders & favorites actions
-      Popup {
-        visible: menu == a.key && menuShortcuts != null
-        position: above
-        onDismiss: { menu = ""; menuNaming = "" }
-        width: 240
-        gap: 0
-        background: (futOn ? #031014 : #140306)
-        border: 1
-        borderColor: alpha(redAccent, 0.7)
-        radius: 14 * corners
+      Column {
+        fill: width
+        align: center
+        gap: 4
+        padding: [2, 7]
+        // SCROLL WARP: cells shear sideways, tilt and flicker while the drawer is flung (0 wakeups when wLive == false)
+        offset: wLive ? [round((hash(a.key, wTick) - 0.5) * 20 * warp * wMul), round((hash(a.key, wTick, 1) - 0.5) * 7 * warp * wMul)] : [0, 0]
+        rotation: wLive ? (hv - 0.5) * 9 * warp * wMul : 0
+        opacity: wLive && hash(a.key, wTick, 2) < 0.14 * warp * wMul ? 0.3 : 1
 
-        // App Shortcuts
-        for s in menuShortcuts key s.key {
+        AppIcon { a: a; isFav: isFav; icPri: icPri; icHot: icHot; icShape: icShape; icPx: icPx }
+
+        Text {
+          font: bodyFont
+          text: upper(a.name ?? "")
+          fontSize: labelSize
+          letterSpacing: labelTrack
+          align: center
+          maxLines: 2
+          minLines: 2
+          fill: width
+          color: warp > 0.25 && hash(a.key, wTick, 3) < 0.35 ? (hash(a.key, wTick, 4) < 0.5 ? glCyan : icHot) : (picked ? #ffffff : isFav ? icHot : labelTone)
+          offset: warp > 0.25 ? [round((hash(a.key, wTick, 5) - 0.5) * 8 * warp * wMul), 0] : [0, 0]
+        }
+
+        // ─── UPGRADED LONG-PRESS CONTEXT MENU POPUP (lazy-mounted only when open) ───
+        Popup {
+          visible: menu == a.key && menuShortcuts != null
+          position: above
+          onDismiss: { menu = ""; menuNaming = "" }
+          width: 266
+          gap: 0
+          background: linear(0, 0, 1, 1, [alpha(icPri, 0.13), deepSurface, #000000, alpha(cSec, 0.10)])
+          border: 1.3
+          borderColor: alpha(icPri, 0.82)
+          radius: 14 * corners
+
+          if menu == a.key && menuShortcuts != null {
+            // Top Plasma Accent Bar
+            Spacer { height: 2.5; fill: width; background: linear(0, 0, 1, 0, [alpha(icPri, 0.1), icHot, alpha(icPri, 0.1)]) }
+
+            // App Identity Header inside Context Menu
+            Row {
+              fill: width
+              align: center
+              gap: 10
+              padding: [12, 10]
+              background: linear(0, 0, 1, 0, [alpha(icPri, 0.18), alpha(darkCard, 0.85)])
+              Box {
+                size: 32
+                align: center
+                CatBadge { cat: icShape; sz: 32; col: icPri }
+                if a.hasIcon {
+                  Image { src: a.icon; size: 16; tint: icHot; label: a.label }
+                } else {
+                  Text { font: uiFont; text: a.initials; fontSize: 10; color: icHot; bold: true }
+                }
+              }
+              Column {
+                weight: 1
+                gap: 1
+                Text { font: uiFont; text: upper(a.name ?? ""); fontSize: 12; color: #ffffff; maxLines: 1; fontWeight: "bold"; letterSpacing: 0.6 }
+                Text { font: uiFont; text: upper(a.kind ?? "app") + (isFav ? " · ★ FAV" : ""); fontSize: 9; color: icHot; letterSpacing: 0.8; maxLines: 1 }
+              }
+            }
+
+            Spacer { height: 1; fill: width; background: alpha(icPri, 0.3) }
+
+            // Per-App Icon Customization: 6 Colors + 3 Sizes + 6 Shapes
+            Column {
+              fill: width
+              gap: 6
+              padding: [12, 8, 12, 8]
+              Text { font: uiFont; text: "◈ " + upper(str.iconColor); color: icHot; fontSize: 9; letterSpacing: 1.1 }
+              Row {
+                fill: width
+                gap: 5
+                for col in iconColorList key col.id {
+                  let cSel = ovColId == col.id
+                  Box {
+                    weight: 1
+                    height: 26
+                    radius: 7 * corners
+                    background: cSel ? alpha(col.pri, 0.32) : alpha(darkCard, 0.78)
+                    border: cSel ? 1.4 : 0.8
+                    borderColor: cSel ? col.hot : alpha(col.pri, 0.45)
+                    align: center
+                    onTap: {
+                      if animHaptics { haptic() }
+                      appColorMap = cSel ? remove(appColorMap, a.key) : set(appColorMap, a.key, col.id)
+                    }
+                    Box { size: 12; radius: 6; background: col.pri; border: 1; borderColor: col.hot }
+                  }
+                }
+              }
+              Row {
+                fill: width
+                gap: 5
+                align: center
+                Text { font: uiFont; text: upper(str.iconSize); color: mutedTone; fontSize: 8.5; letterSpacing: 0.9; width: 64 }
+                for szOpt in [{id: "sm", lbl: "S"}, {id: "md", lbl: "M"}, {id: "lg", lbl: "L"}] key szOpt.id {
+                  let sSel = ovSz == szOpt.id
+                  Box {
+                    weight: 1
+                    height: 24
+                    radius: 6 * corners
+                    background: sSel ? alpha(icPri, 0.32) : alpha(darkCard, 0.78)
+                    border: sSel ? 1.2 : 0.8
+                    borderColor: sSel ? icHot : alpha(icPri, 0.28)
+                    align: center
+                    onTap: {
+                      if animHaptics { haptic() }
+                      appSizeMap = sSel ? remove(appSizeMap, a.key) : set(appSizeMap, a.key, szOpt.id)
+                    }
+                    Text { font: bodyFont; text: szOpt.lbl; fontSize: 9.5; bold: true; color: sSel ? #ffffff : labelTone; align: center }
+                  }
+                }
+              }
+              Row {
+                fill: width
+                gap: 5
+                for shId in shapeMeta key shId {
+                  let shSel = get(shapeMap, a.key, "") == shId
+                  Box {
+                    weight: 1
+                    height: 26
+                    radius: 7 * corners
+                    background: shSel ? alpha(icPri, 0.30) : alpha(darkCard, 0.78)
+                    border: shSel ? 1.2 : 0.8
+                    borderColor: shSel ? icHot : alpha(icPri, 0.28)
+                    align: center
+                    onTap: {
+                      if animHaptics { haptic() }
+                      shapeMap = shSel ? remove(shapeMap, a.key) : set(shapeMap, a.key, shId)
+                    }
+                    CatBadge { cat: shId; sz: 15; col: shSel ? #ffffff : icHot }
+                  }
+                }
+              }
+            }
+
+            Spacer { height: 1; fill: width; background: alpha(icPri, 0.25) }
+
+          // App Shortcuts
+          for s in menuShortcuts key s.key {
+            Row {
+              scale: tapBounce == "2${hash(a, picked)}${s.key}" ? 0.9 : 1
+              offset: [0, tapBounce == "2${hash(a, picked)}${s.key}" ? -4 : 0]
+              animate scale: spring(0.32, 520)
+              animate offset: spring(0.32, 520)
+              onPress: tapBounce = "2${hash(a, picked)}${s.key}"
+              onRelease: tapBounce = ""
+              fill: width
+              align: center
+              gap: 10
+              padding: [12, 9]
+              onTap: { if animHaptics { haptic() }; menu = ""; open(s.key) }
+              Image { src: s.icon; size: 20; tint: d.monochrome ? redAccent : null; label: s.name }
+              Text { font: uiFont; text: s.name; fontSize: 12; weight: 1; maxLines: 1; color: labelTone }
+              Text {
+                scale: tapBounce == "3${hash(a, picked)}${s.key}" ? 0.9 : 1
+                offset: [0, tapBounce == "3${hash(a, picked)}${s.key}" ? -4 : 0]
+                animate scale: spring(0.32, 520)
+                animate offset: spring(0.32, 520)
+                onPress: tapBounce = "3${hash(a, picked)}${s.key}"
+                onRelease: tapBounce = ""
+                font: uiFont
+                text: "+PIN"
+                fontSize: 9
+                color: hotAccent
+                padding: [6, 3]
+                radius: 6 * corners
+                background: linear(0, 1, 1, 0, [alpha(cHot, 0.07), alpha(redAccent, 0.18), #000000, alpha(cSec, 0.11)])
+                border: 0.8
+                borderColor: alpha(redAccent, 0.5)
+                onTap: { if animHaptics { haptic() }; menu = ""; appAction("pin", s.key) }
+              }
+            }
+          }
+          Spacer { visible: len(menuShortcuts) > 0; height: 1; fill: width; background: alpha(redAccent, 0.25) }
+
+          // Standard App Actions with crisp vector glyph badges
+          for w in a.actions {
+            Row {
+              scale: tapBounce == "4${hash(a, picked)}" ? 0.9 : 1
+              offset: [0, tapBounce == "4${hash(a, picked)}" ? -4 : 0]
+              animate scale: spring(0.32, 520)
+              animate offset: spring(0.32, 520)
+              onPress: tapBounce = "4${hash(a, picked)}"
+              onRelease: tapBounce = ""
+              fill: width
+              align: center
+              gap: 10
+              padding: [12, 9]
+              onTap: { if animHaptics { haptic() }; menu = ""; appAction(w, a.key) }
+              Text {
+                font: uiFont
+                text: w == "pin" ? "◈" : w == "info" ? "ⓘ" : (w == "uninstall" || w == "remove") ? "✕" : w == "edit" ? "✎" : "↗"
+                fontSize: 13
+                color: (w == "uninstall" || w == "remove") ? hotAccent : redAccent
+              }
+              Text { font: uiFont; text: upper(get(str, w, w)); fontSize: 12; letterSpacing: 0.5; weight: 1; color: labelTone }
+            }
+          }
+
+          Spacer { height: 1; fill: width; background: alpha(redAccent, 0.25) }
+
+          // FAVORITES TOGGLE ROW
           Row {
+            scale: tapBounce == "5${hash(a, picked)}" ? 0.9 : 1
+            offset: [0, tapBounce == "5${hash(a, picked)}" ? -4 : 0]
+            animate scale: spring(0.32, 520)
+            animate offset: spring(0.32, 520)
+            onPress: tapBounce = "5${hash(a, picked)}"
+            onRelease: tapBounce = ""
             fill: width
             align: center
             gap: 10
-            padding: [12, 12]
-            onTap: { menu = ""; open(s.key) }
-            Image { src: s.icon; size: 22; tint: d.monochrome ? redAccent : null; label: s.name }
-            Text { font: uiFont; text: s.name; weight: 1; maxLines: 1; color: (futOn ? #80d1ff : #ff808c) }
-            Text { font: uiFont; text: "[+]"; color: redAccent; onTap: { menu = ""; appAction("pin", s.key) } }
+            padding: [12, 10]
+            background: isFav ? alpha(redAccent, 0.20) : transparent
+            onTap: {
+              if animHaptics { haptic() }
+              menu = ""
+              favored = isFav ? favored.filter(k => k != a.key) : flatten([favored, [a.key]])
+            }
+            Text { font: uiFont; text: isFav ? "★" : "☆"; color: hotAccent; fontSize: 15 }
+            Text { font: uiFont; text: upper(isFav ? str.unfavor : str.favor); fontSize: 12; color: isFav ? #ffffff : labelTone; weight: 1; letterSpacing: 0.5 }
+            Text {
+              font: uiFont
+              text: isFav ? "ON" : "ADD"
+              fontSize: 9
+              color: isFav ? #ffffff : hotAccent
+              letterSpacing: 0.6
+              padding: [6, 2]
+              radius: 6 * corners
+              background: isFav ? alpha(redAccent, 0.35) : alpha(redAccent, 0.12)
+              border: 0.8
+              borderColor: alpha(redAccent, isFav ? 0.8 : 0.35)
+            }
           }
-        }
-        Spacer { visible: len(menuShortcuts) > 0; height: 1; fill: width; background: alpha(redAccent, 0.3) }
 
-        // Standard App Actions
-        for w in a.actions {
-          Text { font: uiFont; text: get(str, w, w); fontSize: 14; fill: width; padding: [10, 14]; color: (futOn ? #80d1ff : #ff808c); onTap: { menu = ""; appAction(w, a.key) } }
-        }
-        Spacer { height: 1; fill: width; background: alpha(redAccent, 0.25) }
+          Spacer { height: 1; fill: width; background: alpha(redAccent, 0.25) }
 
-        // FAVORITES TOGGLE
-        Row {
-          fill: width
-          align: center
-          gap: 10
-          padding: [10, 14]
-          background: isFav ? alpha(redAccent, 0.2) : transparent
-          onTap: {
-            menu = ""
-            favored = isFav ? favored.filter(k => k != a.key) : flatten([favored, [a.key]])
-          }
-          Text { font: uiFont; text: isFav ? "★" : "☆"; color: redAccent; fontSize: 16 }
-          Text { font: uiFont; text: isFav ? str.unfavor : str.favor; color: isFav ? (futOn ? #44d1ff : #ff4455) : (futOn ? #80d1ff : #ff808c); weight: 1 }
-          Text { font: uiFont; text: isFav ? "ACTIVE" : "ADD"; fontSize: 9; color: alpha(redAccent, 0.8); letterSpacing: 0.8 }
-        }
-
-        Spacer { height: 1; fill: width; background: alpha(redAccent, 0.25) }
-
-        // FOLDERS SECTION
-        Row {
-          fill: width
-          padding: [8, 14, 4, 14]
-          Text { font: uiFont; text: upper(str.folders); color: (futOn ? #44d1ff : #ff4455); fontSize: 11; letterSpacing: 1.2; weight: 1 }
-        }
-
-        for f in folders key f.key {
+          // FOLDERS FILING SECTION
           Row {
+            fill: width
+            padding: [12, 8, 12, 4]
+            align: center
+            Text { font: uiFont; text: "◈ " + upper(str.folders); color: hotAccent; fontSize: 10; letterSpacing: 1.2; weight: 1 }
+          }
+
+          for f in folders key f.key {
+            let inFld = get(folderMap, a.key, "") == f.name
+            Row {
+              scale: tapBounce == "6${hash(a, picked)}${f.key}" ? 0.9 : 1
+              offset: [0, tapBounce == "6${hash(a, picked)}${f.key}" ? -4 : 0]
+              animate scale: spring(0.32, 520)
+              animate offset: spring(0.32, 520)
+              onPress: tapBounce = "6${hash(a, picked)}${f.key}"
+              onRelease: tapBounce = ""
+              fill: width
+              align: center
+              gap: 8
+              padding: [12, 8]
+              background: inFld ? alpha(redAccent, 0.22) : transparent
+              onTap: { if animHaptics { haptic() }; menu = ""; folderMap = set(folderMap, a.key, f.name) }
+              Text { font: uiFont; text: inFld ? "◆" : "◇"; color: inFld ? hotAccent : redAccent; fontSize: 12 }
+              Text { font: uiFont; text: upper(f.name); fontSize: 12; weight: 1; maxLines: 1; color: inFld ? #ffffff : labelTone }
+              Text { font: uiFont; text: "✓"; visible: inFld; color: hotAccent; fontSize: 12 }
+            }
+          }
+
+          // New folder row
+          Row {
+            scale: tapBounce == "7${hash(a, picked)}" ? 0.9 : 1
+            offset: [0, tapBounce == "7${hash(a, picked)}" ? -4 : 0]
+            animate scale: spring(0.32, 520)
+            animate offset: spring(0.32, 520)
+            onPress: tapBounce = "7${hash(a, picked)}"
+            onRelease: tapBounce = ""
             fill: width
             align: center
             gap: 8
-            padding: [8, 14]
-            background: get(folderMap, a.key, "") == f.name ? alpha(redAccent, 0.2) : transparent
-            onTap: { menu = ""; folderMap = set(folderMap, a.key, f.name) }
-            Text { font: uiFont; text: "📁"; color: redAccent; fontSize: 13 }
-            Text { font: uiFont; text: f.name; weight: 1; maxLines: 1; color: (futOn ? #80d1ff : #ff808c) }
-            Text { font: uiFont; text: "✓"; visible: get(folderMap, a.key, "") == f.name; color: redAccent }
+            padding: [12, 8]
+            onTap: { if animHaptics { haptic() }; menuNaming = a.key }
+            Text { font: uiFont; text: "+"; color: hotAccent; fontSize: 15 }
+            Text { font: uiFont; text: upper(str.newFolder); fontSize: 11.5; color: redAccent; letterSpacing: 0.5; weight: 1 }
           }
-        }
 
-        // New folder row
-        Row {
-          fill: width
-          align: center
-          gap: 8
-          padding: [8, 14]
-          onTap: menuNaming = a.key
-          Text { font: uiFont; text: "+"; color: redAccent; fontSize: 15 }
-          Text { font: uiFont; text: str.newFolder; color: redAccent; weight: 1 }
-        }
-
-        Row {
-          visible: menuNaming == a.key
-          fill: width
-          gap: 8
-          padding: [4, 14, 10, 14]
-          Input {
-            weight: 1
-            placeholder: str.folderName
-            underline: false
-            background: (futOn ? #04181e : #1e0409)
-            border: 1
-            borderColor: redAccent
-            radius: 8 * corners
-            padding: [6, 10]
-            color: (futOn ? #80d1ff : #ff808c)
-            onSubmit: {
-              let n = trim(value)
-              if n != "" {
-                folderMap = set(folderMap, a.key, n)
-                if indexOf(customFolders, n) < 0 {
-                  customFolders = flatten([customFolders, [n]])
+          Row {
+            visible: menuNaming == a.key
+            fill: width
+            gap: 6
+            padding: [12, 4, 12, 10]
+            Input {
+              weight: 1
+              placeholder: str.folderName
+              underline: false
+              background: linear(0, 0, 1, 1, [alpha(cPri, 0.13), darkCard, #000000, alpha(cSec, 0.10)])
+              border: 1.2
+              borderColor: redAccent
+              radius: 8 * corners
+              padding: [10, 6]
+              color: #ffffff
+              onSubmit: {
+                let n = trim(value)
+                if n != "" {
+                  folderMap = set(folderMap, a.key, n)
+                  if indexOf(customFolders, n) < 0 {
+                    customFolders = flatten([customFolders, [n]])
+                  }
                 }
+                menu = ""
+                menuNaming = ""
               }
-              menu = ""
-              menuNaming = ""
             }
           }
-        }
 
-        // Remove from folder option
-        Row {
-          visible: get(folderMap, a.key, "") != ""
-          fill: width
-          align: center
-          gap: 8
-          padding: [8, 14, 12, 14]
-          onTap: { menu = ""; folderMap = remove(folderMap, a.key) }
-          Text { font: uiFont; text: "✕"; color: (futOn ? #52d1ff : #ff5264); fontSize: 12 }
-          Text { font: uiFont; text: str.unfile; color: (futOn ? #52d1ff : #ff5264); weight: 1 }
+          // Remove from folder option
+          Row {
+            scale: tapBounce == "8${hash(a, picked)}" ? 0.9 : 1
+            offset: [0, tapBounce == "8${hash(a, picked)}" ? -4 : 0]
+            animate scale: spring(0.32, 520)
+            animate offset: spring(0.32, 520)
+            onPress: tapBounce = "8${hash(a, picked)}"
+            onRelease: tapBounce = ""
+            visible: get(folderMap, a.key, "") != ""
+            fill: width
+            align: center
+            gap: 8
+            padding: [12, 8, 12, 11]
+            onTap: { if animHaptics { haptic() }; menu = ""; folderMap = remove(folderMap, a.key) }
+            Text { font: uiFont; text: "✕"; color: hotAccent; fontSize: 12 }
+            Text { font: uiFont; text: upper(str.unfile); fontSize: 11.5; color: hotAccent; weight: 1 }
+          }
+          }
         }
       }
     }
   }
 
-  // Geometric turning ruby Holocron for folders
-  component Holocron() {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UNIVERSAL FUTURISTIC FOLDER ICON — Same sleek cyber-dossier silhouette across
+  // every theme, dynamically lit by the active theme's Kyber/AMOLED tokens.
+  // ═══════════════════════════════════════════════════════════════════════════
+  component FuturisticFolder(sz, count = 0, animOn = false) {
     Canvas {
-      size: iconPx
+      size: sz
       let cx = width / 2
       let cy = height / 2
-      let s = min(width, height) * 0.27
-      circle(cx, cy, s * 1.6, fill: radial(cx, cy, s * 1.6, [alpha(redAccent, 0.35), alpha(#000000, 0)]))
-      if effMotion == "still" {
-        rotate(45, cx, cy) { rect(cx - s, cy - s, s * 2, s * 2, radius: 2, stroke: redAccent, width: 1.5) }
-        rotate(45, cx, cy) { rect(cx - s * 0.58, cy - s * 0.58, s * 1.16, s * 1.16, stroke: alpha((futOn ? #80d1ff : #ff808c), 0.8), width: 1) }
-        circle(cx, cy, 3, fill: (futOn ? #80d1ff : #ff808c))
+      let w = width * 0.40
+      let h = height * 0.31
+      let pulse = animOn ? 0.5 + 0.5 * sin(time * 2.4 * animSpeed) : 0.5
+
+      // 1. Ambient under-glow halo
+      circle(cx, cy + h * 0.06, w * 1.26, fill: radial(cx, cy + h * 0.06, w * 1.26, [alpha(cPri, clamp((0.22 + pulse * 0.10) * glowAmp, 0.10, 0.44)), alpha(#000000, 0)]))
+
+      // 2. Back dossier chassis with 45° angled cyber tab
+      path([
+        [cx - w, cy + h * 0.72],
+        [cx - w, cy - h * 0.82],
+        [cx - w * 0.86, cy - h * 0.98],
+        [cx - w * 0.14, cy - h * 0.98],
+        [cx + w * 0.12, cy - h * 0.58],
+        [cx + w * 0.88, cy - h * 0.58],
+        [cx + w, cy - h * 0.40],
+        [cx + w, cy + h * 0.72],
+        [cx + w * 0.84, cy + h * 0.92],
+        [cx - w * 0.84, cy + h * 0.92]
+      ], closed: true, fill: alpha(deepSurface, 0.92), stroke: alpha(cPri, 0.78), width: 1.25)
+
+      // Glowing top-left tab status accent
+      line(cx - w * 0.76, cy - h * 0.78, cx - w * 0.24, cy - h * 0.78, stroke: hotAccent, width: 1.4, cap: round)
+
+      // 3. Recessed data sheet edge (visible when folder contains apps)
+      if count > 0 {
+        line(cx - w * 0.74, cy - h * 0.40, cx + w * 0.76, cy - h * 0.40, stroke: alpha(cBone, 0.72), width: 1.15, cap: round)
+      }
+
+      // 4. Stepped futuristic front cyber-pocket plate with chamfered base
+      path([
+        [cx - w * 1.02, cy - h * 0.18],
+        [cx - w * 0.22, cy - h * 0.18],
+        [cx - w * 0.04, cy - h * 0.32],
+        [cx + w * 1.02, cy - h * 0.32],
+        [cx + w * 1.02, cy + h * 0.72],
+        [cx + w * 0.84, cy + h * 0.94],
+        [cx - w * 0.84, cy + h * 0.94],
+        [cx - w * 1.02, cy + h * 0.72]
+      ], closed: true, fill: linear(cx, cy - h * 0.32, cx, cy + h * 0.94, [alpha(cPri, 0.24), alpha(darkCard, 0.94), alpha(deepSurface, 0.98)]), stroke: cPri, width: 1.45)
+
+      // 5. Minimalist glowing visor slit & core lock node
+      line(cx - w * 0.56, cy + h * 0.32, cx + w * 0.56, cy + h * 0.32, stroke: alpha(hotAccent, count > 0 ? 0.90 : 0.48), width: 1.45, cap: round)
+      if count > 0 {
+        circle(cx, cy + h * 0.32, 4.2, fill: alpha(cSec, 0.30))
+        circle(cx, cy + h * 0.32, 2.3, fill: cBone)
       } else {
-        let spin = time * 22 * animSpeed
-        rotate(spin, cx, cy) { rect(cx - s, cy - s, s * 2, s * 2, radius: 2, stroke: redAccent, width: 1.5) }
-        rotate(-spin * 0.7, cx, cy) { rect(cx - s * 0.58, cy - s * 0.58, s * 1.16, s * 1.16, stroke: alpha((futOn ? #80d1ff : #ff808c), 0.85), width: 1.1) }
-        circle(cx, cy, 2.5 + sin(time * 3 * animSpeed) * 0.8, fill: (futOn ? #80d1ff : #ff808c))
+        circle(cx, cy + h * 0.32, 1.8, fill: hotAccent)
       }
     }
   }
 
   component FolderCell(f) {
-    Column {
+    Box {
+      scale: tapBounce == "9${hash(f)}" ? 0.9 : 1
+      offset: [0, tapBounce == "9${hash(f)}" ? -4 : 0]
+      animate scale: spring(0.32, 520)
+      animate offset: spring(0.32, 520)
+      onPress: tapBounce = "9${hash(f)}"
+      onRelease: tapBounce = ""
       weight: 1
-      align: center
-      gap: 5
-      padding: [6, 8]
-      radius: 14 * corners
-      background: alpha((futOn ? #031216 : #160307), 0.65)
-      border: 1
-      borderColor: alpha(redAccent, 0.35)
+      radius: skinRadius
+      clip: true
+      frost: skinFrost
+      background: linear(0, 0, 1, 1, [alpha(redAccent, 0.14), alpha(darkCard, 0.84), alpha(deepSurface, 0.94)])
+      border: 1.2
+      borderColor: alpha(redAccent, clamp(0.42 * glowAmp, 0.25, 0.80))
       onTap: { if animHaptics { haptic() }; folderOpen = f.name }
-      Holocron {}
-      Text { font: uiFont; text: upper(f.name ?? ""); fontSize: 11; align: center; maxLines: 2; minLines: 2; fill: width; color: (futOn ? #e8e8ff : #ffe8eb) }
-      Row {
-        gap: 2
+
+      // Top plasma edge strip
+      Box {
+        fill: width
+        height: 2
+        background: linear(0, 0, 1, 0, [alpha(redAccent, 0.0), hotAccent, alpha(redAccent, 0.0)])
+      }
+
+      Column {
+        fill: width
         align: center
-        padding: [1, 6]
-        radius: 8 * corners
-        background: alpha(redAccent, 0.2)
-        Text { font: uiFont; text: "${len(f.apps)}"; color: redAccent; fontSize: 10 }
+        gap: 4
+        padding: [4, 7]
+        FuturisticFolder { sz: iconPx; count: len(f.apps); animOn: effMotion == "storm" }
+        Text { font: bodyFont; text: upper(f.name ?? ""); fontSize: labelSize; letterSpacing: labelTrack; align: center; maxLines: 2; minLines: 2; fill: width; color: #ffffff }
+        Row {
+          align: center
+          padding: [7, 1.5]
+          radius: 8 * corners
+          background: linear(1, 0, 0, 1, [alpha(cSec, 0.12), alpha(redAccent, 0.24), #000000, alpha(cPri, 0.09)])
+          border: 0.8
+          borderColor: alpha(redAccent, 0.55)
+          Text { font: bodyFont; text: "${len(f.apps)}"; color: hotAccent; fontSize: 9.5; bold: true }
+        }
       }
     }
   }
 
-  // Section header with glowing animated ruby ember bar
-  component SectionHead(plain, epithet = "", work = false, offer = false, count = null) {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ZERO-COST SECTION HEADER — Static glowing beam with bone-ivory specular glint
+  // ═══════════════════════════════════════════════════════════════════════════
+  component SectionHead(plain, epithet = "", work = false, offer = false, count = null, cat = "") {
     let title = voice == "sith" && epithet != "" ? upper("${plain} · ${epithet}") : upper(plain)
     Column {
-      gap: 3
+      gap: 4
       fill: width
-      padding: [10, 14, 0, 2]
+      padding: [2, 10, 2, 4]
+      // Subtle top specular glass hairline
+      Box {
+        fill: width
+        height: 1
+        background: linear(0, 0, 1, 0, [alpha(cPri, 0.0), alpha(cHot, 0.36), alpha(cBone, 0.45), alpha(cPri, 0.0)])
+      }
       Row {
         fill: width
         gap: 6
         align: center
-        Text { font: uiFont; text: "✦"; color: redAccent; fontSize: 11 }
-        Text { font: uiFont; text: title; color: (futOn ? #b8d1ff : #ffb8c0); letterSpacing: track; fontSize: 12; weight: 1; maxLines: 1 }
-        if count != null {
-          Text { font: uiFont; text: "[${count}]"; color: alpha(redAccent, 0.8); fontSize: 11 }
+        if cat == "favored" {
+          Text { font: uiFont; text: "★"; color: hotAccent; fontSize: 11.5 }
+        } else if cat != "" {
+          CatBadge { cat: cat; sz: 15; col: hotAccent }
+        } else {
+          Text { font: dispFont; text: tc.glyph ?? "✦"; color: hotAccent; fontSize: 11 }
         }
-        Text { font: uiFont; text: "[" + (d.work.paused ? str.turnOn : str.pause) + "]"; visible: work == true; color: redAccent; onTap: workApps("toggle") }
-        Text { font: uiFont; text: "[" + (d.linux == "installing" ? str.installing : str.installLinux) + "]"; visible: offer == true; color: redAccent; onTap: launcher("linux") }
+        Text { font: dispFont; text: title; color: labelTone; letterSpacing: track; fontSize: 11.5; weight: 1; maxLines: 1; fontWeight: "bold" }
+        if count != null && count > 0 {
+          Text {
+            font: bodyFont
+            text: "${count}"
+            color: hotAccent
+            fontSize: 9.5
+            padding: [6, 1.5]
+            radius: 6 * corners
+            background: linear(0, 1, 1, 0, [alpha(cHot, 0.07), alpha(redAccent, 0.16), #000000, alpha(cSec, 0.11)])
+            border: 0.8
+            borderColor: alpha(redAccent, 0.42)
+          }
+        }
+        if work == true {
+          Text {
+            scale: tapBounce == "10${hash(plain, epithet, work, offer, count)}" ? 0.9 : 1
+            offset: [0, tapBounce == "10${hash(plain, epithet, work, offer, count)}" ? -4 : 0]
+            animate scale: spring(0.32, 520)
+            animate offset: spring(0.32, 520)
+            onPress: tapBounce = "10${hash(plain, epithet, work, offer, count)}"
+            onRelease: tapBounce = ""
+            font: bodyFont
+            text: upper(d.work.paused ? str.turnOn : str.pause)
+            fontSize: 9.5
+            color: #ffffff
+            padding: [7, 2.5]
+            radius: 8 * corners
+            background: linear(0, 0, 1, 1, [alpha(cPri, 0.13), alpha(redAccent, 0.22), #000000, alpha(cSec, 0.10)])
+            border: 1
+            borderColor: redAccent
+            onTap: { if animHaptics { haptic() }; workApps("toggle") }
+          }
+        }
+        if offer == true {
+          Text {
+            scale: tapBounce == "11${hash(plain, epithet, work, offer, count)}" ? 0.9 : 1
+            offset: [0, tapBounce == "11${hash(plain, epithet, work, offer, count)}" ? -4 : 0]
+            animate scale: spring(0.32, 520)
+            animate offset: spring(0.32, 520)
+            onPress: tapBounce = "11${hash(plain, epithet, work, offer, count)}"
+            onRelease: tapBounce = ""
+            font: bodyFont
+            text: upper(d.linux == "installing" ? str.installing : str.installLinux)
+            fontSize: 9.5
+            color: #ffffff
+            padding: [7, 2.5]
+            radius: 8 * corners
+            background: linear(1, 0, 0, 1, [alpha(cSec, 0.12), alpha(redAccent, 0.22), #000000, alpha(cPri, 0.09)])
+            border: 1
+            borderColor: redAccent
+            onTap: { if animHaptics { haptic() }; launcher("linux") }
+          }
+        }
       }
-      if effMotion == "still" {
-        Spacer { height: 1; fill: width; background: linear(0, 0, 1, 0, [alpha(redAccent, 0.05), alpha(redAccent, 0.7), alpha(redAccent, 0.05)]) }
-      } else {
-        Canvas {
-          height: 3
-          fill: width
-          rect(0, 1, width, 1, fill: alpha(redAccent, 0.4))
-          let x = (time * 56 * animSpeed) % (width + 40) - 20
-          rect(x, 0, 24, 3, radius: 1.5, fill: alpha((futOn ? #d0d1ff : #ffd0d6), 0.95))
-        }
+      // Precision obsidian energy beam with bone-tipped specular glint (zero Canvas/frame cost)
+      Box {
+        fill: width
+        height: 1.5
+        background: linear(0, 0, 1, 0, [alpha(cPri, 0.04), alpha(cPri, 0.65), cHot, alpha(cBone, 0.88), alpha(cPri, 0.35), alpha(cPri, 0.02)])
       }
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ROOT CHAMBER STACK
+  // ═══════════════════════════════════════════════════════════════════════════
   Box {
     fill: true
 
-    // Sith chamber AMOLED background
-    Canvas {
-      fill: true
-      circle(width * 0.5, 36, width * 0.65, fill: radial(width * 0.5, 36, width * 0.65, [alpha(redAccent, 0.18), alpha(#000000, 0)]))
-      rect(0, 0, width, height, fill: linear(0, 0, 0, height, [alpha((futOn ? #031a20 : #200307), 0.25), alpha(#000000, 0), alpha((futOn ? #020d10 : #100204), 0.4)]))
-    }
-
-    // Embers and electric lightning effects
-    if effMotion != "still" {
-      Canvas {
-        fill: true
-        let breath = 0.5 + 0.5 * sin(time * 1.5 * animSpeed)
-        let band = height * (0.06 + 0.8 * breath)
-        rect(0, band - 30, width, 60, fill: linear(0, band - 30, 0, band + 30, [alpha(redAccent, 0), alpha(redAccent, 0.045 + breath * 0.04), alpha(redAccent, 0)]))
-        for i in range(16) {
-          let speed = ((effMotion == "storm" ? 46 : 22) + hash(i, 4) * (effMotion == "storm" ? 70 : 34)) * animSpeed
-          let y = (height + 20) - ((time * speed + hash(i, 5) * height) % (height + 20))
-          circle(hash(i, 3) * width, y, 0.7 + hash(i, 6) * 1.7, fill: alpha(redAccent, 0.16 + hash(i, 7) * 0.4))
-        }
-        if effMotion == "storm" {
-          let phase = (time * animSpeed) % 5.2
-          let flash = phase < 0.42 ? 1 - phase / 0.42 : phase > 2.55 && phase < 2.92 ? 1 - (phase - 2.55) / 0.37 : 0
-          if flash > 0.04 {
-            let n = floor(time * 10 * animSpeed)
-            let left = range(8).map(i => [4 + hash(n, i) * 26, i * height / 7])
-            let right = range(8).map(i => [width - 4 - hash(n, i + 11) * 26, i * height / 7])
-            path(left, stroke: alpha(redAccent, 0.55 * flash), width: 3.4)
-            path(left, stroke: alpha((futOn ? #e4e4ff : #ffe4e8), 0.9 * flash), width: 1.15)
-            path(right, stroke: alpha(redAccent, 0.45 * flash), width: 3)
-            path(right, stroke: alpha((futOn ? #e4e4ff : #ffe4e8), 0.8 * flash), width: 1.05)
-          }
-        }
-      }
-    }
+    // GPU AGSL Textured Obsidian Chamber (0 wakeups in still mode, 0 loops, zero extra full-screen overdraw passes!)
+    ChamberBackdrop { tVal: effMotion == "still" ? 0.0 : time * animSpeed; stormLvl: effMotion == "still" ? 0.0 : (effMotion == "storm" ? 1.0 : 0.35); warpLvl: clamp(warp * wMul, 0, 1.7) }
 
     Column {
       fill: true
       gap: 0
-      padding: [8, 0]
+      padding: [10, 0]
 
-      // Header Banner
+      // ─── COMMAND HEADER BANNER ───
       Row {
         visible: !searching && folderOpen == ""
+        fill: width
         align: center
-        padding: [2, 14, 2, 0]
+        padding: [2, 10, 2, 6]
         gap: 10
-        Seal {}
+        Seal { animOn: effMotion != "still" }
         Column {
           weight: 1
-          gap: 1
-          Text { font: uiFont; text: str.vault; color: redAccent; letterSpacing: track + 0.8; fontSize: 14; maxLines: 1; fontWeight: "bold" }
-          Text { font: uiFont; text: upper(str.motto); color: (futOn ? #4a728c : #8c4a54); letterSpacing: track; fontSize: 10; maxLines: 1 }
+          gap: 2
+          Row {
+            align: center
+            gap: 6
+            Text { font: dispFont; text: tc.vaultTitle ?? str.vault; color: redAccent; letterSpacing: track + 0.4; fontSize: 14; maxLines: 1; fontWeight: "bold" }
+            Text {
+              font: bodyFont
+              text: "${len(mine)} · ★${len(favoredApps)}"
+              fontSize: 8.5
+              maxLines: 1
+              color: curMode == "mask" ? cSec : curMode == "skeletor" ? cBone : hotAccent
+              letterSpacing: 0.3
+              padding: [5, 1.5]
+              radius: 6 * corners
+              background: linear(0, 1, 1, 0, [alpha(cHot, 0.07), alpha(redAccent, 0.16), #000000, alpha(cSec, 0.11)])
+              border: 0.8
+              borderColor: alpha(curMode == "mask" ? cSec : curMode == "skeletor" ? cBone : redAccent, 0.55)
+            }
+          }
+          Text { font: bodyFont; text: tc.vaultMotto ?? upper(str.motto); color: mutedTone; letterSpacing: track * 0.7; fontSize: 9.5; maxLines: 1 }
         }
-      }
 
-      // Tabs & Actions Bar (Personal / Work + Customization ≡ + Settings ⚙)
-      Row {
-        align: center
-        padding: [2, 12, 4, 12]
-        gap: 8
-
-        for t in d.work != null && showWork && !searching ? ["personal", "work"] : [] {
-          Text { font: uiFont; text: get(str, t); color: tab == t ? redAccent : muted; background: tab == t ? alpha((futOn ? #0a2f3a : #3a0a12), 0.9) : transparent; radius: 18 * corners; padding: [12, 8]; letterSpacing: 0.6; onTap: tab = t }
-        }
-        Spacer { weight: 1 }
-
-        // ≡ CUSTOMIZATION BUTTON & POPUP
-        Box {
-          size: 40
-          radius: 20 * corners
-          background: alpha((futOn ? #06222a : #2a060c), 0.92)
-          border: 1
-          borderColor: alpha(redAccent, prefs ? 0.9 : 0.45)
+        // ◈ FX SWITCH — toggles all drawer animations on/off (persisted)
+        Row {
+          height: 38
+          padding: [10, 0]
+          gap: 5
           align: center
-          onTap: prefs = !prefs
-          Text { font: uiFont; text: "≡"; fontSize: 18; color: redAccent; align: center }
-
-          Popup {
-            visible: prefs
-            onDismiss: prefs = false
-            width: 250
-            gap: 0
-            background: (futOn ? #031014 : #140306)
-            border: 1
-            borderColor: alpha(redAccent, 0.8)
-            radius: 14 * corners
-
-            Text { font: uiFont; text: "CUSTOMIZATION"; color: redAccent; padding: [10, 14, 2, 6]; fontSize: 12; letterSpacing: 1.5; fontWeight: "bold" }
-
-            // Accent Red Palette
-            Text { font: uiFont; text: str.accent; color: muted; padding: [6, 14, 2, 4]; fontSize: 11 }
-            Row {
-              fill: width
-              gap: 2
-              padding: [0, 8]
-              Text { font: uiFont; text: "crimson"; weight: 1; align: center; padding: [6, 0]; fontSize: 10; color: accentChoice == "crimson" ? #ffffff : (futOn ? #8ad1ff : #ff8a96); background: accentChoice == "crimson" ? (futOn ? #10728c : #8c1020) : transparent; radius: 6 * corners; onTap: accentChoice = "crimson" }
-              Text { font: uiFont; text: "blood"; weight: 1; align: center; padding: [6, 0]; fontSize: 10; color: accentChoice == "blood" ? #ffffff : (futOn ? #8ad1ff : #ff8a96); background: accentChoice == "blood" ? (futOn ? #10728c : #8c1020) : transparent; radius: 6 * corners; onTap: accentChoice = "blood" }
-              Text { font: uiFont; text: "scarlet"; weight: 1; align: center; padding: [6, 0]; fontSize: 10; color: accentChoice == "scarlet" ? #ffffff : (futOn ? #8ad1ff : #ff8a96); background: accentChoice == "scarlet" ? (futOn ? #10728c : #8c1020) : transparent; radius: 6 * corners; onTap: accentChoice = "scarlet" }
-              Text { font: uiFont; text: "ember"; weight: 1; align: center; padding: [6, 0]; fontSize: 10; color: accentChoice == "ember" ? #ffffff : (futOn ? #8ad1ff : #ff8a96); background: accentChoice == "ember" ? (futOn ? #10728c : #8c1020) : transparent; radius: 6 * corners; onTap: accentChoice = "ember" }
-              Text { font: uiFont; text: "cyber"; weight: 1; align: center; padding: [6, 0]; fontSize: 10; color: accentChoice == "cyber" ? #ffffff : (futOn ? #8ad1ff : #ff8a96); background: accentChoice == "cyber" ? (futOn ? #10728c : #8c1020) : transparent; radius: 6 * corners; onTap: accentChoice = "cyber" }
-            }
-
-            // Life / Motion (managed centrally in Deck Forge animations.json)
-            Text { font: uiFont; text: str.life; color: muted; padding: [6, 14, 2, 4]; fontSize: 11 }
-            Row {
-              fill: width
-              padding: [0, 8]
-              Text {
-                font: uiFont
-                text: "FX: ${effMotion == "still" ? "OFF" : upper(effMotion)} · DECK FORGE"
-                weight: 1
-                align: center
-                padding: [6, 4]
-                fontSize: 10
-                color: effMotion == "still" ? muted : redAccent
-                background: alpha(redAccent, effMotion == "still" ? 0.08 : 0.18)
-                radius: 6 * corners
-              }
-            }
-
-            // Voice / Lore
-            Text { font: uiFont; text: str.voice; color: muted; padding: [6, 14, 2, 4]; fontSize: 11 }
-            Row {
-              fill: width
-              gap: 2
-              padding: [0, 8]
-              Text { font: uiFont; text: str.plain; weight: 1; align: center; padding: [6, 0]; color: voice == "plain" ? redAccent : foreground; background: voice == "plain" ? alpha(redAccent, 0.25) : transparent; radius: 6 * corners; onTap: voice = "plain" }
-              Text { font: uiFont; text: str.sith; weight: 1; align: center; padding: [6, 0]; color: voice == "sith" ? redAccent : foreground; background: voice == "sith" ? alpha(redAccent, 0.25) : transparent; radius: 6 * corners; onTap: voice = "sith" }
-            }
-
-            // App Order
-            Text { font: uiFont; text: str.order; color: muted; padding: [6, 14, 2, 4]; fontSize: 11 }
-            Row {
-              fill: width
-              gap: 2
-              padding: [0, 8]
-              Text { font: uiFont; text: str.byKind; weight: 1; align: center; padding: [6, 0]; color: !byName ? redAccent : foreground; background: !byName ? alpha(redAccent, 0.25) : transparent; radius: 6 * corners; onTap: byName = false }
-              Text { font: uiFont; text: str.byName; weight: 1; align: center; padding: [6, 0]; color: byName ? redAccent : foreground; background: byName ? alpha(redAccent, 0.25) : transparent; radius: 6 * corners; onTap: byName = true }
-            }
-
-            // Grid Density
-            Text { font: uiFont; text: str.density; color: muted; padding: [6, 14, 2, 4]; fontSize: 11 }
-            Row {
-              fill: width
-              gap: 2
-              padding: [0, 8]
-              Text { font: uiFont; text: str.compact; weight: 1; align: center; padding: [6, 0]; color: cellDp == 64 ? redAccent : foreground; background: cellDp == 64 ? alpha(redAccent, 0.25) : transparent; radius: 6 * corners; onTap: cellDp = 64 }
-              Text { font: uiFont; text: str.normal; weight: 1; align: center; padding: [6, 0]; color: cellDp == 76 ? redAccent : foreground; background: cellDp == 76 ? alpha(redAccent, 0.25) : transparent; radius: 6 * corners; onTap: cellDp = 76 }
-              Text { font: uiFont; text: str.wide; weight: 1; align: center; padding: [6, 0]; color: cellDp == 88 ? redAccent : foreground; background: cellDp == 88 ? alpha(redAccent, 0.25) : transparent; radius: 6 * corners; onTap: cellDp = 88 }
-            }
-
-            Row {
-              visible: d.work != null
-              fill: width
-              align: center
-              padding: [10, 14]
-              onTap: { showWork = !showWork; if !showWork { tab = "personal" } }
-              Text { font: uiFont; text: str.workTab; weight: 1; color: (futOn ? #e8e8ff : #ffe8ec) }
-              Text { font: uiFont; text: showWork ? "✓" : ""; color: redAccent }
-            }
+          radius: 19 * corners
+          background: fxEnabled
+            ? linear(0, 0, 1, 1, [alpha(cPri, 0.24), alpha(darkCard, 0.92), #000000, alpha(cSec, 0.14)])
+            : alpha(darkCard, 0.78)
+          scale: pressedBtn == "fx" ? 0.92 : 1.0
+          animate scale: spring(0.7, 480)
+          border: 1
+          borderColor: fxEnabled ? alpha(hotAccent, 0.75) : alpha(mutedTone, 0.32)
+          onPress: pressedBtn = "fx"
+          onRelease: pressedBtn = ""
+          onTap: { if animHaptics { haptic() }; fxEnabled = !fxEnabled; if !fxEnabled { warp = 0 } }
+          Box {
+            size: 7
+            radius: 4
+            background: fxEnabled ? hotAccent : alpha(mutedTone, 0.35)
+          }
+          Text {
+            font: bodyFont
+            text: fxEnabled ? "FX" : "OFF"
+            fontSize: 10.5
+            bold: true
+            letterSpacing: 1.0
+            color: fxEnabled ? #ffffff : mutedTone
+            maxLines: 1
           }
         }
 
-        // Settings button
+        // ◈ HUB — all customization lives in the Command Deck hub
         Box {
-          size: 40
-          radius: 20 * corners
-          background: alpha((futOn ? #06222a : #2a060c), 0.92)
+          height: 38
+          width: 64
+          radius: 19 * corners
+          background: linear(0, 0, 1, 1, [alpha(cPri, 0.13), alpha(darkCard, 0.92), #000000, alpha(cSec, 0.10)])
+          scale: pressedBtn == "hub" ? 0.92 : 1.0
+          animate scale: spring(0.7, 480)
           border: 1
-          borderColor: alpha(redAccent, 0.45)
+          borderColor: alpha(redAccent, 0.55)
           align: center
-          onTap: launcher("settings")
-          Image { src: gear; size: 20; tint: redAccent; label: str.settings }
-          Box { visible: d.updates > 0; align: topEnd; size: 40; padding: 6; Box { size: 8; radius: 4; background: redAccent } }
+          onPress: pressedBtn = "hub"
+          onRelease: pressedBtn = ""
+          onTap: { if animHaptics { haptic() }; run("owl-send 25-sith-command-deck.owl set forgeReq $(date +%s%N)"); launcher("page:0") }
+          Text { font: bodyFont; text: "◈ HUB"; fontSize: 11; bold: true; letterSpacing: 1.0; color: hotAccent; align: center }
+        }
+
+        // ⚙ LAUNCHER SETTINGS ORB
+        Box {
+          size: 38
+          radius: 19 * corners
+          background: linear(1, 0, 0, 1, [alpha(cSec, 0.12), alpha(darkCard, 0.92), #000000, alpha(cPri, 0.09)])
+          scale: pressedBtn == "settings" ? 0.92 : 1.0
+          animate scale: spring(0.7, 480)
+          border: 1
+          borderColor: alpha(redAccent, 0.55)
+          align: center
+          onPress: pressedBtn = "settings"
+          onRelease: pressedBtn = ""
+          onTap: { if animHaptics { haptic() }; launcher("settings") }
+          Image { src: gear; size: 19; tint: redAccent; label: str.settings }
+          Box { visible: d.updates > 0; align: topEnd; size: 38; padding: 5; Box { size: 8; radius: 4; background: hotAccent; border: 1.5; borderColor: deepSurface } }
         }
       }
 
-      // Main App Grid List
-      Column {
+      // ─── INTERACTIVE FILTER PILL BAR & QUICK FOLDER ACTION ───
+      Row {
         visible: !searching && folderOpen == ""
-        lazy: true
+        fill: width
+        align: center
+        padding: [2, 2, 2, 6]
+        gap: 4
+
+        for ft in [{id: "all", lbl: str.filterAll, ic: "◈"}, {id: "fav", lbl: str.filterFav, ic: "★"}, {id: "folders", lbl: str.filterFolders, ic: "◆"}] {
+          let fAct = filterTab == ft.id
+          Row {
+            align: center
+            gap: 3
+            padding: [7, 5]
+            radius: 11 * corners
+            background: fAct ? alpha(redAccent, 0.26) : alpha(darkCard, 0.78)
+            animate background: tween(160ms, "out")
+            scale: pressedBtn == ("f:" + ft.id) ? 0.94 : 1.0
+            animate scale: spring(0.7, 480)
+            border: 1
+            borderColor: fAct ? hotAccent : alpha(redAccent, 0.26)
+            onPress: pressedBtn = "f:" + ft.id
+            onRelease: pressedBtn = ""
+            onTap: { if animHaptics { haptic() }; filterTab = ft.id }
+            if ft.id == "folders" {
+              CatBadge { cat: "folders"; sz: 12; col: fAct ? hotAccent : redAccent }
+            } else {
+              Text { font: bodyFont; text: ft.ic; fontSize: 9; color: fAct ? hotAccent : redAccent }
+            }
+            Text { font: bodyFont; text: upper(ft.lbl); fontSize: 9.5; letterSpacing: 0.4; color: fAct ? #ffffff : labelTone; bold: fAct; maxLines: 1 }
+          }
+        }
+
+        Spacer { weight: 1 }
+
+        // Inline Icon Style Customizer toggle (3 Sizes · 6 Colors · 6 Shapes)
+        Text {
+          font: bodyFont
+          text: "◈ " + upper(str.customize)
+          fontSize: 9
+          letterSpacing: 0.4
+          color: customizerOpen ? #ffffff : hotAccent
+          bold: true
+          maxLines: 1
+          padding: [7, 5]
+          radius: 11 * corners
+          background: customizerOpen ? alpha(redAccent, 0.30) : alpha(darkCard, 0.78)
+          animate background: tween(160ms, "out")
+          scale: pressedBtn == "style" ? 0.94 : 1.0
+          animate scale: spring(0.7, 480)
+          border: 1
+          borderColor: customizerOpen ? hotAccent : alpha(redAccent, 0.38)
+          onPress: pressedBtn = "style"
+          onRelease: pressedBtn = ""
+          onTap: { if animHaptics { haptic() }; customizerOpen = !customizerOpen }
+        }
+
+        // Quick + FOLDER pill
+        Text {
+          font: bodyFont
+          text: "+ DIR"
+          fontSize: 9
+          letterSpacing: 0.4
+          color: creatingFolder ? #ffffff : hotAccent
+          bold: true
+          maxLines: 1
+          padding: [7, 5]
+          radius: 11 * corners
+          background: creatingFolder ? alpha(redAccent, 0.30) : alpha(darkCard, 0.78)
+          animate background: tween(160ms, "out")
+          scale: pressedBtn == "newfld" ? 0.94 : 1.0
+          animate scale: spring(0.7, 480)
+          border: 1
+          borderColor: creatingFolder ? hotAccent : alpha(redAccent, 0.38)
+          onPress: pressedBtn = "newfld"
+          onRelease: pressedBtn = ""
+          onTap: { if animHaptics { haptic() }; creatingFolder = !creatingFolder }
+        }
+      }
+
+      // ─── INLINE ICON CUSTOMIZER PANEL (3 SIZES · 6 COLORS · 6 SHAPES) ───
+      if customizerOpen && !searching && folderOpen == "" {
+        Column {
+          fill: width
+          gap: 8
+          padding: [12, 10]
+          radius: 14 * corners
+          background: linear(0, 0, 1, 1, [alpha(gIconPri, 0.14), alpha(darkCard, 0.92), alpha(deepSurface, 0.96)])
+          border: 1
+          borderColor: alpha(gIconPri, 0.45)
+
+          // 3 ICON SIZES (Small / Medium / Large)
+          Row {
+            fill: width
+            align: center
+            gap: 8
+            Text { font: bodyFont; text: "◈ " + upper(str.iconSize); fontSize: 9.5; letterSpacing: 1.0; color: gIconHot; bold: true; width: 82 }
+            Row {
+              weight: 1
+              gap: 5
+              for szOpt in [{id: "sm", lbl: str.sizeSm}, {id: "md", lbl: str.sizeMd}, {id: "lg", lbl: str.sizeLg}] key szOpt.id {
+                let sAct = iconSize == szOpt.id
+                Box {
+                  weight: 1
+                  padding: [0, 6]
+                  radius: 9 * corners
+                  background: sAct ? alpha(gIconPri, 0.32) : alpha(deepSurface, 0.85)
+                  animate background: tween(160ms, "out")
+                  border: 1
+                  borderColor: sAct ? gIconHot : alpha(gIconPri, 0.28)
+                  align: center
+                  onTap: { if animHaptics { haptic() }; iconSize = szOpt.id }
+                  Text { font: bodyFont; text: upper(szOpt.lbl); fontSize: 9.5; letterSpacing: 0.7; color: sAct ? #ffffff : labelTone; bold: sAct; align: center }
+                }
+              }
+            }
+          }
+
+          // 6 ICON COLORS (tap active again to return to Theme Auto)
+          Column {
+            fill: width
+            gap: 5
+            Row {
+              fill: width
+              align: center
+              Text { font: bodyFont; text: "◈ " + upper(str.iconColor); fontSize: 9.5; letterSpacing: 1.0; color: gIconHot; bold: true; weight: 1 }
+              Text { font: bodyFont; text: iconColor == "theme" ? upper(str.themeAuto) : upper(gColObj != null ? gColObj.lbl : iconColor); fontSize: 8.5; letterSpacing: 0.8; color: mutedTone }
+            }
+            Row {
+              fill: width
+              gap: 5
+              for col in iconColorList key col.id {
+                let cAct = iconColor == col.id
+                Box {
+                  weight: 1
+                  padding: [0, 6]
+                  radius: 9 * corners
+                  background: cAct ? alpha(col.pri, 0.28) : alpha(deepSurface, 0.85)
+                  animate background: tween(160ms, "out")
+                  border: cAct ? 1.4 : 0.9
+                  borderColor: cAct ? col.hot : alpha(col.pri, 0.42)
+                  align: center
+                  onTap: { if animHaptics { haptic() }; iconColor = cAct ? "theme" : col.id }
+                  Column {
+                    align: center
+                    gap: 3
+                    Box { size: 14; radius: 7; background: col.pri; border: 1.2; borderColor: col.hot }
+                    Text { font: bodyFont; text: upper(col.lbl); fontSize: 7.5; letterSpacing: 0.3; color: cAct ? #ffffff : mutedTone; maxLines: 1; align: center }
+                  }
+                }
+              }
+            }
+          }
+
+          // 6 ICON SHAPES
+          Row {
+            fill: width
+            align: center
+            gap: 8
+            Text { font: bodyFont; text: "◈ " + upper(str.iconShape); fontSize: 9.5; letterSpacing: 1.0; color: gIconHot; bold: true; width: 82 }
+            Row {
+              weight: 1
+              gap: 5
+              for shId in shapeMeta key shId {
+                let shAct = iconShape == shId
+                Box {
+                  weight: 1
+                  height: 28
+                  radius: 8 * corners
+                  background: shAct ? alpha(gIconPri, 0.30) : alpha(deepSurface, 0.85)
+                  border: shAct ? 1.2 : 0.8
+                  borderColor: shAct ? gIconHot : alpha(gIconPri, 0.28)
+                  align: center
+                  onTap: { if animHaptics { haptic() }; iconShape = shId }
+                  CatBadge { cat: shId; sz: 15; col: shAct ? #ffffff : gIconHot }
+                }
+              }
+            }
+          }
+        }
+        Spacer { height: 6 }
+      }
+
+      // Personal / Work Profile Switcher (only shown when work profile is available & enabled)
+      Row {
+        visible: d.work != null && showWork && !searching && folderOpen == ""
+        fill: width
+        gap: 6
+        padding: [2, 0, 2, 6]
+        for t in ["personal", "work"] {
+          let tAct = tab == t
+          Box {
+            scale: tapBounce == ("12:" + t) ? 0.9 : 1
+            offset: [0, tapBounce == ("12:" + t) ? -4 : 0]
+            animate scale: spring(0.32, 520)
+            animate offset: spring(0.32, 520)
+            onPress: tapBounce = "12:" + t
+            onRelease: tapBounce = ""
+            weight: 1
+            padding: [10, 6]
+            radius: 10 * corners
+            background: tAct ? alpha(redAccent, 0.24) : alpha(darkCard, 0.65)
+            animate background: tween(160ms, "out")
+            border: 1
+            borderColor: tAct ? hotAccent : alpha(redAccent, 0.2)
+            align: center
+            onTap: { if animHaptics { haptic() }; tab = t }
+            Text { font: bodyFont; text: upper(get(str, t)); fontSize: 11; letterSpacing: 1.0; color: tAct ? #ffffff : mutedTone; bold: tAct }
+          }
+        }
+      }
+
+      // Inline Quick-Create Folder Input Bar
+      Row {
+        visible: creatingFolder && !searching && folderOpen == ""
+        fill: width
+        align: center
+        gap: 6
+        padding: [2, 2, 2, 8]
+        Input {
+          weight: 1
+          placeholder: str.folderName
+          underline: false
+          clear: true
+          background: linear(0, 1, 1, 0, [alpha(cHot, 0.07), darkCard, #000000, alpha(cSec, 0.11)])
+          border: 1.2
+          borderColor: hotAccent
+          radius: 10 * corners
+          padding: [12, 7]
+          color: #ffffff
+          onSubmit: {
+            let n = trim(value)
+            if n != "" && indexOf(customFolders, n) < 0 {
+              customFolders = flatten([customFolders, [n]])
+              if animHaptics { haptic() }
+            }
+            creatingFolder = false
+          }
+        }
+        Text {
+          scale: tapBounce == "13" ? 0.9 : 1
+          offset: [0, tapBounce == "13" ? -4 : 0]
+          animate scale: spring(0.32, 520)
+          animate offset: spring(0.32, 520)
+          onPress: tapBounce = "13"
+          onRelease: tapBounce = ""
+          font: bodyFont
+          text: "✕"
+          fontSize: 11
+          color: hotAccent
+          padding: [10, 8]
+          radius: 10 * corners
+          background: linear(0, 0, 1, 1, [alpha(cPri, 0.13), alpha(redAccent, 0.24), #000000, alpha(cSec, 0.10)])
+          border: 1
+          borderColor: alpha(redAccent, 0.6)
+          onTap: creatingFolder = false
+        }
+      }
+
+      // ─── EMPTY STATE CARD (when Favorites or Folders filter has 0 items) ───
+      Box {
+        visible: !searching && folderOpen == "" && len(rows) == 0
         weight: 1
         fill: width
-        gap: 0
+        align: center
+        Column {
+          align: center
+          gap: 6
+          padding: [24, 22]
+          radius: 16 * corners
+          background: linear(0, 0, 1, 1, [alpha(darkCard, 0.85), alpha(deepSurface, 0.92)])
+          border: 1
+          borderColor: alpha(redAccent, 0.38)
+          if filterTab == "fav" {
+            Text { font: dispFont; text: "☆"; fontSize: 28; color: hotAccent }
+          } else {
+            FuturisticFolder { sz: 44; count: 0; animOn: false }
+          }
+          Text { font: dispFont; text: filterTab == "fav" ? str.emptyFav : str.emptyFld; fontSize: 13; letterSpacing: 1.2; color: #ffffff; bold: true }
+          Text { font: bodyFont; text: filterTab == "fav" ? str.emptyFavSub : str.emptyFldSub; fontSize: 9.5; letterSpacing: 0.6; color: mutedTone; align: center }
+        }
+      }
+
+      // ─── MAIN VIRTUALIZED APP GRID LIST ───
+      Column {
+        visible: !searching && folderOpen == "" && len(rows) > 0
+        lazy: true
+        onRelease: { if scrollLvl > 0 { warp = 1 } }
+        weight: 1
+        fill: width
+        gap: 5
 
         for row in rows key row.key {
           if row.fcells != null {
             Row {
               fill: width
-              gap: 0
+              gap: 5
               for f in row.fcells { FolderCell { f: f } }
               for s in range(0, cols - len(row.fcells)) { Spacer { weight: 1 } }
             }
           } else if row.plain != null {
-            SectionHead { plain: row.plain; epithet: row.epithet; work: row.work; offer: row.offer; count: row.count }
+            SectionHead { plain: row.plain; epithet: row.epithet; work: row.work; offer: row.offer; count: row.count; cat: row.cat ?? "" }
           } else {
             Row {
               fill: width
-              gap: 0
+              gap: 5
               for a in row.cells { Cell { a: a; picked: false } }
               for s in range(0, cols - len(row.cells)) { Spacer { weight: 1 } }
             }
@@ -786,44 +1840,86 @@ panel "app drawer" {
         }
       }
 
-      // Folder Page View (Opened Folder)
+      // ─── OPENED FOLDER VIEW ───
       Column {
         visible: !searching && folderOpen != ""
         weight: 1
         fill: width
-        gap: 0
+        gap: 6
 
         Row {
           fill: width
           align: center
-          gap: 6
-          padding: [8, 14, 2, 8]
-          Text { font: uiFont; text: "‹"; fontSize: 24; color: redAccent; onTap: { folderOpen = ""; folderRenaming = false } }
-          Text { font: uiFont; text: "📁 " + upper(folderOpen); color: (futOn ? #e8e8ff : #ffe8eb); letterSpacing: track; weight: 1; maxLines: 1; fontSize: 14; fontWeight: "bold" }
-          Text { font: uiFont; text: "[${len(openFolderApps)}]"; color: redAccent; fontSize: 12 }
-          Text { font: uiFont; text: "✎"; fontSize: 16; color: redAccent; onTap: folderRenaming = !folderRenaming }
-          Text {
-            font: uiFont
-            text: "✕"; fontSize: 16; color: (futOn ? #52d1ff : #ff5264)
+          gap: 8
+          padding: [2, 10, 2, 4]
+          Box {
+            scale: tapBounce == "14" ? 0.9 : 1
+            offset: [0, tapBounce == "14" ? -4 : 0]
+            animate scale: spring(0.32, 520)
+            animate offset: spring(0.32, 520)
+            onPress: tapBounce = "14"
+            onRelease: tapBounce = ""
+            size: 36
+            radius: 18 * corners
+            background: linear(1, 0, 0, 1, [alpha(cSec, 0.12), alpha(darkCard, 0.9), #000000, alpha(cPri, 0.09)])
+            border: 1
+            borderColor: alpha(redAccent, 0.55)
+            align: center
+            onTap: { if animHaptics { haptic() }; folderOpen = ""; folderRenaming = false }
+            Text { font: bodyFont; text: "‹"; fontSize: 22; color: hotAccent }
+          }
+          FuturisticFolder { sz: 30; count: len(openFolderApps); animOn: false }
+          Column {
+            weight: 1
+            gap: 1
+            Text { font: dispFont; text: upper(folderOpen); color: #ffffff; letterSpacing: track + 0.4; maxLines: 1; fontSize: 15; fontWeight: "bold" }
+            Text { font: bodyFont; text: "FOLDER · ${len(openFolderApps)} ITEMS"; color: hotAccent; fontSize: 9; letterSpacing: 1.0 }
+          }
+          Box {
+            scale: tapBounce == "15" ? 0.9 : 1
+            offset: [0, tapBounce == "15" ? -4 : 0]
+            animate scale: spring(0.32, 520)
+            animate offset: spring(0.32, 520)
+            onPress: tapBounce = "15"
+            onRelease: tapBounce = ""
+            size: 34
+            radius: 10 * corners
+            background: folderRenaming ? alpha(redAccent, 0.3) : alpha(darkCard, 0.85)
+            border: 1
+            borderColor: alpha(redAccent, 0.5)
+            align: center
+            onTap: { if animHaptics { haptic() }; folderRenaming = !folderRenaming }
+            Text { font: uiFont; text: "✎"; fontSize: 14; color: hotAccent }
+          }
+          Box {
+            scale: tapBounce == "16" ? 0.9 : 1
+            offset: [0, tapBounce == "16" ? -4 : 0]
+            animate scale: spring(0.32, 520)
+            animate offset: spring(0.32, 520)
+            onPress: tapBounce = "16"
+            onRelease: tapBounce = ""
+            size: 34
+            radius: 10 * corners
+            background: linear(0, 1, 1, 0, [alpha(cHot, 0.07), alpha(darkCard, 0.85), #000000, alpha(cSec, 0.11)])
+            border: 1
+            borderColor: alpha(redAccent, 0.5)
+            align: center
             onTap: {
+              if animHaptics { haptic() }
               folderMap = reduce(entries(folderMap), (m, e) => e.value == folderOpen ? m : set(m, e.key, e.value), {})
               customFolders = customFolders.filter(n => n != folderOpen)
               folderOpen = ""
               folderRenaming = false
             }
+            Text { font: uiFont; text: "✕"; fontSize: 13; color: hotAccent }
           }
         }
 
-        if effMotion == "still" {
-          Spacer { height: 1; fill: width; background: linear(0, 0, 1, 0, [alpha(redAccent, 0.05), alpha(redAccent, 0.7), alpha(redAccent, 0.05)]) }
-        } else {
-          Canvas {
-            height: 3
-            fill: width
-            rect(0, 1, width, 1, fill: alpha(redAccent, 0.4))
-            let x = (time * 56 * animSpeed) % (width + 40) - 20
-            rect(x, 0, 24, 3, radius: 1.5, fill: alpha((futOn ? #d0d1ff : #ffd0d6), 0.95))
-          }
+        // Precision glowing header divider (zero Canvas cost)
+        Box {
+          fill: width
+          height: 1.5
+          background: linear(0, 0, 1, 0, [alpha(redAccent, 0.05), redAccent, hotAccent, alpha(redAccent, 0.05)])
         }
 
         // Rename folder input row
@@ -831,16 +1927,16 @@ panel "app drawer" {
           visible: folderRenaming
           fill: width
           gap: 8
-          padding: [6, 14, 6, 14]
+          padding: [2, 2, 2, 4]
           Input {
             weight: 1
             placeholder: str.folderName
             underline: false
-            background: (futOn ? #031318 : #180307)
-            border: 1
-            borderColor: redAccent
-            radius: 8 * corners
-            padding: [6, 10]
+            background: linear(0, 0, 1, 1, [alpha(cPri, 0.13), darkCard, #000000, alpha(cSec, 0.10)])
+            border: 1.2
+            borderColor: hotAccent
+            radius: 10 * corners
+            padding: [10, 7]
             color: #ffffff
             onSubmit: {
               let n = trim(value)
@@ -852,26 +1948,36 @@ panel "app drawer" {
               folderRenaming = false
             }
           }
-          Box {
-            padding: [6, 10]
-            radius: 8 * corners
-            background: alpha(redAccent, 0.3)
-            align: center
+          Text {
+            scale: tapBounce == "17" ? 0.9 : 1
+            offset: [0, tapBounce == "17" ? -4 : 0]
+            animate scale: spring(0.32, 520)
+            animate offset: spring(0.32, 520)
+            onPress: tapBounce = "17"
+            onRelease: tapBounce = ""
+            font: uiFont
+            text: "✕"
+            color: hotAccent
+            padding: [10, 8]
+            radius: 10 * corners
+            background: linear(1, 0, 0, 1, [alpha(cSec, 0.12), alpha(redAccent, 0.25), #000000, alpha(cPri, 0.09)])
+            border: 1
+            borderColor: alpha(redAccent, 0.55)
             onTap: folderRenaming = false
-            Text { font: uiFont; text: "✕"; color: redAccent }
           }
         }
 
         // Open Folder App Grid
         Column {
           lazy: true
+          onRelease: { if scrollLvl > 0 { warp = 1 } }
           weight: 1
           fill: width
-          gap: 0
+          gap: 5
           for row in folderRows key row.key {
             Row {
               fill: width
-              gap: 0
+              gap: 5
               for a in row.cells { Cell { a: a; picked: false } }
               for s in range(0, cols - len(row.cells)) { Spacer { weight: 1 } }
             }
@@ -879,35 +1985,46 @@ panel "app drawer" {
         }
       }
 
-      // Search Results Grid
+      // ─── SEARCH RESULTS GRID ───
       Column {
         visible: searching
         lazy: true
+        onRelease: { if scrollLvl > 0 { warp = 1 } }
         reverse: true
         weight: 1
         fill: width
-        gap: 0
+        gap: 5
         for row in hitRows key row.key {
           Row {
             fill: width
-            gap: 0
+            gap: 5
             for a, i in row.cells { Cell { a: a; picked: row.start + i == chosen } }
             for s in range(0, cols - len(row.cells)) { Spacer { weight: 1 } }
           }
         }
       }
 
-      // Prompt Bar Ask Row
+      // ─── PROMPT BAR ASK AGENT ROW ───
       Row {
+        scale: tapBounce == "18" ? 0.9 : 1
+        offset: [0, tapBounce == "18" ? -4 : 0]
+        animate scale: spring(0.32, 520)
+        animate offset: spring(0.32, 520)
+        onPress: tapBounce = "18"
+        onRelease: tapBounce = ""
         visible: searching
         fill: width
-        gap: 6
+        align: center
+        gap: 10
         padding: [12, 10]
-        border: chosen == -1 ? 2 : 1
-        borderColor: chosen == -1 ? redAccent : alpha(redAccent, 0.3)
+        border: chosen == -1 ? 1.5 : 1
+        borderColor: chosen == -1 ? hotAccent : alpha(redAccent, 0.35)
         radius: 14 * corners
-        background: chosen == -1 ? alpha(redAccent, 0.15) : alpha((futOn ? #031014 : #140306), 0.8)
+        background: chosen == -1
+          ? linear(0, 0, 1, 0, [alpha(redAccent, 0.28), alpha(darkCard, 0.90)])
+          : alpha(deepSurface, 0.88)
         onTap: {
+          if animHaptics { haptic() }
           if !linux {
             launcher("linux")
           } else if agent == null {
@@ -916,13 +2033,38 @@ panel "app drawer" {
             ask(typed)
           }
         }
-        Text { font: uiFont; text: "⏎"; color: chosen == -1 ? redAccent : muted }
+        Box {
+          width: 3
+          height: 20
+          radius: 2
+          background: chosen == -1 ? hotAccent : alpha(redAccent, 0.45)
+        }
+        Text { font: uiFont; text: "⏎"; fontSize: 14; color: chosen == -1 ? hotAccent : mutedTone }
         Text {
           font: uiFont
           text: !linux ? str.askInstallLinux : agent == null ? str.askInstallAgent : str.askAgent(agent.bin, typed)
-          color: chosen == -1 ? #ffffff : muted
+          color: chosen == -1 ? #ffffff : labelTone
           maxLines: 1
           weight: 1
+        }
+      }
+    }
+
+    // ◈ SCROLL WARP OVERLAY: chromatic tear bars that jump around while the drawer is flung (no touch handlers, passes taps through)
+    if scrollLvl > 0 {
+      Box {
+        fill: true
+        align: topStart
+        clip: true
+        opacity: warp > 0.02 ? 1 : 0
+        for i in range(0, scrollLvl >= 2 ? 7 : 4) {
+          Box {
+            width: round((screenWidth ?? 390) * (0.25 + hash(i, 11) * 0.75))
+            height: round(2 + hash(i, 12) * (scrollLvl >= 2 ? 20 : 9))
+            offset: [round((hash(i, gTick, 2) - 0.35) * (screenWidth ?? 390) * 0.6), round(hash(i, gTick, 3) * (screenHeight ?? 800))]
+            background: linear(0, 0, 1, 0, [alpha(i % 2 == 0 ? glCyan : hotAccent, 0), alpha(i % 2 == 0 ? glCyan : hotAccent, 0.12 + 0.26 * warp), alpha(i % 2 == 0 ? glCyan : hotAccent, 0)])
+            opacity: hash(i, gTick, 4) < 0.2 + 0.8 * warp ? 1 : 0
+          }
         }
       }
     }

@@ -1,9 +1,9 @@
 {
-  "active": "vader",
-  "preset": "vader",
-  "accent": "#ff1e3c",
-  "hot": "#ff6677",
-  "speed": 0.5,
+  "active": "aether-prism",
+  "preset": "aether-prism",
+  "accent": "#00f0ff",
+  "hot": "#f59e0b",
+  "speed": 1,
   "eco": false,
   "presets": {
     "vader": {
@@ -65,6 +65,21 @@
       "secondary": "#66ffb3",
       "dim": "#007a41",
       "bg": "#000603"
+    },
+    "skeletor": {
+      "id": "skeletor",
+      "name": "Skeletor Havoc",
+      "label": "HAVOC",
+      "crystal": "Snake Mountain Ultraviolet",
+      "accent": "#b44aff",
+      "hot": "#eb9eff",
+      "primary": "#b44aff",
+      "secondary": "#e82cff",
+      "dim": "#4d127a",
+      "bg": "#06010d"
     }
-  }
+  },
+  "mode": "aether-prism",
+  "dim": "#0f2744",
+  "bg": "#010204"
 }

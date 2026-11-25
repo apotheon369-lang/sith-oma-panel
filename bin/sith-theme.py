@@ -116,19 +116,27 @@ def build_out(data, msg=""):
     }
 
 
+def _run_owl_hub(*kv):
+    hub_bin = os.path.join(os.path.expanduser("~"), ".local", "bin", "owl-hub")
+    if os.path.isfile(hub_bin):
+        import subprocess
+        try:
+            subprocess.run([hub_bin, *kv], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+        except Exception:
+            pass
+
+
 def cmd_set(key):
     data = load_theme()
     presets = data.get("presets", {})
     if key not in presets:
         return {"ok": False, "msg": f"Unknown preset: {key}"}
-    p = presets[key]
-    data["active"] = key
-    data["preset"] = key
-    data["accent"] = p["accent"]
-    data["hot"] = p["hot"]
-    save_theme(data)
-    sync_style_toml(p["accent"], p.get("dim", "#7a1420"))
-    return build_out(data, msg=f"Kyber -> {p['name']} ({p['accent']})")
+    if key == "skeletor":
+        _run_owl_hub("mode", "skeletor")
+    else:
+        _run_owl_hub("mode", "infernal")
+        _run_owl_hub("theme", key)
+    return build_out(load_theme(), msg=f"Kyber -> {presets[key]['name']} ({presets[key]['accent']})")
 
 
 def cmd_cycle():
@@ -139,12 +147,9 @@ def cmd_cycle():
 
 
 def cmd_speed(val_str):
-    data = load_theme()
     spd = max(0.5, min(2.0, float(val_str)))
-    data["speed"] = spd
-    save_theme(data)
-    sync_animations(speed=spd)
-    return build_out(data, msg=f"FX Speed -> {spd}x")
+    _run_owl_hub("speed", str(spd))
+    return build_out(load_theme(), msg=f"FX Speed -> {spd}x")
 
 
 def cmd_eco(mode):
@@ -153,10 +158,8 @@ def cmd_eco(mode):
         eco = not bool(data.get("eco", False))
     else:
         eco = mode in ("on", "true", "1")
-    data["eco"] = eco
-    save_theme(data)
-    sync_animations(eco=eco)
-    return build_out(data, msg="Eco Mode ON (AMOLED Battery)" if eco else "Eco Mode OFF (Full Sith FX)")
+    _run_owl_hub("eco", "true" if eco else "false")
+    return build_out(load_theme(), msg="Eco Mode ON (AMOLED Battery)" if eco else "Eco Mode OFF (Full FX)")
 
 
 def main():

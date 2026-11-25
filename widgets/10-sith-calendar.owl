@@ -1,305 +1,1340 @@
 face "sith calendar altar" {
-  meta { owl: 22; description: "Crimson Sith calendar altar — a scrollable obsidian page of the phone's next 14 days, with a pentagram date sigil, day-grouped event cards, and a loopless AMOLED backdrop glow. Nothing is read until you tap to allow the calendar." }
+  meta {
+    owl: 22
+    description: "Sith Chrono-Altar — obsidian calendar face with loopless AGSL brushed-carbon & plasma aura textures, live day-progress Chrono Sigil, interactive 14-day orbital date strip, live event countdowns, hub-driven styling, and <4ms adaptive frame pacing."
+  }
   page: 0
   order: 0
   statusBar: false
   padding: 0
 
-  // ---------------- SOURCES ----------------
-  // Shared theme switch (set from the infernal face pill): "infernal" or "future"
-  source uiCfg = file("~/.config/omalauncher/ui-mode.json") json optional
-  let futOn = (uiCfg.mode ?? "infernal") == "future"
-  let uiFont = futOn ? "~/.local/share/fonts/RussoOne-Regular.ttf" : "~/.local/share/fonts/GrenzeGotisch.ttf"
-  source now    = clock every 30s
-  source cal    = android.calendar
-  source bat    = android.battery
-  source animCfg = file("~/.config/omalauncher/animations.json") json
-  source ecoCfg  = file("~/.config/omalauncher/eco-mode.json") json
+  // ---------------- SOURCES (zero shell polling, 100% native + file-watched) ----------------
+  source hub     = file("~/.config/omalauncher/hub.json") json optional
+  let rzBusy     = (hub.busy ?? false) == true
+  let rzRes      = rzBusy ? 0.34 : 1
+  let gpuRes     = clamp(num(hub.res, 1), 0.25, 1)   // full-screen shader resolution (hub.res)
+  let curMode    = hub.mode ?? "infernal"
+  let ecoOn      = (hub.eco ?? false) == true
+  let T          = hub.tok ?? {}
+  let tc         = T.copy ?? {}
+  let uiFont     = T.fontPath ?? "sans"
+  let dispFont   = T.displayFontPath ?? uiFont
+  let bodyFont   = T.bodyFont ?? (hub.font == "mono" ? "mono" : "sans")
+  let modeIdx    = num(T.modeIdx, 0)
+  // ---- GLOBAL THEME BACKDROP tokens (shared by every face; one panorama, low-res) ----
+  let bgRes  = clamp(min(num(hub.res, 1), 0.5), 0.25, 0.5)   // backdrop always <= 50% res
+  let bgGlow = 0.75 + 0.15 * clamp(num(hub.glow, 1), 0, 3)
+  let bgPri  = T.pri  != null ? rgb(T.pri[0],  T.pri[1],  T.pri[2])  : #ff1e3c
+  let bgHot  = T.hot  != null ? rgb(T.hot[0],  T.hot[1],  T.hot[2])  : #ff8596
+  let bgSec  = T.sec  != null ? rgb(T.sec[0],  T.sec[1],  T.sec[2])  : #3d9bff
+  let bgDim  = T.dim  != null ? rgb(T.dim[0],  T.dim[1],  T.dim[2])  : #6b0918
+  let bgBone = T.bone != null ? rgb(T.bone[0], T.bone[1], T.bone[2]) : #fff0f2
+  source now     = clock every 60s
+  source cal     = android.calendar
+  source alarm   = android.alarm
+  source bat     = android.battery
+  source osSaver = android.modes   // event-driven; Android Battery Saver freezes ambient FX
 
-  // ---------------- FX / ECO (mirror the command deck's master switches) ----------------
-  let ecoOn        = (ecoCfg.enabled ?? false) == true
-  let animMasterRaw = (animCfg.master ?? true) == true
-  let animMaster   = animMasterRaw && !ecoOn
-  let animSpeed    = clamp(num(animCfg.speed, 1.0), 0.25, 3.0)
-  let calFxRaw     = (animCfg.calendar_fx ?? true) == true
-  let fxOn         = animMaster && calFxRaw
+  // ---------------- INTERACTIVE CALENDAR STATE ----------------
+  // Filter: "all" | "today" | "week" | "day"
+  state tapBounce = ""   // press-bounce: which tappable is held (springs back on release)
+  state filterMode = "all"
+  // Selected day offset 0..13 when filterMode == "day"
+  state selDayIdx  = -1
+  // Visible 7-day window in orbital strip: 0 (days 0..6) or 1 (days 7..13)
+  state stripWeek  = 0
+  // Show >30 events toggle (node-cap safeguard)
+  state showAllEvs = false
 
-  // ---------------- PALETTE (crimson/obsidian Sith) ----------------
-  let accentCol  = ecoOn ? (futOn ? #00758f : #8f0018) : (futOn ? #11d1ff : #ff1133)
-  let accentHot  = ecoOn ? (futOn ? #33a7cc : #cc3344) : (futOn ? #66d1ff : #ff6677)
-  let accentDark = ecoOn ? (futOn ? #00080a : #0a0002) : (futOn ? #021d24 : #240206)
-  let accentGhost = ecoOn ? (futOn ? #003f4d : #4d000e) : (futOn ? #00758f : #8f0018)
-  let inkText    = (futOn ? #e8e8ff : #ffe8ec)
-  let inkSoft    = (futOn ? #b3d1ff : #ffb3c0)
-  let inkMuted   = alpha((futOn ? #8fd1ff : #ff8fa3), 0.6)
+  // ---------------- FX / ADAPTIVE CLOCK STATE ----------------
+  state fxT    = 0
+  state burstT = 0
+  state tapU   = 0.5
+  state tapV   = 0.22
 
-  // ---------------- DATE SIGIL VALUES ----------------
-  let dName   = upper(fmtTime(now, "EEEE"))
-  let dNum    = fmtTime(now, "d")
-  let dMon    = upper(fmtTime(now, "MMM"))
-  let dYear   = fmtTime(now, "yyyy")
-  let dTime   = fmtTime(now, "HH:mm")
-  let todayKey = fmtTime(now, "yyyyMMdd")
+  // ---------------- THEME / ECO / FX RESOLUTION (UNIFIED 4-THEME hub.tok) ----------------
+  let kyberId       = hub.theme ?? "vader"
+  let saver = ((bat.level ?? 100) < 20 && !((bat.charging ?? false) == true)) || (osSaver.saver ?? false) == true   // low battery or Android Battery Saver: hold still instead of stutter
+  let animMaster    = (hub.fx ?? true) == true && !ecoOn && !saver
+  let animSpeed     = clamp(num(hub.speed, 1.0), 0.5, 2.0)
+  let fxOn          = animMaster
+  let glowLvl       = num(hub.glow, 1)
+  let surf          = hub.surface ?? "obsidian"
+  let skin          = surf == "oled" ? "amoled" : surf
+  let hubTex        = hub.texture ?? "none"
+  let texMode       = hubTex == "grid" ? "grid" : hubTex == "hex" ? "hex" : "void"
+  let shaderOn      = !ecoOn
+  let effScan       = false
 
-  // ---------------- EVENT SUMMARY ----------------
-  let evAll    = cal.granted ? cal.events : []
-  let evCount  = len(evAll)
-  let todayCount = count(evAll, e => fmtTime(e.start, "yyyyMMdd") == todayKey)
+  // Unified 4-mode palette tokens compiled by owl-hub (zero mode ternaries!)
+  let cPri    = ecoOn ? (T.ecoPri  != null ? rgb(T.ecoPri[0],  T.ecoPri[1],  T.ecoPri[2])  : #b8263a) : (T.pri  != null ? rgb(T.pri[0],  T.pri[1],  T.pri[2])  : #ff1e3c)
+  let cMid    = T.mid   != null ? rgb(T.mid[0],   T.mid[1],   T.mid[2])   : #ff3850
+  let cHot    = ecoOn ? (T.ecoHot  != null ? rgb(T.ecoHot[0],  T.ecoHot[1],  T.ecoHot[2])  : #d94c5e) : (T.hot  != null ? rgb(T.hot[0],  T.hot[1],  T.hot[2])  : #ff8596)
+  let cSec    = T.sec   != null ? rgb(T.sec[0],   T.sec[1],   T.sec[2])   : #ff6a1a
+  let cBone   = ecoOn ? (T.ecoBone != null ? rgb(T.ecoBone[0], T.ecoBone[1], T.ecoBone[2]) : #c7a3a8) : (T.bone != null ? rgb(T.bone[0], T.bone[1], T.bone[2]) : #fff0f2)
+  let cDim    = ecoOn ? (T.ecoDim  != null ? rgb(T.ecoDim[0],  T.ecoDim[1],  T.ecoDim[2])  : #4d0c18) : (T.dim  != null ? rgb(T.dim[0],  T.dim[1],  T.dim[2])  : #6b0918)
+  let cDeep   = T.deep  != null ? rgb(T.deep[0],  T.deep[1],  T.deep[2])  : #170206
+  let cCard   = T.card  != null ? rgb(T.card[0],  T.card[1],  T.card[2])  : #0c0104
+  let cObs    = T.obs   != null ? rgb(T.obs[0],   T.obs[1],   T.obs[2])   : #050002
+  let cInk    = T.ink   != null ? rgb(T.ink[0],   T.ink[1],   T.ink[2])   : #fff0f2
+  let cMuted  = T.muted != null ? rgb(T.muted[0], T.muted[1], T.muted[2]) : #c77c88
 
-  // ---------------- FX CLOCK (only advances while FX on) ----------------
-  state fxT = 0
+  let accentCol   = cPri
+  let accentHot   = cHot
+  let accentDeep  = cDeep
+  let accentGhost = cDim
+  let accentSpark = curMode == "mask" ? cSec : cBone
+  let inkText     = cInk
+  let inkSoft     = mix(cHot, cInk, 0.42)
+  let inkMuted    = cMuted
+
+  // ---------------- TYPOGRAPHY (2-Role Hierarchy: Display vs Body) ----------------
+  let metaFont = bodyFont
+
+  // ---------------- SKIN GEOMETRY & SURFACE TOKENS ----------------
+  let cardRad    = (skin == "amoled" ? 10 : skin == "glass" ? 16 : 14) * clamp(num(hub.radius, 1.0), 0.6, 1.4)
+  let cardBorder = skin == "neon" ? 1.8 : skin == "cyber" ? 1.5 : 1.1
+  let cardFrost  = skin == "glass" && !ecoOn ? 16 : 0
+  let floorCol   = cObs
+  let cardBg     = ecoOn || skin == "amoled"
+    ? alpha(cCard, 0.94)
+    : skin == "glass"
+    ? alpha(cDeep, 0.56)
+    : skin == "neon"
+    ? linear(0, 0, 1, 1, [alpha(cDeep, 0.94), alpha(cDim, 0.34), alpha(cObs, 0.96)])
+    : skin == "cyber"
+    ? linear(0, 0, 1, 1, [alpha(cDeep, 0.92), alpha(cObs, 0.96)])
+    : linear(0, 0, 0, 1, [alpha(cDeep, 0.78), alpha(cObs, 0.92)])
+  let cardBgHot  = ecoOn || skin == "amoled"
+    ? alpha(cDeep, 0.96)
+    : linear(0, 0, 1, 1, [alpha(cDim, 0.42), alpha(cDeep, 0.92), alpha(cObs, 0.94)])
+  let rimCol     = skin == "neon" ? alpha(accentHot, 0.65) : skin == "cyber" ? alpha(accentCol, 0.56) : alpha(accentCol, 0.36)
+  let rimColHot  = alpha(accentHot, 0.85)
+  let glowGain   = glowLvl == 0 ? 0.62 : glowLvl == 2 ? 1.42 : 1.0
+  let texIdx     = texMode == "grid" ? 1.0 : texMode == "void" ? 2.0 : 0.0
+  let wide       = (tileWidth ?? 0) > (tileHeight ?? 1)
+  let hPad       = wide ? 36 : 16
+
+  // ---------------- CHRONO / DATE MATH (DST-SAFE LOCAL NOON ANCHOR) ----------------
+  let nowTs    = now ?? 1763790000
+  let dName    = upper(fmtTime(nowTs, "EEEE"))
+  let dNum     = fmtTime(nowTs, "d")
+  let dMon     = upper(fmtTime(nowTs, "MMM"))
+  let dYear    = fmtTime(nowTs, "yyyy")
+  let dTime    = fmtTime(nowTs, "HH:mm")
+  let todayKey = fmtTime(nowTs, "yyyyMMdd")
+  let curH     = num(fmtTime(nowTs, "H"), 0)
+  let curM     = num(fmtTime(nowTs, "m"), 0)
+  let dayProg  = clamp((curH * 60 + curM) / 1440, 0.008, 1.0)
+  let dayPct   = round(dayProg * 100)
+  let todayMid = parseTime(fmtTime(nowTs, "yyyy-MM-dd")) ?? (nowTs - (curH * 3600 + curM * 60))
+  let todayEnd = todayMid + 86400
+  let weekEnd  = todayMid + 7 * 86400
+
+  // ---------------- CALENDAR DATA & DERIVED METRICS ----------------
+  let evAll      = cal.granted ? (cal.events ?? []) : []
+  let evCount    = len(evAll)
+  let todayEvs   = evAll.filter(e => fmtTime(e.start, "yyyyMMdd") == todayKey || (e.start < todayEnd && e.end > todayMid))
+  let todayCount = len(todayEvs)
+  let weekEvs    = evAll.filter(e => e.start < weekEnd)
+  let weekCount  = len(weekEvs)
+  let liveEv     = evAll.find(e => !e.allDay && e.start <= nowTs && e.end > nowTs)
+  let upEv       = evAll.find(e => e.start > nowTs)
+  let heroEv     = liveEv ?? upEv ?? first(evAll)
+
+  // Selected day metadata for the 14-day orbital strip
+  let selDayTs   = selDayIdx >= 0 ? (todayMid + selDayIdx * 86400 + 43200) : todayMid + 43200
+  let selDayKey  = selDayIdx >= 0 ? fmtTime(selDayTs, "yyyyMMdd") : ""
+  let selDayLbl  = selDayIdx == 0 ? "TODAY" : upper(fmtTime(selDayTs, "EEE d MMM"))
+  let stripDays  = range(stripWeek * 7, stripWeek * 7 + 7)
+
+  // Active filtered event list
+  let filteredEvs = filterMode == "today" ? todayEvs
+    : filterMode == "week" ? weekEvs
+    : (filterMode == "day" && selDayIdx >= 0) ? evAll.filter(e => fmtTime(e.start, "yyyyMMdd") == selDayKey)
+    : evAll
+  let filtCount   = len(filteredEvs)
+  let maxCap      = showAllEvs ? 80 : 30
+  let visibleEvs  = filteredEvs.take(maxCap)
+  let hasMore     = filtCount > len(visibleEvs)
+
+  let listHeading = filterMode == "today" ? (tc.calToday ?? "TODAY'S RITES")
+    : filterMode == "week" ? (tc.calWeek ?? "7-DAY HORIZON")
+    : (filterMode == "day" && selDayIdx >= 0) ? selDayLbl
+    : (tc.calList ?? "COMING RITES")
+
+  let kyberLabel = tc.calBadge ?? upper(kyberId)
+
+  // ---------------- ADAPTIVE FRAME LOOP (zero allocations, zero layout work) ----------------
   every frame {
-    if fxOn { fxT = fxT + dt * animSpeed }
+    if burstT > 0.005 { burstT = max(0, burstT - dt * 1.9) }
   }
 
-  // ================= COMPONENTS =================
+  // ================= REUSABLE COMPONENTS =================
 
-  // Section header: ◈ tiny caps + optional right hint
-  component Header(label, hint = "") {
+  component SectionHeader(label, hint = "") {
     Row {
       fill: width
       align: center
       gap: 8
       padding: [2, 0, 2, 0]
-      Text { font: uiFont; text: "◈ ${upper(label)}"; fontSize: 11; bold: true; color: accentHot; letterSpacing: 2; weight: 1; maxLines: 1 }
-      Text { text: hint; fontSize: 10; font: mono; letterSpacing: 1; color: inkMuted; maxLines: 1 }
+      Text { font: dispFont; text: "◈ ${upper(label)}"; fontSize: 11.5; bold: true; color: accentHot; letterSpacing: 1.8; maxLines: 1 }
+      Box { height: 1; weight: 1; background: linear(0, 0, 1, 0, [alpha(accentCol, 0.45), alpha(accentCol, 0.05)]) }
+      if hint != "" {
+        Text { text: hint; fontSize: 10; font: bodyFont; fontWeight: 700; letterSpacing: 1; color: inkMuted; maxLines: 1 }
+      }
     }
   }
 
-  // A single event row rendered as a Sith card with accent bar + glow border
-  component EventCard(title, when, loc, dot, isNow) {
+  component Chip(label, active = false) {
     Row {
-      fill: width
-      radius: 16
-      border: 1
-      borderColor: isNow ? alpha(accentCol, 0.72) : alpha((futOn ? #22d1ff : #ff2244), 0.34)
-      background: isNow ? alpha((futOn ? #021d24 : #240206), 0.92) : alpha((futOn ? #010709 : #090103), 0.82)
-      padding: 0
-      // crimson accent bar
-      Box {
-        width: 4
-        fill: height
-        radius: 16
-        background: dot != "" ? dot : accentCol
+      align: center
+      justify: center
+      radius: 99
+      border: active ? 1.3 : 1
+      borderColor: active ? rimColHot : alpha(accentCol, 0.36)
+      background: active ? alpha(accentCol, 0.26) : alpha(cObs, 0.84)
+      padding: [10, 5, 10, 5]
+      Text {
+        font: bodyFont
+        text: label
+        fontSize: 9.5
+        fontWeight: 700
+        letterSpacing: 1.0
+        color: active ? inkText : inkMuted
+        maxLines: 1
       }
+    }
+  }
+
+  component StatTile(label, value, active = false, hi = false) {
+    Box {
+      fill: width
+      radius: cardRad
+      clip: true
+      frost: cardFrost
+      border: active ? 1.5 : cardBorder
+      borderColor: active ? rimColHot : rimCol
+      background: active ? cardBgHot : cardBg
       Column {
-        weight: 1
-        gap: 2
-        padding: [11, 12, 11, 12]
-        Text { text: when; fontSize: 10.5; font: mono; letterSpacing: 1; color: inkMuted; maxLines: 1 }
-        Text { font: uiFont; text: title != "" ? title : "(untitled rite)"; fontSize: 15; fontWeight: 700; color: inkText; maxLines: 2 }
-        if loc != "" {
-          Text { font: uiFont; text: "⌖ " + loc; fontSize: 11; color: inkSoft; maxLines: 1 }
+        fill: width
+        gap: 0
+        // Top specular emissive edge
+        Box {
+          fill: width
+          height: 2
+          background: linear(0, 0, 1, 0, [
+            alpha(active ? accentHot : accentCol, active ? 0.92 : 0.42),
+            alpha(accentCol, active ? 0.35 : 0.06)
+          ])
+        }
+        Column {
+          fill: width
+          gap: 1
+          padding: [10, 8, 10, 9]
+          Text { font: bodyFont; text: label; fontSize: 9; fontWeight: 700; letterSpacing: 1.4; color: active ? accentHot : inkMuted; maxLines: 1 }
+          Text { font: dispFont; text: value; fontSize: 21; fontWeight: 800; color: (active || hi) ? accentHot : inkText; maxLines: 1 }
         }
       }
     }
   }
 
-  // ================= PAGE =================
-  Box {
-    fill: true
-    background: linear(0, 0, 0, 1, [(futOn ? #000406 : #060002), (futOn ? #00080a : #0a0002), (futOn ? #000406 : #060002)])
-
-    // ---- loopless AMOLED backdrop glow (behind the scroll) ----
-    if fxOn {
-      Shader {
-        fill: true
-        fallback: (futOn ? #000406 : #060002)
-        uniforms: { uFut: futOn ? 1.0 : 0.0,
-          uT: fxT,
-          uCol: accentCol,
-          uGhost: accentGhost
-        }
-        code: """
-          uniform float uFut;
-          uniform float uT;
-          uniform half4 uCol;
-          uniform half4 uGhost;
-
-          half4 mainOrig(float2 p) {
-            float2 uv = p / max(size, float2(1.0));
-            float t = uT;
-            half3 base = uCol.rgb;
-            half3 ghost = uGhost.rgb;
-            // two slow crimson auras drifting on an obsidian field
-            float2 d1 = uv - float2(0.50 + 0.14 * sin(t * 0.18), 0.16 + 0.08 * cos(t * 0.15));
-            float2 d2 = uv - float2(0.42 + 0.12 * cos(t * 0.13), 0.80 + 0.08 * sin(t * 0.17));
-            half g1 = half(exp(-dot(d1, d1) * 5.2));
-            half g2 = half(exp(-dot(d2, d2) * 6.0));
-            half3 col = base * (g1 * half(0.30)) + mix(base, ghost, half(0.4)) * (g2 * half(0.22));
-            // faint vertical vignette toward black
-            half v = half(1.0 - 0.25 * uv.y);
-            col = col * v;
-            return half4(col, 1.0);
-          }
-          half4 main(float2 fc) { half4 c = mainOrig(fc); half3 m = half3(min(c.g, c.b), max(c.g, c.r * 0.82), c.r); return half4(mix(c.rgb, m, half(uFut)), c.a); }
-        """
-      }
-    }
-
-    // ---- scrollable altar content ----
-    Column {
-      fill: true
-      scroll: true
-      align: start
-      gap: 14
-      padding: [18, 20, 18, 20]
-
-      // ===== HEADER: big date over pentagram sigil =====
-      Box {
+  component DayCell(dow, dStr, evCnt, dotCol, isToday, isSel) {
+    Box {
+      fill: width
+      radius: cardRad > 10 ? 12 : cardRad
+      clip: true
+      border: isSel ? 1.6 : (isToday ? 1.3 : 1)
+      borderColor: isSel ? rimColHot : (isToday ? alpha(accentCol, 0.75) : alpha(accentCol, 0.24))
+      background: isSel
+        ? linear(0, 0, 0, 1, [alpha(accentCol, 0.34), alpha(accentDeep, 0.92)])
+        : isToday
+        ? linear(0, 0, 0, 1, [alpha(accentDeep, 0.88), alpha(cObs, 0.94)])
+        : alpha(cObs, 0.72)
+      Column {
         fill: width
         align: center
-        height: 150
-        // pentagram ring sigil behind the big date (static — no per-frame redraw)
-        Box {
-          size: 150
+        gap: 3
+        padding: [4, 7, 4, 7]
+        Text {
+          font: bodyFont
+          text: dow
+          fontSize: 8.5
+          fontWeight: 700
+          letterSpacing: 0.8
+          color: (isSel || isToday) ? accentHot : inkMuted
           align: center
-          Canvas {
-            fill: true
-            circle(75, 75, 69, stroke: alpha(accentCol, 0.55), width: 1.4)
-            circle(75, 75, 60, stroke: alpha(accentHot, 0.22), width: 1.0)
-            path([
-              [75 + 60 * sin(rad(0)),   75 - 60 * cos(rad(0))],
-              [75 + 60 * sin(rad(144)), 75 - 60 * cos(rad(144))],
-              [75 + 60 * sin(rad(288)), 75 - 60 * cos(rad(288))],
-              [75 + 60 * sin(rad(72)),  75 - 60 * cos(rad(72))],
-              [75 + 60 * sin(rad(216)), 75 - 60 * cos(rad(216))]
-            ], stroke: alpha(accentCol, 0.42), width: 1.2, closed: true)
-          }
+          maxLines: 1
         }
-        Column {
+        Text {
+          font: dispFont
+          text: dStr
+          fontSize: 16
+          fontWeight: 800
+          color: isSel ? #ffffff : (isToday ? accentHot : inkText)
+          align: center
+          maxLines: 1
+        }
+        // Emissive event density indicator (0..3 glowing pips)
+        Row {
           align: center
           justify: center
-          gap: 0
-          Text { font: uiFont; text: dName; fontSize: 12; bold: true; letterSpacing: 3; color: accentHot; align: center }
-          Text { font: uiFont; text: dNum; fontSize: 56; fontWeight: 800; color: inkText; align: center }
-          Text { text: "${dMon} ${dYear}  ·  ${dTime}"; fontSize: 12; font: mono; letterSpacing: 1; color: inkSoft; align: center }
+          gap: 3
+          height: 6
+          if evCnt == 0 {
+            Box { width: 8; height: 2; radius: 99; background: alpha(accentCol, 0.16) }
+          } else {
+            Box { width: 5; height: 5; radius: 99; background: dotCol }
+            if evCnt >= 2 {
+              Box { width: 5; height: 5; radius: 99; background: accentHot }
+            }
+            if evCnt >= 3 {
+              Box { width: 5; height: 5; radius: 99; background: inkText }
+            }
+          }
         }
       }
+    }
+  }
 
-      // ===== STAT LINE =====
-      Row {
+  component EventCard(title, when, rel, loc, calName, dotCol, isLive, isToday) {
+    Box {
+      fill: width
+      radius: cardRad
+      clip: true
+      frost: cardFrost
+      border: isLive ? 1.6 : (isToday ? 1.3 : cardBorder)
+      borderColor: isLive ? rimColHot : (isToday ? alpha(accentCol, 0.65) : rimCol)
+      background: isLive ? cardBgHot : cardBg
+
+      Column {
         fill: width
-        gap: 10
+        gap: 0
+        // Top emissive bevel accent sheen (cPri -> cHot -> cBone specular hairline)
         Box {
-          weight: 1
-          radius: 14
-          border: 1
-          borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.34)
-          background: alpha((futOn ? #010709 : #090103), 0.82)
-          padding: [10, 12, 10, 12]
-          Column {
-            gap: 1
-            Text { font: uiFont; text: "TODAY"; fontSize: 9; letterSpacing: 2; color: inkMuted }
-            Text { font: uiFont; text: "${todayCount}"; fontSize: 22; fontWeight: 800; color: accentHot }
-          }
-        }
-        Box {
-          weight: 1
-          radius: 14
-          border: 1
-          borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.34)
-          background: alpha((futOn ? #010709 : #090103), 0.82)
-          padding: [10, 12, 10, 12]
-          Column {
-            gap: 1
-            Text { font: uiFont; text: "14 DAYS"; fontSize: 9; letterSpacing: 2; color: inkMuted }
-            Text { font: uiFont; text: "${evCount}"; fontSize: 22; fontWeight: 800; color: inkText }
-          }
-        }
-        Box {
-          weight: 1
-          radius: 14
-          border: 1
-          borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.34)
-          background: alpha((futOn ? #010709 : #090103), 0.82)
-          padding: [10, 12, 10, 12]
-          onTap: calendar("open")
-          Column {
-            gap: 1
-            Text { font: uiFont; text: "OPEN"; fontSize: 9; letterSpacing: 2; color: inkMuted }
-            Text { font: uiFont; text: "☾"; fontSize: 22; color: inkSoft }
-          }
-        }
-      }
-
-      // ===== PERMISSION GATE =====
-      if !cal.granted {
-        Column {
           fill: width
-          gap: 10
-          radius: 18
-          border: 1
-          borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.42)
-          background: alpha((futOn ? #010709 : #090103), 0.82)
-          padding: [20, 18, 20, 18]
+          height: 1.5
+          background: linear(0, 0, 1, 0, [
+            alpha(dotCol, isLive ? 0.95 : 0.78),
+            alpha(cHot, isLive ? 0.90 : 0.58),
+            alpha(cBone, isLive ? 0.85 : 0.42),
+            alpha(accentCol, 0.0)
+          ])
+        }
+        Row {
+          fill: width
           align: center
-          Text { font: uiFont; text: "✶"; fontSize: 30; color: accentCol; align: center }
-          Text { font: uiFont; text: "THE ALTAR IS SEALED"; fontSize: 13; bold: true; letterSpacing: 2; color: accentHot; align: center }
-          Text { font: uiFont; text: "Grant the calendar to read your next 14 days. Nothing is read until you allow it."; fontSize: 12; color: inkSoft; align: center }
-          Row {
-            radius: 99
-            border: 1.2
-            borderColor: accentHot
-            background: alpha(accentCol, 0.2)
-            padding: [10, 20, 10, 20]
-            onTap: calendar("request")
-            Text { font: uiFont; text: "⛧ UNSEAL THE CALENDAR"; fontSize: 12.5; bold: true; letterSpacing: 1; color: inkText }
-          }
-        }
-      } else {
-        // ===== EVENT LIST (day-grouped) =====
-        Header { label: "coming rites"; hint: "${evCount} marked" }
-
-        if evCount == 0 {
-          Column {
-            fill: width
-            radius: 18
-            border: 1
-            borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.3)
-            background: alpha((futOn ? #010709 : #090103), 0.7)
-            padding: [22, 18, 22, 18]
-            align: center
-            Text { font: uiFont; text: "☠"; fontSize: 26; color: inkMuted; align: center }
-            Text { font: uiFont; text: "the next two weeks are silent"; fontSize: 12.5; color: inkSoft; align: center }
-          }
-        }
-
-        Column {
-          fill: width
           gap: 10
-          for e, i in cal.events key e.id {
-            let dayKey  = fmtTime(e.start, "yyyyMMdd")
-            let prevKey = i > 0 ? fmtTime(cal.events[i - 1].start, "yyyyMMdd") : ""
-            let newDay  = dayKey != prevKey
-            let isToday = dayKey == todayKey
-            let dayLbl  = isToday ? "TODAY" : upper(fmtTime(e.start, "EEE d MMM"))
-            let when    = e.allDay ? "ALL DAY" : fmtTime(e.start, "HH:mm") + " – " + fmtTime(e.end, "HH:mm")
+          padding: [10, 10, 12, 11]
 
-            if newDay {
+          // Explicit-height Kyber energy beacon bar (never collapses in auto-height Row)
+          Box {
+            width: 4
+            height: loc != "" || calName != "" ? 46 : 34
+            radius: 99
+            background: linear(0, 0, 0, 1, [cBone, accentHot, dotCol])
+          }
+
+          Column {
+            weight: 1
+            gap: 3
+            Row {
+              fill: width
+              align: center
+              gap: 6
+              Text {
+                font: bodyFont
+                text: when
+                fontSize: 10.5
+                fontWeight: 700
+                letterSpacing: 0.9
+                color: isLive ? accentHot : inkSoft
+                weight: 1
+                maxLines: 1
+              }
+              if isLive {
+                Row {
+                  align: center
+                  radius: 99
+                  border: 1
+                  borderColor: cBone
+                  background: linear(1, 0, 0, 1, [alpha(cSec, 0.12), alpha(cSec, 0.28), #000000, alpha(cPri, 0.09)])
+                  padding: [7, 2, 7, 2]
+                  Text { font: bodyFont; text: "● LIVE"; fontSize: 8.5; fontWeight: 800; letterSpacing: 1; color: cBone; maxLines: 1 }
+                }
+              } else if rel != "" {
+                Text { font: bodyFont; text: rel; fontSize: 9.5; fontWeight: 700; letterSpacing: 0.6; color: inkMuted; maxLines: 1 }
+              }
+            }
+
+            Text {
+              font: bodyFont
+              text: title != "" ? title : "(untitled rite)"
+              fontSize: 15.5
+              fontWeight: 700
+              color: inkText
+              maxLines: 2
+            }
+
+            if loc != "" || calName != "" {
               Row {
                 fill: width
                 align: center
                 gap: 8
-                padding: [10, 2, 2, 2]
-                Text { font: uiFont; text: dayLbl; fontSize: 10.5; bold: true; letterSpacing: 2; color: isToday ? accentHot : inkMuted; maxLines: 1 }
-                Box { height: 1; weight: 1; background: alpha((futOn ? #22d1ff : #ff2244), 0.22) }
+                if loc != "" {
+                  Text { font: bodyFont; text: "⌖ ${loc}"; fontSize: 10.5; color: inkSoft; weight: 1; maxLines: 1 }
+                }
+                if calName != "" {
+                  Row {
+                    align: center
+                    radius: 6
+                    border: 1
+                    borderColor: alpha(dotCol, 0.42)
+                    background: linear(0, 1, 1, 0, [alpha(cHot, 0.07), alpha(dotCol, 0.14), #000000, alpha(cSec, 0.11)])
+                    padding: [6, 2, 6, 2]
+                    Text { font: bodyFont; text: upper(calName); fontSize: 8.5; fontWeight: 700; letterSpacing: 0.8; color: inkSoft; maxLines: 1 }
+                  }
+                }
               }
             }
+          }
 
+          Text { font: uiFont; text: "›"; fontSize: 18; fontWeight: 700; color: alpha(accentHot, 0.55) }
+        }
+      }
+    }
+  }
+
+  // ================= MAIN FACE =================
+  Box {
+    fill: true
+    background: ecoOn ? #000000 : linear(0, 0, 0, 1, [#000000, alpha(accentDeep, 0.10), #000000])
+
+    // ---- 0-LOOP GPU TEXTURED OBSIDIAN & PLASMA AURA SHADER (<0.3ms/frame) ----
+    if shaderOn {
+      Box {
+        fill: true; align: center; clip: true
+        Shader {
+          // GLOBAL THEME BACKDROP v1 — per-theme scene, page 0 of the panorama, rendered at bgRes then upscaled
+          width: (tileWidth ?? 400) * bgRes; height: (tileHeight ?? 800) * bgRes; scale: 1 / bgRes
+          fallback: #000000
+          uniforms: { uSpd: (fxOn && shaderOn) ? animSpeed : 0.0, uStyle: modeIdx, uPage: 0, uGlow: bgGlow,
+            uBurst: burstT, uTap: [tapU, tapV],
+            uPri: bgPri, uHot: bgHot, uSec: bgSec, uDim: bgDim, uBone: bgBone }
+          code: """
+            // GLOBAL THEME BACKDROP v1 — one panorama across all home faces (uPage shifts the view).
+            // 0 Infernal: Hellforge (lava-crack floor, rising embers, soul-fire mist)
+            // 1 Future:   Holo Horizon (perspective grid, striped sun, data rain)
+            // 2 Mask:     Smokin' Twister (roaming tornado, gold searchlights, confetti, zoot pinstripes)
+            // 3 Skeletor: Snake Mountain (ridge silhouette, acid serpent, bone moon, lightning)
+            // Low-res buffer + 16-level ordered-dither posterize = deliberate pixel-craft look. Max 9 loop turns/px.
+            uniform float uSpd;
+            uniform float uStyle;
+            uniform float uPage;
+            uniform float uGlow;
+            uniform float uBurst;
+            uniform float2 uTap;
+            uniform half4 uPri;
+            uniform half4 uHot;
+            uniform half4 uSec;
+            uniform half4 uDim;
+            uniform half4 uBone;
+
+            float h12(float2 p) {
+              float3 p3 = fract(float3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+            }
+            float vn(float2 p) {
+              float2 i = floor(p);
+              float2 f = fract(p);
+              f = f * f * (3.0 - 2.0 * f);
+              return mix(mix(h12(i), h12(i + float2(1.0, 0.0)), f.x),
+                         mix(h12(i + float2(0.0, 1.0)), h12(i + float2(1.0, 1.0)), f.x), f.y);
+            }
+            float fbm(float2 p) {
+              return vn(p) * 0.55 + vn(p * 2.03 + 7.1) * 0.30 + vn(p * 4.11 + 3.7) * 0.15;
+            }
+
+            half4 main(float2 fc) {
+              float2 sz = max(size, float2(1.0));
+              float2 uv = fc / sz;
+              float asp = sz.x / sz.y;
+              float pw = asp;                                   // one page width in world units
+              float2 w = float2((uv.x + uPage) * asp, uv.y);     // panorama world coords
+              float t = uSpd > 0.0 ? mod(time, 3600.0) * uSpd : 0.0;
+              half3 pri = uPri.rgb;
+              half3 hot = uHot.rgb;
+              half3 sec = uSec.rgb;
+              half3 dim = uDim.rgb;
+              half3 bone = uBone.rgb;
+              half3 col = half3(0.0);
+
+              if (uStyle < 0.5) {
+                // ===== INFERNAL · HELLFORGE =====
+                float smoke = fbm(w * 2.6 + float2(t * 0.03, t * 0.07));
+                col += dim * half(smoke * smoke * 0.55 * (0.35 + uv.y));
+                // soul-fire mist (cold secondary) hugging the top
+                float mist = fbm(w * 3.4 - float2(t * 0.05, 0.0));
+                col += sec * half(mist * exp(-uv.y * 7.0) * 0.18);
+                // lava-crack floor: 3x3 cellular, edge = F2-F1
+                float floorM = smoothstep(0.58, 0.98, uv.y);
+                if (floorM > 0.001) {
+                  float2 q = float2(w.x * 10.0, (uv.y - 0.55) * 22.0 + 3.0 + sin(w.x * 4.0) * 0.6);
+                  float2 qi = floor(q);
+                  float2 qf = fract(q);
+                  float f1 = 8.0;
+                  float f2 = 8.0;
+                  for (int j = -1; j <= 1; j++) {
+                    for (int i = -1; i <= 1; i++) {
+                      float2 g = float2(float(i), float(j));
+                      float2 o = float2(h12(qi + g), h12(qi + g + 19.7));
+                      o = 0.5 + 0.38 * sin(t * 0.35 + 6.2831 * o);
+                      float d = length(g + o - qf);
+                      if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) { f2 = d; }
+                    }
+                  }
+                  float crack = 1.0 - smoothstep(0.0, 0.07, f2 - f1);
+                  crack *= 0.55 + 0.45 * vn(q * 1.7 + t * 0.2);
+                  float pulse = 0.6 + 0.4 * sin(t * 1.3 + w.x * 3.0 + uv.y * 9.0);
+                  col += mix(pri, hot, half(crack * 0.6)) * half(crack * floorM * pulse * 1.9);
+                  col += pri * half(floorM * floorM * 0.22 * (0.7 + 0.3 * pulse));
+                }
+                // rising embers
+                float2 e = float2(w.x * 13.0, uv.y * 13.0 + t * 1.15);
+                float2 ei = floor(e);
+                float eh = h12(ei);
+                if (eh > 0.82) {
+                  float2 ef = fract(e) - 0.5;
+                  ef.x += 0.28 * sin(t * 1.7 + eh * 40.0);
+                  float spark = exp(-dot(ef, ef) * 140.0);
+                  float flick = 0.55 + 0.45 * sin(t * 9.0 + eh * 70.0);
+                  col += mix(hot, half3(1.0, 0.85, 0.6), half(0.25)) * half(spark * flick * (0.35 + 0.9 * uv.y));
+                }
+              } else if (uStyle < 1.5) {
+                // ===== FUTURE · HOLO HORIZON =====
+                float hz = 0.63;
+                float sunX = pw * 1.5;                         // sun rises over the centre page
+                float2 sd = float2(w.x - sunX, (uv.y - hz + 0.02) * 1.0);
+                float sr = length(sd * float2(1.0, 1.15));
+                if (uv.y < hz) {
+                  // striped synth sun
+                  float disc = 1.0 - smoothstep(0.17, 0.18, sr);
+                  float stripes = step(0.0, sin(uv.y * 140.0 - t * 2.0)) + step(uv.y, hz - 0.14);
+                  col += mix(sec, hot, half(clamp((hz - uv.y) * 4.0, 0.0, 1.0))) * half(disc * min(stripes, 1.0) * 0.75);
+                  col += sec * half(exp(-sr * 7.0) * 0.30);
+                  // data rain columns
+                  float cx = floor(w.x * 46.0);
+                  float sp = 0.25 + h12(float2(cx, 3.0)) * 0.55;
+                  float head = fract(t * sp * 0.35 + h12(float2(cx, 9.0)));
+                  float dy = head - uv.y;
+                  float trail = dy > 0.0 ? exp(-dy * 18.0) : 0.0;
+                  float bit = step(0.45, h12(float2(cx, floor(uv.y * 70.0) + floor(t * 6.0 * sp))));
+                  float colOn = step(0.62, h12(float2(cx, 1.0)));
+                  col += pri * half(trail * bit * colOn * 0.55 * (1.0 - smoothstep(hz - 0.15, hz, uv.y)));
+                  // faint holo stars
+                  float st = h12(floor(w * 160.0));
+                  col += hot * half(step(0.996, st) * (0.4 + 0.6 * sin(t * 3.0 + st * 90.0)) * 0.5);
+                } else {
+                  // perspective grid floor rolling toward the viewer
+                  float dz = uv.y - hz;
+                  float z = 0.32 / max(dz, 0.004);
+                  float gx = (w.x - sunX) * z * 3.0;
+                  float gz = z + t * 0.9;
+                  float lx = abs(fract(gx) - 0.5);
+                  float lz = abs(fract(gz) - 0.5);
+                  float wpx = min(0.012 * z, 0.3);                          // keep lines ~constant width on screen
+                  float grid = max(1.0 - smoothstep(0.0, 0.02 + wpx, lx), 1.0 - smoothstep(0.0, 0.02 + wpx, lz));
+                  float fade = exp(-z * 0.05);
+                  col += pri * half(grid * fade * 0.95);
+                  col += sec * half(exp(-dz * 30.0) * 0.45);    // horizon bloom
+                  col += dim * half(fade * 0.25);
+                }
+                col += sec * half(exp(-abs(uv.y - hz) * 220.0) * 0.9); // horizon laser line
+              } else if (uStyle < 2.5) {
+                // ===== MASK · SMOKIN' TWISTER =====
+                // zoot pinstripes
+                float pin = smoothstep(0.455, 0.49, abs(fract(w.x * 22.0 + uv.y * 3.0) - 0.5));
+                col += dim * half(pin * 0.55) + pri * half(0.03 * (1.0 - uv.y * 0.5));
+                // art-deco searchlights, one per page base, sweeping
+                float pIdx = floor(w.x / pw);
+                float2 base = float2((pIdx + 0.5) * pw, 1.08);
+                float2 bv = w - base;
+                float ang = atan(bv.x, -bv.y);
+                float sweep = 0.55 * sin(t * 0.55 + pIdx * 2.1);
+                float beam = exp(-abs(ang - sweep) * 26.0) * smoothstep(1.3, 0.1, length(bv));
+                col += sec * half(beam * 0.55);
+                // roaming tornado: drifts across the whole panorama over time
+                float tx = (0.5 + 2.0 * (0.5 + 0.5 * sin(t * 0.06))) * pw;
+                float cxT = tx + 0.05 * sin(t * 1.4 + uv.y * 6.0) + 0.07 * (1.0 - uv.y) * sin(t * 0.8);
+                float halfW = 0.02 + 0.11 * (1.0 - uv.y) * (1.0 - uv.y);
+                float rx = (w.x - cxT) / halfW;
+                if (abs(rx) < 1.25) {
+                  float body = 1.0 - smoothstep(0.75, 1.2, abs(rx));
+                  float spin = sin(asin(clamp(rx, -1.0, 1.0)) * 3.0 - t * 7.0 + uv.y * 26.0);
+                  float band = smoothstep(0.2, 1.0, spin);
+                  float edge = exp(-abs(abs(rx) - 0.95) * 9.0);
+                  col += mix(pri, hot, half(band)) * half(body * (0.08 + band * 0.42));
+                  col += sec * half(edge * body * 0.25 * (0.5 + 0.5 * sin(t * 4.0 + uv.y * 30.0)));
+                }
+                // confetti stars falling and spinning
+                float2 c = float2(w.x * 11.0, uv.y * 11.0 - t * 0.9);
+                float2 ci = floor(c);
+                float chs = h12(ci + 4.0);
+                if (chs > 0.86) {
+                  float2 cf = fract(c) - 0.5;
+                  float a = t * 3.0 + chs * 50.0;
+                  float2 r = float2(cf.x * cos(a) - cf.y * sin(a), cf.x * sin(a) + cf.y * cos(a));
+                  float star = 1.0 - smoothstep(0.05, 0.09, abs(r.x) + abs(r.y) * 2.2);
+                  half3 cc = chs > 0.95 ? sec : (chs > 0.905 ? hot : pri);
+                  col += cc * half(star * 0.85);
+                }
+                col += pri * half(exp(-(1.0 - uv.y) * 6.0) * 0.18);
+              } else {
+                // ===== SKELETOR · SNAKE MOUNTAIN =====
+                float fog = fbm(w * 2.2 + float2(t * 0.04, -t * 0.02));
+                col += dim * half(fog * 0.6 * (0.4 + 0.6 * uv.y));
+                // sparse stars
+                float st = h12(floor(w * 150.0));
+                col += bone * half(step(0.997, st) * 0.45 * (0.5 + 0.5 * sin(t * 2.0 + st * 80.0)));
+                // bone moon over the right page
+                float2 md = float2(w.x - pw * 2.62, uv.y - 0.2);
+                float mr = length(md);
+                float moon = 1.0 - smoothstep(0.105, 0.112, mr);
+                float crater = vn(md * 38.0);
+                col += bone * half(moon * (0.38 + 0.22 * crater));
+                col += pri * half(exp(-mr * 9.0) * 0.22);
+                // lightning flash (rare)
+                float lk = floor(t * 0.7);
+                float fl = step(0.8, h12(float2(lk, 5.0))) * exp(-fract(t * 0.7) * 7.0);
+                col += pri * half(fl * 0.25 * (1.0 - uv.y));
+                float bx = (h12(float2(lk, 8.0)) * 3.0) * pw;
+                float bolt = exp(-abs(w.x - bx - 0.06 * (vn(float2(uv.y * 14.0, lk)) - 0.5) * 2.0) * 160.0);
+                col += mix(hot, bone, half(0.5)) * half(bolt * fl * step(uv.y, 0.7) * 1.4);
+                // acid serpent slithering across the sky
+                float sy = 0.40 + 0.065 * sin(w.x * 3.2 - t * 1.1) + 0.02 * sin(w.x * 9.0 - t * 2.3);
+                float thick = 0.007 + 0.004 * sin(w.x * 1.3 - t * 0.5);
+                float sdist = abs(uv.y - sy);
+                float body = 1.0 - smoothstep(thick * 0.6, thick, sdist);
+                float scales = 0.75 + 0.25 * sin(w.x * 140.0 - t * 6.0);
+                col += sec * half(body * scales * 0.55);
+                col += sec * half(exp(-sdist * 55.0) * 0.16);
+                // mountain ridge silhouette with violet rim light
+                float ridge = 0.70 + 0.10 * vn(float2(w.x * 2.2, 1.0)) + 0.05 * vn(float2(w.x * 6.0, 2.0))
+                              - 0.26 * exp(-abs(w.x - pw * 1.5) * 4.5);
+                float below = smoothstep(ridge - 0.004, ridge + 0.004, uv.y);
+                float rim = exp(-abs(uv.y - ridge) * 90.0);
+                col *= half(1.0 - below * 0.92);
+                col += pri * half(rim * 0.7 + below * fog * 0.05);
+              }
+
+              // tap shockwave (shared)
+              if (uBurst > 0.005) {
+                float2 dt2 = (uv - uTap) * float2(asp, 1.0);
+                float dr = (length(dt2) - (1.0 - uBurst) * 0.7) * 24.0;
+                col += mix(pri, hot, half(0.6)) * half(exp(-dr * dr) * uBurst * 0.6);
+              }
+
+              // OLED grade: vignette, soft tonemap, ordered-dither posterize (pixel-craft), true black floor
+              float2 cv = (uv - float2(0.5, 0.5)) * float2(1.1, 0.9);
+              col *= half(clamp(1.0 - dot(cv, cv) * 0.6, 0.3, 1.0));
+              col = col / (half3(1.0) + col * half(0.55));
+              col *= half(uGlow);
+              float2 bp = floor(fc);
+              float bay = fract((mod(bp.x, 2.0) * 2.0 + mod(bp.y, 2.0) * 3.0) * 0.25) - 0.375;
+              col = floor(col * half(24.0) + half(bay + 0.5)) / half(24.0);
+              col = max(col - half3(0.025), half3(0.0));
+              return half4(clamp(col, half3(0.0), half3(1.0)), 1.0);
+            }
+          """
+        }
+      }
+    }
+
+    // ---- SCROLLABLE CHRONO-ALTAR CONTENT (pull-to-refresh enabled) ----
+    // ◈ OVERHAUL: drifting twin crimson glows + slow light veil (frozen when FX/eco off)
+    if !ecoOn {
+      // OVERHAUL vignette: crush the backdrop toward AMOLED black, darkest at the edges
+      Box { fill: true; background: radial(0.5, 0.42, 0.95, [alpha(#000000, 0.34), alpha(#000000, 0.66), alpha(#000000, 0.9)]) }
+      Box { fill: true; background: radial(0.5 + 0.38 * sin(fxT * 0.21), 0.08 + 0.07 * cos(fxT * 0.29), 0.95, [alpha(cPri, 0.07), alpha(#000000, 0)]) }
+      Box { fill: true; background: radial(0.2 + 0.3 * cos(fxT * 0.16), 0.96, 0.85, [alpha(cSec, 0.06), alpha(#000000, 0)]) }
+    }
+
+    Column {
+      fill: true
+      scroll: true
+      onPull: { haptic(); burstT = 1.0; tapU = 0.5; tapV = 0.14; refresh() }
+      align: start
+      gap: 12
+      padding: [hPad, 14, hPad, 14]
+
+      // ===== 1. TOP TELEMETRY & COMMAND BAR =====
+      Row {
+        fill: width
+        align: center
+        gap: 8
+        // Brand / Active Crystal badge
+        Row {
+          align: center
+          gap: 5
+          weight: 1
+          Box {
+            width: 6
+            height: 6
+            radius: 99
+            background: accentHot
+          }
+          Text {
+            font: dispFont
+            text: tc.calTitle ?? "CHRONO ALTAR"
+            fontSize: 11.5
+            bold: true
+            letterSpacing: 1.0
+            color: inkText
+            maxLines: 1
+          }
+          Row {
+            align: center
+            radius: 6
+            border: 1
+            borderColor: alpha(cBone, 0.55)
+            background: linear(0, 0, 1, 1, [alpha(cPri, 0.13), alpha(accentDeep, 0.84), #000000, alpha(cSec, 0.10)])
+            padding: [5, 2, 5, 2]
+            Text { font: bodyFont; text: kyberLabel; fontSize: 8.5; fontWeight: 800; letterSpacing: 0.8; color: cBone; maxLines: 1 }
+          }
+        }
+
+        // Battery micro-telemetry (Row shrink-wraps cleanly in parent Row)
+        if bat.level != null {
+          Row {
+            align: center
+            radius: 99
+            border: 1
+            borderColor: alpha(accentCol, 0.34)
+            background: linear(1, 0, 0, 1, [alpha(cSec, 0.12), alpha(cObs, 0.84), #000000, alpha(cPri, 0.09)])
+            padding: [8, 4, 8, 4]
+            Text {
+              font: bodyFont
+              text: "${bat.charging ? "⚡" : ""}${bat.level}%"
+              fontSize: 9.5
+              fontWeight: 700
+              letterSpacing: 0.6
+              color: bat.level <= 15 ? #ff4455 : inkSoft
+              maxLines: 1
+            }
+          }
+        }
+
+        // Tactile Refresh button
+        Box {
+          scale: tapBounce == "1" ? 0.9 : 1
+          offset: [0, tapBounce == "1" ? -4 : 0]
+          animate scale: spring(0.32, 520)
+          animate offset: spring(0.32, 520)
+          onPress: tapBounce = "1"
+          onRelease: tapBounce = ""
+          size: 30
+          align: center
+          radius: 99
+          border: 1
+          borderColor: alpha(accentCol, 0.48)
+          background: linear(0, 1, 1, 0, [alpha(cHot, 0.07), alpha(accentDeep, 0.78), #000000, alpha(cSec, 0.11)])
+          onTap: { haptic(); burstT = 1.0; tapU = 0.80; tapV = 0.05; refresh() }
+          Text { font: uiFont; text: "↻"; fontSize: 14; fontWeight: 700; color: inkSoft; align: center }
+        }
+
+        // HUB shortcut — opens the single customization hub on the deck
+        Box {
+          scale: tapBounce == "2" ? 0.9 : 1
+          offset: [0, tapBounce == "2" ? -4 : 0]
+          animate scale: spring(0.32, 520)
+          animate offset: spring(0.32, 520)
+          onPress: tapBounce = "2"
+          onRelease: tapBounce = ""
+          width: 64
+          height: 30
+          align: center
+          radius: 99
+          border: 1
+          borderColor: alpha(accentCol, 0.48)
+          background: linear(0, 0, 1, 1, [alpha(cPri, 0.13), alpha(accentDeep, 0.78), #000000, alpha(cSec, 0.10)])
+          onTap: { haptic(); run("owl-send 25-sith-command-deck.owl set forgeReq $(date +%s%N)"); launcher("page:0") }
+          Text { font: uiFont; text: "◈ HUB"; fontSize: 10; fontWeight: 700; letterSpacing: 1.2; color: accentHot; align: center }
+        }
+      }
+
+      // ===== 3. HERO CHRONO-SIGIL MEDALLION (zero text/line collision, live day-progress arc) =====
+      Box {
+        scale: tapBounce == "3" ? 0.9 : 1
+        offset: [0, tapBounce == "3" ? -4 : 0]
+        animate scale: spring(0.32, 520)
+        animate offset: spring(0.32, 520)
+        onPress: tapBounce = "3"
+        onRelease: tapBounce = ""
+        fill: width
+        align: center
+        height: 186
+        onTap: { haptic(); burstT = 1.0; tapU = 0.5; tapV = 0.17; calendar("open") }
+
+        // Layered Precision Sigil Canvas (static per-minute — zero per-frame Canvas redraws!)
+        Box {
+          size: 184
+          align: center
+          Canvas {
+            fill: true
+            let cx = 92
+            let cy = 92
+            // Soft emissive halo core
+            circle(cx, cy, 88, fill: radial(cx, cy, 88, [alpha(accentCol, 0.28), alpha(accentDeep, 0.12), alpha(#000000, 0.0)]))
+            // Outer obsidian bezel track
+            circle(cx, cy, 82, stroke: alpha(accentCol, 0.28), width: 3.5)
+            // Live 24-hour day-progress plasma arc (0 deg = midnight top, sweeps clockwise)
+            arc(cx, cy, 82, 0, dayProg * 360, stroke: accentHot, width: 3.6, cap: round)
+            // Leading plasma spark at current time angle
+            let tipAng = rad(dayProg * 360)
+            circle(cx + 82 * sin(tipAng), cy - 82 * cos(tipAng), 7.5, fill: alpha(accentSpark, 0.44))
+            circle(cx + 82 * sin(tipAng), cy - 82 * cos(tipAng), 4.0, fill: accentSpark)
+
+            // 24 precision chrono bezel ticks
+            for tIdx in range(24) {
+              let a = rad(tIdx * 15)
+              let isMaj = (tIdx % 6) == 0
+              let rIn = isMaj ? 69 : 73
+              let rOut = 77
+              line(
+                cx + rIn * sin(a), cy - rIn * cos(a),
+                cx + rOut * sin(a), cy - rOut * cos(a),
+                stroke: isMaj ? alpha(accentSpark, 0.90) : alpha(accentCol, 0.52),
+                width: isMaj ? 1.8 : 1.1,
+                cap: round
+              )
+            }
+
+            // Inner 4-mode sacred geometry (Pentagram | Hexagon | Cyber-Vortex Star | Arcane Octagram)
+            circle(cx, cy, 65, stroke: alpha(accentCol, 0.42), width: 1.0)
+            if curMode == "skeletor" {
+              // 8-point Arcane Octagram (two interlaced rotated squares) + bone-ivory vertex pips
+              path([
+                [cx + 64 * sin(rad(0)),   cy - 64 * cos(rad(0))],
+                [cx + 64 * sin(rad(90)),  cy - 64 * cos(rad(90))],
+                [cx + 64 * sin(rad(180)), cy - 64 * cos(rad(180))],
+                [cx + 64 * sin(rad(270)), cy - 64 * cos(rad(270))]
+              ], stroke: alpha(cPri, 0.55), width: 1.25, closed: true)
+              path([
+                [cx + 64 * sin(rad(45)),  cy - 64 * cos(rad(45))],
+                [cx + 64 * sin(rad(135)), cy - 64 * cos(rad(135))],
+                [cx + 64 * sin(rad(225)), cy - 64 * cos(rad(225))],
+                [cx + 64 * sin(rad(315)), cy - 64 * cos(rad(315))]
+              ], stroke: alpha(cBone, 0.48), width: 1.15, closed: true)
+              for k in range(8) {
+                let oa = rad(k * 45)
+                circle(cx + 64 * sin(oa), cy - 64 * cos(oa), 2.1, fill: cBone)
+              }
+            } else if curMode == "mask" {
+              // 6-point Cyber-Vortex Star (two interlaced neon/gold triangles)
+              path([
+                [cx + 64 * sin(rad(0)),   cy - 64 * cos(rad(0))],
+                [cx + 64 * sin(rad(120)), cy - 64 * cos(rad(120))],
+                [cx + 64 * sin(rad(240)), cy - 64 * cos(rad(240))]
+              ], stroke: alpha(cPri, 0.54), width: 1.25, closed: true)
+              path([
+                [cx + 64 * sin(rad(60)),  cy - 64 * cos(rad(60))],
+                [cx + 64 * sin(rad(180)), cy - 64 * cos(rad(180))],
+                [cx + 64 * sin(rad(300)), cy - 64 * cos(rad(300))]
+              ], stroke: alpha(cSec, 0.52), width: 1.2, closed: true)
+            } else if curMode == "future" {
+              path([
+                [cx + 64 * sin(rad(0)),   cy - 64 * cos(rad(0))],
+                [cx + 64 * sin(rad(60)),  cy - 64 * cos(rad(60))],
+                [cx + 64 * sin(rad(120)), cy - 64 * cos(rad(120))],
+                [cx + 64 * sin(rad(180)), cy - 64 * cos(rad(180))],
+                [cx + 64 * sin(rad(240)), cy - 64 * cos(rad(240))],
+                [cx + 64 * sin(rad(300)), cy - 64 * cos(rad(300))]
+              ], stroke: alpha(accentCol, 0.42), width: 1.15, closed: true)
+            } else {
+              path([
+                [cx + 64 * sin(rad(0)),   cy - 64 * cos(rad(0))],
+                [cx + 64 * sin(rad(144)), cy - 64 * cos(rad(144))],
+                [cx + 64 * sin(rad(288)), cy - 64 * cos(rad(288))],
+                [cx + 64 * sin(rad(72)),  cy - 64 * cos(rad(72))],
+                [cx + 64 * sin(rad(216)), cy - 64 * cos(rad(216))]
+              ], stroke: alpha(accentCol, 0.36), width: 1.15, closed: true)
+            }
+
+            // Recessed obsidian core disc behind text so numerals have razor-sharp legibility
+            circle(cx, cy, 54, fill: radial(cx, cy, 54, [alpha(cObs, 0.94), alpha(accentDeep, 0.72), alpha(cObs, 0.30)]))
+            circle(cx, cy, 54, stroke: alpha(accentHot, 0.28), width: 0.9)
+          }
+        }
+
+        // Crisp Date & Time Typography Stack (2-role: dispFont numeral + bodyFont meta)
+        Column {
+          align: center
+          justify: center
+          gap: 1
+          Text { font: bodyFont; text: dName; fontSize: 10; fontWeight: 800; letterSpacing: 2.4; color: accentHot; align: center; maxLines: 1 }
+          Text { font: dispFont; text: dNum; fontSize: 54; fontWeight: 900; color: inkText; align: center; maxLines: 1 }
+          Row {
+            align: center
+            justify: center
+            radius: 99
+            border: 1
+            borderColor: alpha(accentCol, 0.50)
+            background: linear(1, 0, 0, 1, [alpha(cSec, 0.12), alpha(cObs, 0.88), #000000, alpha(cPri, 0.09)])
+            padding: [10, 3, 10, 3]
+            Text { font: bodyFont; text: "${dMon} ${dYear} · ${dTime}"; fontSize: 10; fontWeight: 700; letterSpacing: 1.0; color: inkSoft; align: center; maxLines: 1 }
+          }
+        }
+      }
+
+      // ===== 4. NEXT-EVENT / ALARM TELEMETRY RIBBON =====
+      if heroEv != null || (alarm.set && alarm.time != null) {
+        Row {
+          fill: width
+          gap: 8
+          if heroEv != null {
+            let hLive = !heroEv.allDay && heroEv.start <= nowTs && heroEv.end > nowTs
+            let hCol  = (heroEv.color ?? "") != "" ? heroEv.color : accentCol
             Box {
-              fill: width
-              onTap: calendar("open", e)
-              EventCard { title: e.title; when: when; loc: e.location; dot: e.color; isNow: isToday && !e.allDay }
+              scale: tapBounce == "4" ? 0.9 : 1
+              offset: [0, tapBounce == "4" ? -4 : 0]
+              animate scale: spring(0.32, 520)
+              animate offset: spring(0.32, 520)
+              onPress: tapBounce = "4"
+              onRelease: tapBounce = ""
+              weight: 1
+              radius: cardRad
+              clip: true
+              frost: cardFrost
+              border: 1.2
+              borderColor: hLive ? rimColHot : alpha(hCol, 0.56)
+              background: hLive ? cardBgHot : cardBg
+              onTap: { haptic(); burstT = 0.9; tapU = 0.4; tapV = 0.30; calendar("open", heroEv) }
+              Column {
+                fill: width
+                gap: 0
+                Box {
+                  fill: width
+                  height: 1.5
+                  background: linear(0, 0, 1, 0, [alpha(cPri, 0.14), cPri, cHot, cBone, alpha(cPri, 0.10)])
+                }
+                Row {
+                  fill: width
+                  align: center
+                  gap: 8
+                  padding: [10, 8, 10, 8]
+                  Box { width: 4; height: 26; radius: 99; background: linear(0, 0, 0, 1, [cBone, hCol]) }
+                  Column {
+                    weight: 1
+                    gap: 1
+                    Row {
+                      fill: width
+                      align: center
+                      gap: 6
+                      Text {
+                        font: bodyFont
+                        text: hLive ? "● ACTIVE NOW" : "NEXT · ${upper(fmtAgo(heroEv.start, nowTs))}"
+                        fontSize: 9
+                        fontWeight: 800
+                        letterSpacing: 1.1
+                        color: hLive ? cBone : accentHot
+                        weight: 1
+                        maxLines: 1
+                      }
+                      Text {
+                        font: bodyFont
+                        text: "${dayPct}% DAY"
+                        fontSize: 8.5
+                        fontWeight: 700
+                        letterSpacing: 0.8
+                        color: cBone
+                        maxLines: 1
+                      }
+                    }
+                    Text {
+                      font: bodyFont
+                      text: (heroEv.title ?? "") != "" ? heroEv.title : "(untitled rite)"
+                      fontSize: 13.5
+                      fontWeight: 700
+                      color: inkText
+                      maxLines: 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          if alarm.set && alarm.time != null {
+            // Column shrink-wraps cleanly next to the weight: 1 NEXT card!
+            Column {
+              scale: tapBounce == "5" ? 0.9 : 1
+              offset: [0, tapBounce == "5" ? -4 : 0]
+              animate scale: spring(0.32, 520)
+              animate offset: spring(0.32, 520)
+              onPress: tapBounce = "5"
+              onRelease: tapBounce = ""
+              radius: cardRad
+              clip: true
+              frost: cardFrost
+              border: 1.1
+              borderColor: alpha(accentCol, 0.46)
+              background: linear(0, 1, 1, 0, [alpha(cHot, 0.07), cardBg, #000000, alpha(cSec, 0.11)])
+              align: center
+              justify: center
+              gap: 1
+              padding: [11, 8, 11, 8]
+              onTap: { haptic(); if alarm.app != null { androidApp(alarm.app) } }
+              Text { font: uiFont; text: "⏰ ALARM"; fontSize: 8.5; fontWeight: 800; letterSpacing: 1; color: accentHot; maxLines: 1 }
+              Text { font: uiFont; text: fmtTime(alarm.time, "EEE HH:mm"); fontSize: 11; fontWeight: 700; color: inkText; maxLines: 1 }
             }
           }
         }
       }
 
-      // bottom breathing room above the nav bar / keyboard
-      Spacer { height: screenInset + 24 }
+      // ===== 5. INTERACTIVE 14-DAY ORBITAL DATE STRIP (clickable day filter + week switch) =====
+      Box {
+        fill: width
+        radius: cardRad
+        clip: true
+        frost: cardFrost
+        border: cardBorder
+        borderColor: rimCol
+        background: linear(0, 0, 1, 1, [alpha(cPri, 0.13), cardBg, #000000, alpha(cSec, 0.10)])
+        Column {
+          fill: width
+          gap: 8
+          padding: [10, 9, 10, 10]
+
+          Row {
+            fill: width
+            align: center
+            gap: 6
+            Text {
+              font: uiFont
+              text: stripWeek == 0 ? "ORBITAL WEEK 1" : "ORBITAL WEEK 2"
+              fontSize: 9.5
+              fontWeight: 800
+              letterSpacing: 1.4
+              color: accentHot
+              weight: 1
+              maxLines: 1
+            }
+            if filterMode == "day" && selDayIdx >= 0 {
+              Row {
+                scale: tapBounce == "6" ? 0.9 : 1
+                offset: [0, tapBounce == "6" ? -4 : 0]
+                animate scale: spring(0.32, 520)
+                animate offset: spring(0.32, 520)
+                onPress: tapBounce = "6"
+                onRelease: tapBounce = ""
+                onTap: { haptic(); filterMode = "all"; selDayIdx = -1; burstT = 0.7 }
+                Chip { label: "✕ ${selDayLbl}"; active: true }
+              }
+            }
+            Row {
+              scale: tapBounce == "7" ? 0.9 : 1
+              offset: [0, tapBounce == "7" ? -4 : 0]
+              animate scale: spring(0.32, 520)
+              animate offset: spring(0.32, 520)
+              onPress: tapBounce = "7"
+              onRelease: tapBounce = ""
+              onTap: { haptic(); stripWeek = 0; burstT = 0.65; tapU = 0.74; tapV = 0.36 }
+              Chip { label: "D1–7"; active: stripWeek == 0 }
+            }
+            Row {
+              scale: tapBounce == "8" ? 0.9 : 1
+              offset: [0, tapBounce == "8" ? -4 : 0]
+              animate scale: spring(0.32, 520)
+              animate offset: spring(0.32, 520)
+              onPress: tapBounce = "8"
+              onRelease: tapBounce = ""
+              onTap: { haptic(); stripWeek = 1; burstT = 0.65; tapU = 0.88; tapV = 0.36 }
+              Chip { label: "D8–14"; active: stripWeek == 1 }
+            }
+          }
+
+          Row {
+            fill: width
+            gap: 5
+            for dOff in stripDays key dOff {
+              let dTs    = todayMid + dOff * 86400 + 43200
+              let dKey   = fmtTime(dTs, "yyyyMMdd")
+              let dEvs   = evAll.filter(e => fmtTime(e.start, "yyyyMMdd") == dKey)
+              let dCnt   = len(dEvs)
+              let fEv    = first(dEvs)
+              let dDot   = fEv != null && (fEv.color ?? "") != "" ? fEv.color : accentCol
+              let isTod  = dOff == 0
+              let isSel  = filterMode == "day" && selDayIdx == dOff
+
+              Box {
+                scale: tapBounce == "9${dOff}" ? 0.9 : 1
+                offset: [0, tapBounce == "9${dOff}" ? -4 : 0]
+                animate scale: spring(0.32, 520)
+                animate offset: spring(0.32, 520)
+                onPress: tapBounce = "9${dOff}"
+                onRelease: tapBounce = ""
+                weight: 1
+                onTap: {
+                  haptic()
+                  burstT = 0.9
+                  tapU = clamp((dOff % 7 + 0.5) / 7, 0.1, 0.9)
+                  tapV = 0.41
+                  if filterMode == "day" && selDayIdx == dOff {
+                    filterMode = "all"
+                    selDayIdx = -1
+                  } else {
+                    filterMode = "day"
+                    selDayIdx = dOff
+                    showAllEvs = false
+                  }
+                }
+                DayCell {
+                  dow: upper(fmtTime(dTs, "EEE"))
+                  dStr: fmtTime(dTs, "d")
+                  evCnt: dCnt
+                  dotCol: dDot
+                  isToday: isTod
+                  isSel: isSel
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // ===== 6. TACTILE STAT / FILTER / LAUNCH DOCK =====
+      Row {
+        fill: width
+        gap: 8
+        Box {
+          scale: tapBounce == "10" ? 0.9 : 1
+          offset: [0, tapBounce == "10" ? -4 : 0]
+          animate scale: spring(0.32, 520)
+          animate offset: spring(0.32, 520)
+          onPress: tapBounce = "10"
+          onRelease: tapBounce = ""
+          weight: 1
+          onTap: { haptic(); filterMode = filterMode == "today" ? "all" : "today"; selDayIdx = -1; showAllEvs = false; burstT = 0.85; tapU = 0.15; tapV = 0.50 }
+          StatTile { label: "TODAY"; value: "${todayCount}"; active: filterMode == "today"; hi: todayCount > 0 }
+        }
+        Box {
+          scale: tapBounce == "11" ? 0.9 : 1
+          offset: [0, tapBounce == "11" ? -4 : 0]
+          animate scale: spring(0.32, 520)
+          animate offset: spring(0.32, 520)
+          onPress: tapBounce = "11"
+          onRelease: tapBounce = ""
+          weight: 1
+          onTap: { haptic(); filterMode = filterMode == "week" ? "all" : "week"; selDayIdx = -1; showAllEvs = false; burstT = 0.85; tapU = 0.40; tapV = 0.50 }
+          StatTile { label: "7 DAYS"; value: "${weekCount}"; active: filterMode == "week" }
+        }
+        Box {
+          scale: tapBounce == "12" ? 0.9 : 1
+          offset: [0, tapBounce == "12" ? -4 : 0]
+          animate scale: spring(0.32, 520)
+          animate offset: spring(0.32, 520)
+          onPress: tapBounce = "12"
+          onRelease: tapBounce = ""
+          weight: 1
+          onTap: { haptic(); filterMode = "all"; selDayIdx = -1; showAllEvs = false; burstT = 0.85; tapU = 0.65; tapV = 0.50 }
+          StatTile { label: "14 DAYS"; value: "${evCount}"; active: filterMode == "all" }
+        }
+        Box {
+          scale: tapBounce == "13" ? 0.9 : 1
+          offset: [0, tapBounce == "13" ? -4 : 0]
+          animate scale: spring(0.32, 520)
+          animate offset: spring(0.32, 520)
+          onPress: tapBounce = "13"
+          onRelease: tapBounce = ""
+          weight: 1
+          onTap: { haptic(); burstT = 1.0; tapU = 0.88; tapV = 0.50; calendar("open") }
+          StatTile { label: "OPEN"; value: "↗"; hi: true }
+        }
+      }
+
+      // ===== 7. PERMISSION GATE OR DAY-GROUPED EVENT STREAM =====
+      if !cal.granted {
+        Box {
+          fill: width
+          radius: cardRad + 2
+          clip: true
+          frost: cardFrost
+          border: 1.4
+          borderColor: rimColHot
+          background: linear(1, 0, 0, 1, [alpha(cSec, 0.12), cardBgHot, #000000, alpha(cPri, 0.09)])
+          Column {
+            fill: width
+            gap: 10
+            padding: [20, 20, 20, 20]
+            align: center
+            Text { font: uiFont; text: "✶"; fontSize: 32; color: accentCol; align: center }
+            Text { font: uiFont; text: "THE ALTAR IS SEALED"; fontSize: 14; bold: true; letterSpacing: 2; color: accentHot; align: center }
+            Text { font: uiFont; text: "Grant calendar access to read your next 14 days. Nothing is read until you allow it."; fontSize: 12; color: inkSoft; align: center }
+            Row {
+              scale: tapBounce == "14" ? 0.9 : 1
+              offset: [0, tapBounce == "14" ? -4 : 0]
+              animate scale: spring(0.32, 520)
+              animate offset: spring(0.32, 520)
+              onPress: tapBounce = "14"
+              onRelease: tapBounce = ""
+              align: center
+              justify: center
+              radius: 99
+              border: 1.4
+              borderColor: accentHot
+              background: linear(0, 0, 1, 0, [alpha(accentCol, 0.34), alpha(accentGhost, 0.45)])
+              padding: [22, 11, 22, 11]
+              onTap: { haptic(); burstT = 1.0; tapU = 0.5; tapV = 0.68; calendar("request") }
+              Text { font: uiFont; text: "⛧ UNSEAL THE CALENDAR"; fontSize: 12.5; bold: true; letterSpacing: 1.4; color: #ffffff }
+            }
+          }
+        }
+      } else {
+        SectionHeader {
+          label: listHeading
+          hint: "${filtCount} ${(curMode == "future" || curMode == "mask") ? (filtCount == 1 ? "EVENT" : "EVENTS") : (filtCount == 1 ? "RITE" : "RITES")}"
+        }
+
+        if filtCount == 0 {
+          Box {
+            fill: width
+            radius: cardRad + 2
+            clip: true
+            frost: cardFrost
+            border: cardBorder
+            borderColor: rimCol
+            background: linear(0, 1, 1, 0, [alpha(cHot, 0.07), cardBg, #000000, alpha(cSec, 0.11)])
+            Column {
+              fill: width
+              gap: 8
+              padding: [22, 20, 22, 20]
+              align: center
+              Text { font: dispFont; text: curMode == "skeletor" ? "☩" : (curMode == "future" || curMode == "mask") ? "◇" : "☾"; fontSize: 28; color: accentHot; align: center }
+              Text {
+                font: uiFont
+                text: filterMode == "day" && selDayIdx >= 0
+                  ? "No rites scheduled on ${selDayLbl}"
+                  : filterMode == "today"
+                  ? "No rites remaining today"
+                  : "The next two weeks are silent"
+                fontSize: 12.5
+                fontWeight: 600
+                color: inkSoft
+                align: center
+              }
+              Row {
+                gap: 8
+                align: center
+                if filterMode != "all" {
+                  Row {
+                    scale: tapBounce == "15" ? 0.9 : 1
+                    offset: [0, tapBounce == "15" ? -4 : 0]
+                    animate scale: spring(0.32, 520)
+                    animate offset: spring(0.32, 520)
+                    onPress: tapBounce = "15"
+                    onRelease: tapBounce = ""
+                    onTap: { haptic(); filterMode = "all"; selDayIdx = -1; burstT = 0.8 }
+                    Chip { label: "SHOW ALL 14 DAYS"; active: true }
+                  }
+                }
+                Row {
+                  scale: tapBounce == "16" ? 0.9 : 1
+                  offset: [0, tapBounce == "16" ? -4 : 0]
+                  animate scale: spring(0.32, 520)
+                  animate offset: spring(0.32, 520)
+                  onPress: tapBounce = "16"
+                  onRelease: tapBounce = ""
+                  onTap: { haptic(); calendar("open") }
+                  Chip { label: "OPEN CALENDAR ↗"; active: filterMode == "all" }
+                }
+              }
+            }
+          }
+        } else {
+          Column {
+            fill: width
+            gap: 9
+            for e, i in visibleEvs key e.id {
+              let dayKey  = fmtTime(e.start, "yyyyMMdd")
+              let prevKey = i > 0 ? fmtTime(visibleEvs[i - 1].start, "yyyyMMdd") : ""
+              let newDay  = dayKey != prevKey
+              let isToday = dayKey == todayKey
+              let isLive  = !e.allDay && e.start <= nowTs && e.end > nowTs
+              let dayLbl  = isToday ? "TODAY · ${upper(fmtTime(e.start, "EEE d MMM"))}" : upper(fmtTime(e.start, "EEE d MMM"))
+              let when    = e.allDay ? "ALL DAY" : fmtTime(e.start, "HH:mm") + " – " + fmtTime(e.end, "HH:mm")
+              let rel     = isLive ? "" : (e.start > nowTs ? upper(fmtAgo(e.start, nowTs)) : "ACTIVE")
+              let dotCol  = (e.color ?? "") != "" ? e.color : accentCol
+
+              if newDay && filterMode != "day" {
+                Row {
+                  fill: width
+                  align: center
+                  gap: 8
+                  padding: [2, i == 0 ? 0 : 8, 2, 2]
+                  Box { width: 5; height: 5; radius: 99; background: isToday ? accentHot : alpha(accentCol, 0.55) }
+                  Text {
+                    font: uiFont
+                    text: dayLbl
+                    fontSize: 10
+                    fontWeight: 800
+                    letterSpacing: 1.6
+                    color: isToday ? accentHot : inkMuted
+                    maxLines: 1
+                  }
+                  Box { height: 1; weight: 1; background: linear(0, 0, 1, 0, [alpha(isToday ? accentHot : accentCol, 0.34), alpha(accentCol, 0.04)]) }
+                }
+              }
+
+              Box {
+                scale: tapBounce == "17" ? 0.9 : 1
+                offset: [0, tapBounce == "17" ? -4 : 0]
+                animate scale: spring(0.32, 520)
+                animate offset: spring(0.32, 520)
+                onPress: tapBounce = "17"
+                onRelease: tapBounce = ""
+                fill: width
+                onTap: { haptic(); burstT = 0.85; tapU = 0.5; tapV = 0.68; calendar("open", e) }
+                EventCard {
+                  title: e.title ?? ""
+                  when: when
+                  rel: rel
+                  loc: e.location ?? ""
+                  calName: e.calendar ?? ""
+                  dotCol: dotCol
+                  isLive: isLive
+                  isToday: isToday
+                }
+              }
+            }
+
+            if hasMore {
+              Row {
+                fill: width
+                justify: center
+                padding: [0, 6, 0, 4]
+                Row {
+                  scale: tapBounce == "18" ? 0.9 : 1
+                  offset: [0, tapBounce == "18" ? -4 : 0]
+                  animate scale: spring(0.32, 520)
+                  animate offset: spring(0.32, 520)
+                  onPress: tapBounce = "18"
+                  onRelease: tapBounce = ""
+                  onTap: { haptic(); showAllEvs = true }
+                  Chip { label: "+ SHOW ALL ${filtCount} EVENTS"; active: true }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Bottom breathing room above nav bar / keyboard
+      Spacer { height: screenInset + 26 }
     }
   }
 
-  fps: fxOn ? 10 : 1
+  // Adaptive frame pacing: 45fps strictly during 0.5s tap shockwave, 15fps ambient FX (only when shader visible), 1fps idle/eco
+  // smooth ladder: 60 tap burst · 30 ambient · 1 still (never a choppy in-between)
+  fps: burstT > 0.01 ? 60 : (fxOn && shaderOn && !rzBusy) ? 30 : 1
 }

@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# font — change the terminal (foot) + GTK font for this proot.
+#
+#   font                 show current font and installed monospace fonts
+#   font 20              set size
+#   font +2 | font -2    bump size up/down
+#   font "Fira Code"     set family (keeps size)
+#   font "Fira Code" 18  set both
+#   font list            list monospace families
+#   font reset           drop the override, go back to the launcher's font
+#
+# Writes ~/.config/foot/font.ini, which foot.ini includes AFTER the launcher's
+# own font file, so it wins. foot reads config at launch: open a new window.
+set -euo pipefail
+
+OVR="$HOME/.config/foot/font.ini"
+GTK3="$HOME/.config/gtk-3.0/settings.ini"
+GTK4="$HOME/.config/gtk-4.0/settings.ini"
+DEFAULT_FAMILY="JetBrains Mono"
+DEFAULT_SIZE=20
+
+current() {
+  local line
+  line=$(grep -h '^font=' "$OVR" 2>/dev/null || grep -h '^font=' "$HOME/.local/state/omalauncher/foot-font.ini" 2>/dev/null || true)
+  line=${line#font=}
+  CUR_FAMILY=${line%%:*}; CUR_FAMILY=${CUR_FAMILY:-$DEFAULT_FAMILY}
+  CUR_SIZE=$(sed -n 's/.*size=\([0-9.]*\).*/\1/p' <<<"$line"); CUR_SIZE=${CUR_SIZE:-$DEFAULT_SIZE}
+}
+
+list() { fc-list :spacing=mono family | cut -d, -f1 | sort -u | grep -v '^$'; }
+
+set_gtk() { # GTK UI text runs ~3/4 of the terminal size so dialogs stay usable
+  local gsize f
+  gsize=$(awk -v s="$1" 'BEGIN{printf "%d", s*0.75+0.5}')
+  for f in "$GTK3" "$GTK4"; do
+    [ -f "$f" ] || printf '[Settings]\n' >"$f"
+    if grep -q '^gtk-font-name=' "$f"; then
+      sed -i "s/^gtk-font-name=.*/gtk-font-name=Sans $gsize/" "$f"
+    else
+      sed -i "/^\[Settings\]/a gtk-font-name=Sans $gsize" "$f"
+    fi
+  done
+}
+
+write() { # family size
+  if ! list | grep -qxF "$1"; then
+    echo "font: '$1' is not an installed monospace font. Run: font list" >&2; exit 1
+  fi
+  printf '[main]\nfont=%s:size=%s\n' "$1" "$2" >"$OVR"
+  set_gtk "$2"
+  echo "font: $1, size $2 (GTK UI: Sans $(awk -v s="$2" 'BEGIN{printf "%d", s*0.75+0.5}'))"
+  echo "      open a new terminal window to see it."
+}
+
+is_size() { [[ $1 =~ ^[0-9]+(\.[0-9]+)?$ ]]; }
+
+current
+case "${1-}" in
+  "")
+    echo "current: $CUR_FAMILY, size $CUR_SIZE"; echo; echo "installed monospace fonts:"; list | sed 's/^/  /' ;;
+  list) list ;;
+  reset)
+    rm -f "$OVR"
+    sed -i '/^gtk-font-name=/d' "$GTK3" "$GTK4" 2>/dev/null || true
+    echo "font: override removed (launcher default restored)" ;;
+  -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//' ;;
+  [+-]*)
+    is_size "${1:1}" || { echo "font: bad step '$1'" >&2; exit 1; }
+    write "$CUR_FAMILY" "$(awk -v a="$CUR_SIZE" -v b="$1" 'BEGIN{s=a+b; if(s<6)s=6; print s}')" ;;
+  *)
+    if is_size "$1"; then write "$CUR_FAMILY" "$1"
+    elif [ -n "${2-}" ]; then is_size "$2" || { echo "font: bad size '$2'" >&2; exit 1; }; write "$1" "$2"
+    else write "$1" "$CUR_SIZE"; fi ;;
+esac

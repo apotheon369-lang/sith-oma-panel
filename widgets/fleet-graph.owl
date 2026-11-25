@@ -1,0 +1,719 @@
+app "fleet-graph" {
+  meta {
+    owl: 22
+    description: "Sith Dual-Fleet 369 Interactive Graph Canvas — JSON Canvas 1.0 spatial groups, curved cubic Bezier connectors, midpoint pills, and live corner minimap."
+    version: "1.0"
+  }
+
+  icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" rx="56" fill="#0a0002"/><rect x="10" y="10" width="236" height="236" rx="46" fill="none" stroke="#ff2a48" stroke-opacity="0.32" stroke-width="3"/><path d="M128 66 C128 112 72 98 72 142" fill="none" stroke="#ff2a48" stroke-opacity="0.28" stroke-width="14" stroke-linecap="round"/><path d="M128 66 C128 112 184 98 184 142" fill="none" stroke="#ff2a48" stroke-opacity="0.28" stroke-width="14" stroke-linecap="round"/><path d="M72 142 C108 124 148 124 184 142" fill="none" stroke="#ff8596" stroke-opacity="0.26" stroke-width="11" stroke-linecap="round"/><path d="M72 142 C72 184 102 198 128 198" fill="none" stroke="#ff2a48" stroke-opacity="0.26" stroke-width="12" stroke-linecap="round"/><path d="M184 142 C184 184 154 198 128 198" fill="none" stroke="#ff2a48" stroke-opacity="0.26" stroke-width="12" stroke-linecap="round"/><path d="M128 66 C128 112 72 98 72 142" fill="none" stroke="#ff2a48" stroke-width="5" stroke-linecap="round"/><path d="M128 66 C128 112 184 98 184 142" fill="none" stroke="#ff2a48" stroke-width="5" stroke-linecap="round"/><path d="M72 142 C108 124 148 124 184 142" fill="none" stroke="#ff8596" stroke-width="4" stroke-linecap="round"/><path d="M72 142 C72 184 102 198 128 198" fill="none" stroke="#ff2a48" stroke-width="4.5" stroke-linecap="round"/><path d="M184 142 C184 184 154 198 128 198" fill="none" stroke="#ff2a48" stroke-width="4.5" stroke-linecap="round"/><polygon points="72,124 62,107 72,113 82,107" fill="#ff8596"/><polygon points="184,124 174,107 184,113 194,107" fill="#ff8596"/><polygon points="110,198 94,189 99,198 94,207" fill="#ff8596"/><polygon points="146,198 162,189 157,198 162,207" fill="#ff8596"/><circle cx="128" cy="66" r="24" fill="#ff2a48" fill-opacity="0.22"/><circle cx="128" cy="66" r="15" fill="#180006" stroke="#ff2a48" stroke-width="5"/><circle cx="128" cy="66" r="6" fill="#ff8596"/><circle cx="72" cy="142" r="19" fill="#ff2a48" fill-opacity="0.20"/><circle cx="72" cy="142" r="12" fill="#180006" stroke="#ff2a48" stroke-width="4.5"/><circle cx="72" cy="142" r="4.5" fill="#ff8596"/><circle cx="184" cy="142" r="19" fill="#ff2a48" fill-opacity="0.20"/><circle cx="184" cy="142" r="12" fill="#180006" stroke="#ff2a48" stroke-width="4.5"/><circle cx="184" cy="142" r="4.5" fill="#ff8596"/><circle cx="128" cy="198" r="18" fill="#ff8596" fill-opacity="0.22"/><circle cx="128" cy="198" r="11" fill="#180006" stroke="#ff8596" stroke-width="4.5"/><circle cx="128" cy="198" r="4.5" fill="#ff2a48"/></svg>"""
+
+  title: ""
+  edge: true
+  fps: fxOn ? 24 : 1
+
+  source hub = file("~/.config/omalauncher/hub.json") json
+  source fleet = file("~/.config/omalauncher/fleet/fleet-369.json") json
+
+  state fxOn = true persist
+  state showMinimap = true persist
+  state curvedEdges = true persist
+  state zoom = 0.49
+  state panX = 10
+  state panY = 200
+  state selId = "aethera"
+  state wokeAgent = ""
+  state fxT = 0.35
+
+  every frame {
+    if fxOn { fxT = fxT + dt }
+  }
+
+  // ─── PRECOMPUTED BERNSTEIN CUBIC BEZIER BASIS (15 SAMPLES, ZERO pow() PER FRAME) ───
+  let bezBasis = range(15).map(i => [
+    pow(1 - i / 14, 3),
+    3 * pow(1 - i / 14, 2) * (i / 14),
+    3 * (1 - i / 14) * pow(i / 14, 2),
+    pow(i / 14, 3)
+  ])
+
+  // ─── THEME-ADAPTIVE TOKENS WITH CRIMSON AMOLED FALLBACKS ───
+  let tok = hub.tok ?? {}
+  let hx = tok.hex ?? {}
+  let cPri = hx.pri ?? (tok.pri != null ? rgb(tok.pri[0], tok.pri[1], tok.pri[2]) : #ff2a48)
+  let cMid = hx.mid ?? (tok.mid != null ? rgb(tok.mid[0], tok.mid[1], tok.mid[2]) : #ff5c78)
+  let cHot = hx.hot ?? (tok.hot != null ? rgb(tok.hot[0], tok.hot[1], tok.hot[2]) : #ff9500)
+  let cSec = hx.sec ?? (tok.sec != null ? rgb(tok.sec[0], tok.sec[1], tok.sec[2]) : #00d9ff)
+  let cCard = hx.card ?? (tok.card != null ? rgb(tok.card[0], tok.card[1], tok.card[2]) : #0c0105)
+  let cObs = hx.obs ?? (tok.obs != null ? rgb(tok.obs[0], tok.obs[1], tok.obs[2]) : #060002)
+  let cInk = hx.ink ?? (tok.ink != null ? rgb(tok.ink[0], tok.ink[1], tok.ink[2]) : #ffeef2)
+  let cMuted = hx.muted ?? (tok.muted != null ? rgb(tok.muted[0], tok.muted[1], tok.muted[2]) : #c48896)
+  let uiFont = tok.bodyFont ?? "sans"
+
+  // ─── JSON CANVAS 1.0 PRESET COLOR MAP ("1"-"6") ───
+  let presetCols = {
+    "1": #ff2a48,
+    "2": #ff7a1a,
+    "3": #ffe033,
+    "4": #00ff7f,
+    "5": #00d9ff,
+    "6": #c084fc
+  }
+
+  // ─── SPATIAL GROUPS (JSON CANVAS 1.0) ───
+  let canvasGroups = [
+    { id: 1, x: 24, y: 14, w: 772, h: 178, label: "COMMAND LEADS", color: "1" },
+    { id: 2, x: 24, y: 290, w: 322, h: 418, label: "CLAUDE DIVISION", color: "2" },
+    { id: 3, x: 474, y: 290, w: 322, h: 418, label: "GOOGLE DIVISION", color: "5" },
+    { id: 4, x: 24, y: 804, w: 772, h: 114, label: "DEBUG & QA", color: "6" }
+  ]
+
+  // ─── LIVE 31-AGENT TOPOLOGY FROM fleet-369.json ───
+  let rawAgents = fleet.categories.all.agents ?? []
+  let leadAgents = rawAgents.filter(a => a.role == "lead")
+  let claudeBuilders = rawAgents.filter(a => a.role == "builder" && a.div == "claude")
+  let googleBuilders = rawAgents.filter(a => a.role == "builder" && a.div == "google")
+  let qaAgents = rawAgents.filter(a => a.role == "debugger" || a.role == "tester")
+
+  let leadNodes = range(len(leadAgents)).map(i => merge({}, {
+    id: leadAgents[i].name,
+    name: leadAgents[i].name,
+    short: leadAgents[i].name == "aethera" ? "AETHERA"
+      : upper(replace(replace(leadAgents[i].name, "claude-", "C-"), "google-", "G-")),
+    div: leadAgents[i].div,
+    role: leadAgents[i].role,
+    model: leadAgents[i].model,
+    group: "COMMAND LEADS",
+    color: leadAgents[i].name == "aethera" ? "1" : (leadAgents[i].div == "claude" ? "2" : "5"),
+    x: leadAgents[i].name == "aethera" ? 344
+      : leadAgents[i].name == "claude-lead-1" ? 44
+      : leadAgents[i].name == "claude-lead-2" ? 214
+      : leadAgents[i].name == "google-lead-1" ? 474
+      : leadAgents[i].name == "google-lead-2" ? 644
+      : 44 + i * 150,
+    y: leadAgents[i].name == "aethera" ? 48 : 126,
+    w: 132,
+    h: leadAgents[i].name == "aethera" ? 50 : 48
+  }))
+
+  let claudeNodes = range(len(claudeBuilders)).map(i => merge({}, {
+    id: claudeBuilders[i].name,
+    name: claudeBuilders[i].name,
+    short: upper(replace(replace(replace(replace(claudeBuilders[i].name, "claude-worker-", "C-WRK-"), "claude-tester-", "C-TST-"), "claude-debugger-", "C-DBG-"), "claude-", "C-")),
+    div: claudeBuilders[i].div,
+    role: claudeBuilders[i].role,
+    model: claudeBuilders[i].model,
+    group: "CLAUDE DIVISION",
+    color: "2",
+    x: (i == len(claudeBuilders) - 1 && len(claudeBuilders) % 2 == 1) ? 142 : (i % 2 == 0 ? 44 : 194),
+    y: 332 + floor(i / 2) * 62,
+    w: 132,
+    h: 46
+  }))
+
+  let googleNodes = range(len(googleBuilders)).map(i => merge({}, {
+    id: googleBuilders[i].name,
+    name: googleBuilders[i].name,
+    short: upper(replace(replace(replace(replace(googleBuilders[i].name, "google-worker-", "G-WRK-"), "google-tester-", "G-TST-"), "google-debugger-", "G-DBG-"), "google-", "G-")),
+    div: googleBuilders[i].div,
+    role: googleBuilders[i].role,
+    model: googleBuilders[i].model,
+    group: "GOOGLE DIVISION",
+    color: "5",
+    x: i % 2 == 0 ? 494 : 644,
+    y: 342 + floor(i / 2) * 74,
+    w: 132,
+    h: 46
+  }))
+
+  let qaNodes = range(len(qaAgents)).map(i => merge({}, {
+    id: qaAgents[i].name,
+    name: qaAgents[i].name,
+    short: upper(replace(replace(replace(replace(qaAgents[i].name, "claude-debugger-", "C-DBG-"), "google-debugger-", "G-DBG-"), "google-tester-", "G-TST-"), "claude-", "C-")),
+    div: qaAgents[i].div,
+    role: qaAgents[i].role,
+    model: qaAgents[i].model,
+    group: "DEBUG & QA",
+    color: qaAgents[i].role == "tester" ? "4" : "6",
+    x: qaAgents[i].name == "claude-debugger-1" ? 44
+      : qaAgents[i].name == "claude-debugger-2" ? 194
+      : qaAgents[i].name == "google-tester-1" ? 344
+      : qaAgents[i].name == "google-debugger-1" ? 494
+      : qaAgents[i].name == "google-debugger-2" ? 644
+      : 44 + i * 150,
+    y: 848,
+    w: 132,
+    h: 48
+  }))
+
+  let nodes = flatten([leadNodes, claudeNodes, googleNodes, qaNodes])
+
+  // ─── CURVED BEZIER EDGES (DIRECTIVE / DISPATCH / SYNC / AUDIT / VERIFY) ───
+  let canvasEdges = [
+    // Command Directives from Aethera Apex
+    { from: "aethera", to: "claude-lead-1", fromSide: "left", toSide: "top", fromEnd: "dot", toEnd: "arrow", label: "DIRECTIVE", color: "1", style: "pulse", curved: true },
+    { from: "aethera", to: "claude-lead-2", fromSide: "bottom", toSide: "top", fromEnd: "dot", toEnd: "arrow", label: "", color: "1", style: "solid", curved: true },
+    { from: "aethera", to: "google-lead-1", fromSide: "bottom", toSide: "top", fromEnd: "dot", toEnd: "arrow", label: "", color: "1", style: "solid", curved: true },
+    { from: "aethera", to: "google-lead-2", fromSide: "right", toSide: "top", fromEnd: "dot", toEnd: "arrow", label: "DIRECTIVE", color: "1", style: "pulse", curved: true },
+
+    // Claude Division Dispatch
+    { from: "claude-lead-1", to: "claude-worker-1", fromSide: "auto", toSide: "auto", fromEnd: "dot", toEnd: "arrow", label: "DISPATCH", color: "2", style: "pulse", curved: true },
+    { from: "claude-lead-2", to: "claude-worker-2", fromSide: "auto", toSide: "auto", fromEnd: "none", toEnd: "arrow", label: "", color: "2", style: "solid", curved: true },
+    { from: "claude-worker-1", to: "claude-worker-3", fromSide: "auto", toSide: "auto", fromEnd: "none", toEnd: "arrow", label: "", color: "2", style: "dashed", curved: true },
+    { from: "claude-worker-4", to: "claude-worker-6", fromSide: "auto", toSide: "auto", fromEnd: "none", toEnd: "arrow", label: "", color: "2", style: "dotted", curved: true },
+    { from: "claude-tester-3", to: "claude-debugger-3", fromSide: "bottom", toSide: "right", fromEnd: "none", toEnd: "arrow", label: "", color: "2", style: "dotted", curved: true },
+
+    // Google Division Dispatch
+    { from: "google-lead-1", to: "google-worker-1", fromSide: "auto", toSide: "auto", fromEnd: "none", toEnd: "arrow", label: "", color: "5", style: "solid", curved: true },
+    { from: "google-lead-2", to: "google-worker-2", fromSide: "auto", toSide: "auto", fromEnd: "dot", toEnd: "arrow", label: "DISPATCH", color: "5", style: "pulse", curved: true },
+    { from: "google-worker-2", to: "google-worker-4", fromSide: "auto", toSide: "auto", fromEnd: "none", toEnd: "arrow", label: "", color: "5", style: "dashed", curved: true },
+    { from: "google-worker-5", to: "google-tester-2", fromSide: "auto", toSide: "auto", fromEnd: "none", toEnd: "arrow", label: "", color: "5", style: "dotted", curved: true },
+
+    // Cross-Division Bidirectional Sync Spine
+    { from: "claude-worker-2", to: "google-worker-1", fromSide: "auto", toSide: "auto", fromEnd: "arrow", toEnd: "arrow", label: "SYNC", color: "3", style: "pulse", curved: true },
+    { from: "claude-worker-6", to: "google-worker-5", fromSide: "auto", toSide: "auto", fromEnd: "arrow", toEnd: "arrow", label: "SYNC", color: "5", style: "dashed", curved: true },
+    { from: "claude-tester-3", to: "google-tester-3", fromSide: "auto", toSide: "auto", fromEnd: "dot", toEnd: "arrow", label: "SYNC", color: "3", style: "dotted", curved: true },
+
+    // Debug & QA Audit / Verify
+    { from: "claude-tester-2", to: "claude-debugger-1", fromSide: "bottom", toSide: "top", fromEnd: "none", toEnd: "arrow", label: "AUDIT", color: "6", style: "dashed", curved: true },
+    { from: "claude-debugger-3", to: "claude-debugger-2", fromSide: "bottom", toSide: "top", fromEnd: "none", toEnd: "arrow", label: "", color: "6", style: "solid", curved: true },
+    { from: "claude-debugger-3", to: "google-tester-1", fromSide: "right", toSide: "top", fromEnd: "dot", toEnd: "arrow", label: "VERIFY", color: "4", style: "pulse", curved: true },
+    { from: "google-tester-3", to: "google-tester-1", fromSide: "bottom", toSide: "top", fromEnd: "dot", toEnd: "arrow", label: "VERIFY", color: "4", style: "pulse", curved: true },
+    { from: "google-debugger-3", to: "google-debugger-2", fromSide: "bottom", toSide: "top", fromEnd: "none", toEnd: "arrow", label: "AUDIT", color: "6", style: "dashed", curved: true },
+    { from: "google-debugger-1", to: "google-tester-1", fromSide: "auto", toSide: "auto", fromEnd: "none", toEnd: "arrow", label: "", color: "4", style: "solid", curved: true }
+  ]
+
+  let sel = nodes.find(n => n.id == selId)
+
+  // ─── VIEWPORT & MINIMAP THREE-SPACE GEOMETRY ───
+  let viewW = max(260, screenWidth ?? 412)
+  let viewH = max(320, (screenHeight ?? 915) - (screenTop ?? 28) - (screenInset ?? 24) - 96)
+  let effZ = max(0.25, zoom)
+  let vpX = -panX
+  let vpY = -panY
+  let vpW = viewW / effZ
+  let vpH = viewH / effZ
+
+  let mmW = 116
+  let mmH = 80
+  let mmPad = 6
+  let minX = reduce(nodes, (a, n) => min(a, n.x ?? 0), min(vpX, 24)) - 48
+  let minY = reduce(nodes, (a, n) => min(a, n.y ?? 0), min(vpY, 14)) - 48
+  let maxX = reduce(nodes, (a, n) => max(a, (n.x ?? 0) + (n.w ?? 132)), max(vpX + vpW, 796)) + 48
+  let maxY = reduce(nodes, (a, n) => max(a, (n.y ?? 0) + (n.h ?? 48)), max(vpY + vpH, 918)) + 48
+  let bw = max(1, maxX - minX)
+  let bh = max(1, maxY - minY)
+  let mmScale = min((mmW - mmPad * 2) / bw, (mmH - mmPad * 2) / bh)
+  let mmOffX = (mmW - bw * mmScale) / 2
+  let mmOffY = (mmH - bh * mmScale) / 2
+
+  Box {
+    fill: true
+    background: cObs
+
+    Column {
+      fill: true
+      padding: [0, screenTop + 6, 0, 0]
+      gap: 6
+
+      // ─── COMPACT TOP HEADER BAR ───
+      Row {
+        fill: width
+        padding: [12, 0]
+        align: center
+        gap: 8
+
+        Box {
+          width: 30; height: 30; radius: 9 * corners
+          background: cCard; border: 1; borderColor: alpha(cPri, 0.55)
+          onTap: { haptic(); close() }
+          Column {
+            fill: true; justify: center
+            Text { text: "✕"; align: center; fontSize: 12; bold: true; color: cPri }
+          }
+        }
+
+        Column {
+          weight: 1; gap: 1
+          Text { font: uiFont; text: "◈ FLEET GRAPH 369"; fontSize: 12.5; bold: true; letterSpacing: 1.5; color: cPri; maxLines: 1 }
+          Text { font: mono; text: "${len(nodes)} AGENTS · ${len(canvasEdges)} EDGES · ${round(zoom * 100)}%"; fontSize: 8.5; letterSpacing: 0.7; color: cMuted; maxLines: 1 }
+        }
+
+        Row {
+          padding: [9, 6]; radius: 9 * corners; align: center
+          background: fxOn ? alpha(cPri, 0.22) : cCard
+          border: 1; borderColor: alpha(cPri, fxOn ? 0.85 : 0.35)
+          onTap: { haptic(); fxOn = !fxOn }
+          Text { font: mono; text: fxOn ? "FX" : "ECO"; fontSize: 9; bold: true; color: fxOn ? cInk : cMuted }
+        }
+
+        Row {
+          padding: [9, 6]; radius: 9 * corners; align: center
+          background: showMinimap ? alpha(cSec, 0.20) : cCard
+          border: 1; borderColor: alpha(cSec, showMinimap ? 0.85 : 0.35)
+          onTap: { haptic(); showMinimap = !showMinimap }
+          Text { font: mono; text: "MAP"; fontSize: 9; bold: true; color: showMinimap ? cInk : cMuted }
+        }
+      }
+
+      // ─── COMPACT VIEWPORT CONTROLS BAR ───
+      Row {
+        fill: width
+        padding: [12, 0]
+        align: center
+        gap: 6
+
+        Box {
+          width: 32; height: 26; radius: 8 * corners
+          background: cCard; border: 1; borderColor: alpha(cPri, 0.45)
+          onTap: {
+            haptic()
+            let oldZ = max(0.25, zoom)
+            let newZ = round(clamp(oldZ - 0.10, 0.30, 1.80), 2)
+            let cxW = (viewW / 2) / oldZ - panX
+            let cyW = (viewH / 2) / oldZ - panY
+            zoom = newZ
+            panX = round((viewW / 2) / newZ - cxW)
+            panY = round((viewH / 2) / newZ - cyW)
+          }
+          Column {
+            fill: true; justify: center
+            Text { font: mono; text: "−"; align: center; fontSize: 12; bold: true; color: cInk }
+          }
+        }
+
+        Row {
+          padding: [12, 5]; height: 26; radius: 8 * corners; align: center
+          background: alpha(cPri, 0.16); border: 1; borderColor: alpha(cPri, 0.6)
+          onTap: {
+            haptic()
+            let topReserve = showMinimap ? 96 : 20
+            let fitZ = clamp(min((viewW - 24) / 820, (viewH - topReserve - 24) / 930), 0.34, 1.10)
+            zoom = round(fitZ, 2)
+            panX = round((viewW / fitZ - 820) / 2)
+            panY = round(topReserve / fitZ + (viewH - topReserve - 24 - 930 * fitZ) / (2 * fitZ))
+          }
+          Text { font: mono; text: "FIT"; fontSize: 9.5; bold: true; letterSpacing: 1.0; color: cInk }
+        }
+
+        Box {
+          width: 32; height: 26; radius: 8 * corners
+          background: cCard; border: 1; borderColor: alpha(cPri, 0.45)
+          onTap: {
+            haptic()
+            let oldZ = max(0.25, zoom)
+            let newZ = round(clamp(oldZ + 0.12, 0.30, 1.80), 2)
+            let cxW = (viewW / 2) / oldZ - panX
+            let cyW = (viewH / 2) / oldZ - panY
+            zoom = newZ
+            panX = round((viewW / 2) / newZ - cxW)
+            panY = round((viewH / 2) / newZ - cyW)
+          }
+          Column {
+            fill: true; justify: center
+            Text { font: mono; text: "+"; align: center; fontSize: 12; bold: true; color: cInk }
+          }
+        }
+
+        Spacer { weight: 1 }
+
+        Row {
+          padding: [11, 5]; height: 26; radius: 8 * corners; align: center
+          background: curvedEdges ? alpha(cMid, 0.18) : cCard
+          border: 1; borderColor: alpha(curvedEdges ? cMid : cMuted, 0.65)
+          onTap: { haptic(); curvedEdges = !curvedEdges }
+          Text { font: mono; text: curvedEdges ? "CURVED" : "STRAIGHT"; fontSize: 9; bold: true; letterSpacing: 0.9; color: cInk }
+        }
+
+        if wokeAgent != "" {
+          Row {
+            padding: [8, 5]; height: 26; radius: 8 * corners; align: center
+            background: alpha(#00ff7f, 0.14); border: 1; borderColor: alpha(#00ff7f, 0.65)
+            onTap: { wokeAgent = "" }
+            Text { font: mono; text: "⚡ ${upper(wokeAgent)}"; fontSize: 8.5; bold: true; color: #00ff7f; maxLines: 1 }
+          }
+        }
+      }
+
+      // ─── MAIN INFINITE GRAPH VIEWPORT (1-NODE CANVAS + CORNER MINIMAP + INSPECTOR) ───
+      Box {
+        weight: 1
+        fill: width
+        clip: true
+        background: cObs
+        border: 1
+        borderColor: alpha(cPri, 0.22)
+
+        // ─── LAYER 1-3: SINGLE 1-NODE CANVAS (GRID + GROUPS + BEZIER EDGES + 31 NODES) ───
+        Canvas {
+          fill: true
+          onDrag: {
+            panX = clamp(panX + dx / max(0.25, zoom), -1400, 1400)
+            panY = clamp(panY + dy / max(0.25, zoom), -1400, 1400)
+          }
+          onTap: {
+            let tz = max(0.25, zoom)
+            let twx = x / tz - panX
+            let twy = y / tz - panY
+            let directHit = reduce(nodes, (best, n) =>
+              (abs(twx - (n.x + n.w / 2)) <= n.w / 2 + 16 && abs(twy - (n.y + n.h / 2)) <= n.h / 2 + 16) ? n : best,
+              null
+            )
+            let nearest = directHit ?? reduce(nodes, (best, n) =>
+              (best == null || (pow(twx - (n.x + n.w / 2), 2) + pow(twy - (n.y + n.h / 2), 2) < pow(twx - (best.x + best.w / 2), 2) + pow(twy - (best.y + best.h / 2), 2))) ? n : best,
+              null
+            )
+            let nDist = nearest == null ? 9999 : sqrt(pow(twx - (nearest.x + nearest.w / 2), 2) + pow(twy - (nearest.y + nearest.h / 2), 2))
+            if directHit != null {
+              haptic()
+              selId = directHit.id
+            } else if nearest != null && nDist <= 88 / tz {
+              haptic()
+              selId = nearest.id
+            } else {
+              selId = ""
+            }
+          }
+
+          let z = max(0.25, zoom)
+          let gridStep = max(18, 48 * z)
+          let gOffX = ((panX * z) % gridStep + gridStep) % gridStep
+          let gOffY = ((panY * z) % gridStep + gridStep) % gridStep
+          let gCols = min(28, ceil(width / gridStep) + 1)
+          let gRows = min(38, ceil(height / gridStep) + 1)
+
+          // Tactical AMOLED Dot Grid
+          for gx in range(gCols) {
+            for gy in range(gRows) {
+              circle(gOffX + gx * gridStep, gOffY + gy * gridStep, 1.0, fill: alpha(cPri, 0.16))
+            }
+          }
+
+          // ─── LAYER 1: JSON CANVAS 1.0 SPATIAL GROUPS ───
+          for grp in canvasGroups {
+            let gCol = get(presetCols, grp.color, cPri)
+            let sx = (grp.x + panX) * z
+            let sy = (grp.y + panY) * z
+            let sw = grp.w * z
+            let sh = grp.h * z
+            let gRad = max(6, 14 * z)
+            let hdrH = max(14, 26 * z)
+
+            rect(sx, sy, sw, sh, radius: gRad, fill: alpha(gCol, 0.055), stroke: alpha(gCol, 0.44), width: max(1.0, 1.6 * z))
+            rect(sx + 1, sy + 1, sw - 2, hdrH, radius: gRad, fill: alpha(gCol, 0.12))
+            line(sx + 6, sy + hdrH, sx + sw - 6, sy + hdrH, stroke: alpha(gCol, 0.28), width: 0.9)
+            circle(sx + 10 * z + 4, sy + hdrH / 2, max(2.0, 3.2 * z), fill: gCol)
+            text(grp.label, sx + 18 * z + 6, sy + hdrH / 2, size: clamp(11.5 * z, 6.8, 12.5), color: gCol, align: start, bold: true, font: mono)
+          }
+
+          // ─── LAYER 2: CURVED CUBIC BEZIER EDGES, ARROWHEADS & MIDPOINT PILLS ───
+          for ed, eIdx in canvasEdges {
+            let na = nodes.find(n => n.id == ed.from)
+            let nb = nodes.find(n => n.id == ed.to)
+            if na != null && nb != null {
+              let ax = (na.x + panX) * z
+              let ay = (na.y + panY) * z
+              let aw = na.w * z
+              let ah = na.h * z
+              let bx = (nb.x + panX) * z
+              let by = (nb.y + panY) * z
+              let bwN = nb.w * z
+              let bhN = nb.h * z
+
+              let acx = ax + aw / 2
+              let acy = ay + ah / 2
+              let bcx = bx + bwN / 2
+              let bcy = by + bhN / 2
+              let edx = bcx - acx
+              let edy = bcy - acy
+
+              // Smart Cardinal Auto-Side Anchoring
+              let horiz = abs(edx) * (ah + bhN) >= abs(edy) * (aw + bwN)
+              let autoFrom = horiz ? (edx >= 0 ? "right" : "left") : (edy >= 0 ? "bottom" : "top")
+              let autoTo = horiz ? (edx >= 0 ? "left" : "right") : (edy >= 0 ? "top" : "bottom")
+              let fSide = (ed.fromSide ?? "auto") == "auto" ? autoFrom : ed.fromSide
+              let tSide = (ed.toSide ?? "auto") == "auto" ? autoTo : ed.toSide
+
+              let p0x = fSide == "right" ? ax + aw : fSide == "left" ? ax : ax + aw / 2
+              let p0y = fSide == "bottom" ? ay + ah : fSide == "top" ? ay : ay + ah / 2
+              let fnx = fSide == "right" ? 1 : fSide == "left" ? -1 : 0
+              let fny = fSide == "bottom" ? 1 : fSide == "top" ? -1 : 0
+
+              let p3x = tSide == "right" ? bx + bwN : tSide == "left" ? bx : bx + bwN / 2
+              let p3y = tSide == "bottom" ? by + bhN : tSide == "top" ? by : by + bhN / 2
+              let tnx = tSide == "right" ? 1 : tSide == "left" ? -1 : 0
+              let tny = tSide == "bottom" ? 1 : tSide == "top" ? -1 : 0
+
+              let edgeDist = sqrt(pow(p3x - p0x, 2) + pow(p3y - p0y, 2))
+              let hLen = clamp(edgeDist * 0.42, 28 * z, 180 * z)
+              let useCurved = curvedEdges && (ed.curved ?? true)
+
+              let p1x = useCurved ? p0x + fnx * hLen : lerp(p0x, p3x, 0.33)
+              let p1y = useCurved ? p0y + fny * hLen : lerp(p0y, p3y, 0.33)
+              let p2x = useCurved ? p3x + tnx * hLen : lerp(p0x, p3x, 0.67)
+              let p2y = useCurved ? p3y + tny * hLen : lerp(p0y, p3y, 0.67)
+
+              let bezPts = bezBasis.map(w => [
+                w[0] * p0x + w[1] * p1x + w[2] * p2x + w[3] * p3x,
+                w[0] * p0y + w[1] * p1y + w[2] * p2y + w[3] * p3y
+              ])
+
+              let baseCol = get(presetCols, ed.color ?? "", cPri)
+              let isLinked = selId != "" && (ed.from == selId || ed.to == selId)
+              let edgeAlpha = selId == "" ? 0.92 : (isLinked ? 1.0 : 0.62)
+              let edgeCol = alpha(baseCol, edgeAlpha)
+              let eStyle = ed.style ?? "solid"
+
+              // Edge Stroke Styles: solid, dashed, dotted, pulse
+              if eStyle == "dashed" {
+                path(bezPts, stroke: alpha(baseCol, isLinked ? 0.22 : 0.10), width: isLinked ? 5.0 : 3.2, cap: round)
+                for di in [0, 2, 4, 6, 8, 10, 12] {
+                  line(bezPts[di][0], bezPts[di][1], bezPts[di + 1][0], bezPts[di + 1][1], stroke: edgeCol, width: isLinked ? 2.1 : 1.5, cap: round)
+                }
+              } else if eStyle == "dotted" {
+                for di in range(1, 14) {
+                  circle(bezPts[di][0], bezPts[di][1], clamp((isLinked ? 2.2 : 1.6) * z, 1.1, 2.8), fill: edgeCol)
+                }
+              } else {
+                path(bezPts, stroke: alpha(baseCol, isLinked ? 0.32 : 0.18), width: isLinked ? 6.0 : 4.2, cap: round)
+                path(bezPts, stroke: edgeCol, width: isLinked ? 2.1 : 1.55, cap: round)
+              }
+
+              // Animated Pulse Comet Spark (gated by fxOn)
+              if fxOn && (eStyle == "pulse" || isLinked) {
+                let tp = (fxT * 0.45 + eIdx * 0.13) % 1.0
+                let mt = 1 - tp
+                let b0 = mt * mt * mt
+                let b1 = 3 * mt * mt * tp
+                let b2 = 3 * mt * tp * tp
+                let b3 = tp * tp * tp
+                let spx = b0 * p0x + b1 * p1x + b2 * p2x + b3 * p3x
+                let spy = b0 * p0y + b1 * p1y + b2 * p2y + b3 * p3y
+                circle(spx, spy, clamp(6.5 * z, 3.6, 7.5), fill: alpha(baseCol, 0.34))
+                circle(spx, spy, clamp(3.0 * z, 1.8, 3.8), fill: cInk)
+              }
+
+              // Analytical Tangent Notched Chevron Arrowhead at t = 1
+              let arrSz = 8.5 * clamp(z, 0.65, 1.35)
+              if (ed.toEnd ?? "arrow") == "arrow" {
+                let tvx = abs(p3x - p2x) + abs(p3y - p2y) > 0.5 ? (p3x - p2x) : (p3x - p0x)
+                let tvy = abs(p3x - p2x) + abs(p3y - p2y) > 0.5 ? (p3y - p2y) : (p3y - p0y)
+                let angEnd = atan2(tvy, tvx)
+                path([
+                  [p3x, p3y],
+                  [p3x + cos(angEnd + 2.55) * arrSz, p3y + sin(angEnd + 2.55) * arrSz],
+                  [p3x - cos(angEnd) * (arrSz * 0.58), p3y - sin(angEnd) * (arrSz * 0.58)],
+                  [p3x + cos(angEnd - 2.55) * arrSz, p3y + sin(angEnd - 2.55) * arrSz]
+                ], closed: true, fill: edgeCol)
+              } else if (ed.toEnd ?? "arrow") == "dot" {
+                circle(p3x, p3y, clamp(3.5 * z, 2.2, 4.2), fill: edgeCol)
+              }
+
+              // Mirrored Start Endcap at t = 0
+              if (ed.fromEnd ?? "none") == "arrow" {
+                let svx = abs(p0x - p1x) + abs(p0y - p1y) > 0.5 ? (p0x - p1x) : (p0x - p3x)
+                let svy = abs(p0x - p1x) + abs(p0y - p1y) > 0.5 ? (p0y - p1y) : (p0y - p3y)
+                let angStart = atan2(svy, svx)
+                path([
+                  [p0x, p0y],
+                  [p0x + cos(angStart + 2.55) * arrSz, p0y + sin(angStart + 2.55) * arrSz],
+                  [p0x - cos(angStart) * (arrSz * 0.58), p0y - sin(angStart) * (arrSz * 0.58)],
+                  [p0x + cos(angStart - 2.55) * arrSz, p0y + sin(angStart - 2.55) * arrSz]
+                ], closed: true, fill: edgeCol)
+              } else if (ed.fromEnd ?? "none") == "dot" {
+                circle(p0x, p0y, clamp(3.4 * z, 2.0, 4.0), fill: edgeCol)
+              }
+
+              // Exact Analytical Midpoint (t = 0.5) Label Pill
+              let lbl = ed.label ?? ""
+              if lbl != "" {
+                let mx = 0.125 * p0x + 0.375 * p1x + 0.375 * p2x + 0.125 * p3x
+                let my = 0.125 * p0y + 0.375 * p1y + 0.375 * p2y + 0.125 * p3y
+                let pScale = clamp(z * 1.45, 0.72, 1.15)
+                let pillW = clamp(len(lbl) * 6.2 + 16, 38, 160) * pScale
+                let pillH = 16 * pScale
+                rect(mx - pillW / 2, my - pillH / 2, pillW, pillH, radius: pillH / 2, fill: alpha(#070003, 0.94), stroke: alpha(baseCol, isLinked ? 0.95 : 0.72), width: isLinked ? 1.3 : 1.0)
+                text(lbl, mx, my, size: clamp(8.5 * pScale, 6.2, 9.8), color: isLinked ? cInk : baseCol, align: center, bold: true, font: mono)
+              }
+            }
+          }
+
+          // ─── LAYER 3: 31 AGENT NODES (ZERO EXTRA UI NODES) ───
+          for nd in nodes {
+            let nCol = get(presetCols, nd.color, cPri)
+            let isSel = nd.id == selId
+            let isApex = nd.id == "aethera"
+            let nx = (nd.x + panX) * z
+            let ny = (nd.y + panY) * z
+            let nw = nd.w * z
+            let nh = nd.h * z
+            let nRad = max(4, 9 * z)
+            let stripW = max(2.5, 4.5 * z)
+
+            // Outer selection / apex aura
+            if isSel {
+              rect(nx - 3, ny - 3, nw + 6, nh + 6, radius: nRad + 3, fill: alpha(nCol, 0.22), stroke: alpha(nCol, 0.85), width: 1.4)
+            } else if isApex {
+              rect(nx - 2, ny - 2, nw + 4, nh + 4, radius: nRad + 2, fill: alpha(nCol, 0.14))
+            }
+
+            // Crisp AMOLED card body + border
+            rect(nx, ny, nw, nh, radius: nRad, fill: isSel ? mix(cCard, nCol, 0.20) : cCard, stroke: alpha(nCol, isSel ? 1.0 : (isApex ? 0.85 : 0.55)), width: isSel ? 1.8 : 1.1)
+
+            // Role/division left accent strip
+            rect(nx + 1.2, ny + 2.5, stripW, nh - 5, radius: max(1.5, 2.5 * z), fill: nCol)
+
+            // Node display name + role micro-tag
+            let dispName = z >= 0.78 ? nd.name : nd.short
+            let roleTag = isApex ? "APEX" : (nd.role == "lead" ? "LEAD" : (nd.role == "debugger" ? "DBG" : (nd.role == "tester" ? "QA" : "BLD")))
+            if z >= 0.56 {
+              text(dispName, nx + stripW + 6 * z + 2, ny + nh * 0.37, size: clamp(11.5 * z, 6.8, 12.5), color: cInk, align: start, bold: true, font: mono)
+              text("${upper(nd.div)} · ${roleTag}", nx + stripW + 6 * z + 2, ny + nh * 0.72, size: clamp(8.5 * z, 5.5, 9.5), color: alpha(nCol, 0.88), align: start, font: mono)
+            } else {
+              text(dispName, nx + stripW + 5 * z + 2, ny + nh * 0.50, size: clamp(12.2 * z, 6.4, 10.5), color: cInk, align: start, bold: true, font: mono)
+            }
+          }
+          // ─── PROTOCOL LEGEND HUD (BOTTOM-LEFT OF CANVAS) ───
+          let legY = height - 16
+          rect(10, legY - 11, 286, 22, radius: 11, fill: alpha(#070003, 0.86), stroke: alpha(cPri, 0.35), width: 0.9)
+          circle(22, legY, 3, fill: #ff2a48)
+          text("DIR", 29, legY, size: 7.5, color: alpha(cInk, 0.82), align: start, bold: true, font: mono)
+          circle(66, legY, 3, fill: #ff7a1a)
+          text("DISP", 73, legY, size: 7.5, color: alpha(cInk, 0.82), align: start, bold: true, font: mono)
+          circle(118, legY, 3, fill: #ffe033)
+          text("SYNC", 125, legY, size: 7.5, color: alpha(cInk, 0.82), align: start, bold: true, font: mono)
+          circle(172, legY, 3, fill: #c084fc)
+          text("AUDIT", 179, legY, size: 7.5, color: alpha(cInk, 0.82), align: start, bold: true, font: mono)
+          circle(232, legY, 3, fill: #00ff7f)
+          text("VERIFY", 239, legY, size: 7.5, color: alpha(cInk, 0.82), align: start, bold: true, font: mono)
+        }
+
+        // ─── LIVE INTERACTIVE CORNER MINIMAP (TOP-RIGHT HUD) ───
+        if showMinimap {
+          Box {
+            fill: true
+            align: topEnd
+            padding: [0, 8, 8, 0]
+
+            Box {
+              width: mmW
+              height: mmH
+              radius: 10 * corners
+              background: alpha(#070003, 0.92)
+              border: 1
+              borderColor: alpha(cPri, 0.68)
+
+              Canvas {
+                fill: true
+                onTap: {
+                  haptic()
+                  let twx = (x - mmOffX) / mmScale + minX
+                  let twy = (y - mmOffY) / mmScale + minY
+                  panX = round(-(twx - vpW / 2))
+                  panY = round(-(twy - vpH / 2))
+                }
+                onDrag: {
+                  let twx = (x - mmOffX) / mmScale + minX
+                  let twy = (y - mmOffY) / mmScale + minY
+                  panX = round(-(twx - vpW / 2))
+                  panY = round(-(twy - vpH / 2))
+                }
+
+                clip(2, 2, width - 4, height - 4) {
+                  // Minimap Groups
+                  for mg in canvasGroups {
+                    let mgCol = get(presetCols, mg.color, cPri)
+                    let gx = (mg.x - minX) * mmScale + mmOffX
+                    let gy = (mg.y - minY) * mmScale + mmOffY
+                    let gw = max(4, mg.w * mmScale)
+                    let gh = max(4, mg.h * mmScale)
+                    rect(gx, gy, gw, gh, radius: 2, fill: alpha(mgCol, 0.16), stroke: alpha(mgCol, 0.62), width: 0.75)
+                  }
+
+                  // Minimap Nodes
+                  for mn in nodes {
+                    let mnCol = get(presetCols, mn.color, cPri)
+                    let nx = (mn.x - minX) * mmScale + mmOffX
+                    let ny = (mn.y - minY) * mmScale + mmOffY
+                    let nw = max(2.4, mn.w * mmScale)
+                    let nh = max(1.8, mn.h * mmScale)
+                    rect(nx, ny, nw, nh, radius: 1, fill: mn.id == selId ? cInk : alpha(mnCol, 0.92))
+                  }
+
+                  // Live Camera Viewport Rectangle
+                  let vx = (vpX - minX) * mmScale + mmOffX
+                  let vy = (vpY - minY) * mmScale + mmOffY
+                  let vw = max(8, vpW * mmScale)
+                  let vh = max(8, vpH * mmScale)
+                  rect(vx, vy, vw, vh, radius: 2, fill: alpha(cPri, 0.14), stroke: cPri, width: 1.25)
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // ─── BOTTOM AGENT INSPECTOR BAR (WHEN A NODE IS SELECTED) ───
+      if sel != null {
+        let selCol = get(presetCols, sel.color, cPri)
+        Row {
+          fill: width
+          padding: [10, 4, 10, 4]
+
+          Row {
+            fill: width
+            padding: [11, 9]
+            align: center
+            gap: 10
+            radius: 14 * corners
+            background: alpha(cCard, 0.96)
+            border: 1
+            borderColor: alpha(selCol, 0.80)
+
+            Box {
+              width: 4; height: 34; radius: 2
+              background: selCol
+            }
+
+            Column {
+              weight: 1; gap: 2
+              Row {
+                align: center; gap: 6
+                Text { font: mono; text: upper(sel.name); fontSize: 11.5; bold: true; letterSpacing: 0.8; color: cInk; maxLines: 1 }
+                Row {
+                  padding: [5, 1.5]; radius: 5 * corners
+                  background: alpha(selCol, 0.22); border: 1; borderColor: alpha(selCol, 0.65)
+                  Text { font: mono; text: upper(sel.role); fontSize: 7.5; bold: true; color: selCol }
+                }
+              }
+              Text { font: uiFont; text: "${upper(sel.div)} · ${sel.model}"; fontSize: 9.5; color: cMuted; maxLines: 1 }
+            }
+
+            Row {
+              padding: [11, 7]; radius: 10 * corners; align: center
+              background: alpha(selCol, 0.24)
+              border: 1; borderColor: alpha(selCol, 0.90)
+              onTap: {
+                haptic()
+                wokeAgent = sel.name
+                run("python3 ~/.local/bin/sith-fleet.py wake ${sh(sel.name)}")
+              }
+              Text { font: mono; text: "⚡ WAKE"; fontSize: 9.5; bold: true; letterSpacing: 0.8; color: cInk }
+            }
+
+            Box {
+              width: 28; height: 28; radius: 8 * corners
+              background: cObs; border: 1; borderColor: alpha(cMuted, 0.42)
+              onTap: { haptic(); selId = "" }
+              Column {
+                fill: true; justify: center
+                Text { font: mono; text: "✕"; align: center; fontSize: 10; bold: true; color: cMuted }
+              }
+            }
+          }
+        }
+      }
+
+      Spacer { height: screenInset }
+    }
+  }
+}

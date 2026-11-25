@@ -1,0 +1,515 @@
+#!/usr/bin/env python3
+"""owl-hub KEY VALUE  — Single-source-of-truth 4-Theme Compiler & Hub Settings Manager.
+Writes in-place (same inode) to ~/.config/omalauncher/hub.json (with pre-resolved `tok`
+RGB 0..255 arrays, hex strings, font paths, synth pads, and copy), plus mirrors:
+  - ~/.config/omalauncher/ui-mode.json
+  - ~/.config/omalauncher/animations.json
+  - ~/.config/omalauncher/eco-mode.json
+  - ~/.config/omalauncher/sith-theme.json
+  - ~/.config/omalauncher/style/style.toml
+  - ~/.config/omalauncher/drawer.css
+owl-hub reset  — restore defaults. Prints {"ok":..,"msg":..} for OWL cmd sources."""
+import json, os, re, sys
+
+C = os.path.expanduser("~/.config/omalauncher")
+HUB = os.path.join(C, "hub.json")
+WIDGETS_DIR = os.path.join(C, "widgets")
+
+DEFAULTS = {
+    "theme": "vader", "mode": "infernal", "fx": True, "fxLevel": 1, "speed": 1.0,
+    "glow": 1, "surface": "obsidian", "texture": "grid", "font": "sith",
+    "radius": 1.0, "haptics": True, "eco": False, "res": 1.0, "busy": False,
+    "deck": {"view": "feed", "cardFont": "sans", "cardSize": "md", "bodySz": 14, "editorFont": 14.5, "canvasGrid": True},
+    "drawer": {"cellDp": 76, "byName": False, "showWork": True, "voice": "sith", "shimmer": True, "shimSpeed": 1, "glitch": 1, "scrollFx": 1},
+    "keybar": {"compact": False},
+}
+
+# hub.font -> launcher style.toml family & widget font path
+FONT_META = {
+    "sans":     ("DejaVu Sans",    "sans"),
+    "mono":     ("JetBrains Mono", "mono"),
+    "anton":    ("Anton",          "~/.local/share/fonts/Anton-Regular.ttf"),
+    "bebas":    ("Bebas Neue",     "~/.local/share/fonts/BebasNeue-Regular.ttf"),
+    "archivo":  ("Archivo Black",  "~/.local/share/fonts/ArchivoBlack-Regular.ttf"),
+    "blackops": ("Black Ops One",  "~/.local/share/fonts/BlackOpsOne-Regular.ttf"),
+    "bowlby":   ("Bowlby One SC",  "~/.local/share/fonts/BowlbyOneSC-Regular.ttf"),
+    "titan":    ("Titan One",      "~/.local/share/fonts/TitanOne-Regular.ttf"),
+    "passion":  ("Passion One",    "~/.local/share/fonts/PassionOne-Black.ttf"),
+    "oswald":   ("Oswald",         "~/.local/share/fonts/Oswald-Var.ttf"),
+    "russo":    ("Russo One",      "~/.local/share/fonts/RussoOne-Regular.ttf"),
+    "pirata":   ("Pirata One",     "~/.local/share/fonts/PirataOne-Regular.ttf"),
+}
+
+# Single declarative 4-Mode palette & identity table
+MODES = {
+    "infernal": {
+        "modeIdx": 0,
+        "omarchy": "infernal-amoled",
+        "defaultFontFamily": "Grenze Gotisch",
+        "defaultFontPath": "~/.local/share/fonts/GrenzeGotisch-Black.ttf",
+        "defaultDisplayFontPath": "~/.local/share/fonts/GrenzeGotisch-Black.ttf",
+        "cssDisplayFont": "'Black Ops One', 'Russo One', sans-serif",
+        "styleBorders": ("#2a0308", "#8a0018", "#140204"),
+        "colors": {
+            "pri": "#ff1e3c", "mid": "#ff3850", "hot": "#ff8596", "sec": "#3d9bff",
+            "bone": "#fff0f2", "dim": "#6b0918", "deep": "#170206", "card": "#0c0104",
+            "obs": "#050002", "ink": "#fff0f2", "muted": "#c77c88",
+            "ecoPri": "#b8263a", "ecoHot": "#d94c5e", "ecoDim": "#4d0c18", "ecoBone": "#c7a3a8",
+        },
+        "pads": ["#b8001c", "#d9162e", "#ff1e3c", "#ff4757", "#ff6a1a"],
+        "copy": {
+            "crown": "✦  THE CINDER CROWN  ✦",
+            "sub": "OBSIDIAN SANCTUM · SITH ORDER",
+            "ecoSub": "CHILL SANCTUM · SUPER FAST ECO",
+            "motto": "✦ PEACE IS A LIE · THROUGH PASSION, POWER ✦",
+            "glyph": "☩", "sigilGlyph": "⛧", "fxTag": "SITH", "fxOver": "OVERDRIVE",
+            "aiPill": "⛧ ABADDON", "quickDeck": "✦ OCCULT DECK", "briefTitle": "⛧ ABADDON BRIEF",
+            "calTitle": "CHRONO ALTAR", "calBadge": "VADER", "calList": "COMING RITES",
+            "calToday": "TODAY'S RITES", "calWeek": "7-DAY HORIZON",
+            "vaultTitle": "CINDER VAULT", "vaultMotto": "THROUGH FIRE, INTO NIGHT",
+            "keybarTag": "SITH", "aiMorph": "⛧ ABADDON · INFERNAL ⇄",
+        },
+    },
+    "future": {
+        "modeIdx": 1,
+        "omarchy": "future-amoled",
+        "defaultFontFamily": "JetBrains Mono",
+        "defaultFontPath": "/usr/share/fonts/TTF/JetBrainsMono-Bold.ttf",
+        "defaultDisplayFontPath": "/usr/share/fonts/TTF/JetBrainsMono-Bold.ttf",
+        "cssDisplayFont": "'Russo One', 'Orbitron', sans-serif",
+        "styleBorders": ("#032833", "#18d8ff", "#021d24"),
+        "colors": {
+            "pri": "#18d8ff", "mid": "#38e2ff", "hot": "#9ceeff", "sec": "#ff2fa8",
+            "bone": "#eafaff", "dim": "#0a4e66", "deep": "#031620", "card": "#020b10",
+            "obs": "#000406", "ink": "#e8faff", "muted": "#7ec2dc",
+            "ecoPri": "#1b8eb0", "ecoHot": "#4cb8d9", "ecoDim": "#0c3f4d", "ecoBone": "#9cc4d1",
+        },
+        "pads": ["#006d99", "#0099cc", "#18d8ff", "#4de2ff", "#80eeff"],
+        "copy": {
+            "crown": "◈  THE AETHER CROWN  ◈",
+            "sub": "OBSIDIAN KERNEL · FUTURE OS",
+            "ecoSub": "CHILL KERNEL · SUPER FAST ECO",
+            "motto": "◈ PRECISION · VELOCITY · OBSIDIAN OS ◈",
+            "glyph": "◈", "sigilGlyph": "⬡", "fxTag": "CYBER", "fxOver": "OVERDRIVE",
+            "aiPill": "⬡ ULTRON", "quickDeck": "◈ QUICK DECK", "briefTitle": "⬡ ULTRON DIAGNOSTICS",
+            "calTitle": "CHRONO HUD", "calBadge": "FUTURE", "calList": "UPCOMING SCHEDULE",
+            "calToday": "TODAY'S SCHEDULE", "calWeek": "7-DAY HORIZON",
+            "vaultTitle": "AETHER VAULT", "vaultMotto": "PRECISION · VELOCITY · ORDER",
+            "keybarTag": "CYBER", "aiMorph": "⬡ ULTRON · FUTURE OS ⇄",
+        },
+    },
+    "mask": {
+        "modeIdx": 2,
+        "omarchy": "mask-amoled",
+        "defaultFontFamily": "Passion One",
+        "defaultFontPath": "~/.local/share/fonts/PassionOne-Black.ttf",
+        "defaultDisplayFontPath": "~/.local/share/fonts/PassionOne-Black.ttf",
+        "cssDisplayFont": "'Russo One', 'Orbitron', sans-serif",
+        "styleBorders": ("#0c6e2c", "#1aff5c", "#0c6e2c"),
+        "colors": {
+            "pri": "#1aff5c", "mid": "#34ff72", "hot": "#c6ff3d", "sec": "#ffc21a",
+            "bone": "#f4ffe8", "dim": "#0c6e2c", "deep": "#041e0c", "card": "#021207",
+            "obs": "#010803", "ink": "#e6ffec", "muted": "#6ec98a",
+            "ecoPri": "#169c42", "ecoHot": "#6bd95e", "ecoDim": "#083d1a", "ecoBone": "#a8c799",
+        },
+        "pads": ["#0c6e2c", "#12b844", "#1aff5c", "#8cff3d", "#ffe135"],
+        "copy": {
+            "crown": "✦  S M O K I N '  C R O W N  ✦",
+            "sub": "CYBER MASK · NEON CHAOS",
+            "ecoSub": "STEALTH MASK · SUPER FAST ECO",
+            "motto": "✦ SOMEBODY STOP ME · NEON OVERDRIVE ✦",
+            "glyph": "✦", "sigilGlyph": "✦", "fxTag": "MASK", "fxOver": "SMOKIN'",
+            "aiPill": "✦ MASK AI", "quickDeck": "✦ CHAOS DECK", "briefTitle": "✦ MASK DIAGNOSTICS",
+            "calTitle": "MASK CHRONO", "calBadge": "MASK", "calList": "MASK CHRONO LOG",
+            "calToday": "TODAY'S CHAOS", "calWeek": "7-DAY HORIZON",
+            "vaultTitle": "MASK VAULT", "vaultMotto": "NEON CHAOS · OVERDRIVE",
+            "keybarTag": "MASK", "aiMorph": "✦ CYBER MASK · NEON CHAOS ⇄",
+        },
+    },
+    "skeletor": {
+        "modeIdx": 3,
+        "omarchy": "skeletor-amoled",
+        "defaultFontFamily": "Pirata One",
+        "defaultFontPath": "~/.local/share/fonts/PirataOne-Regular.ttf",
+        "defaultDisplayFontPath": "~/.local/share/fonts/PirataOne-Regular.ttf",
+        "cssDisplayFont": "'Black Ops One', 'Russo One', sans-serif",
+        "styleBorders": ("#280842", "#b44aff", "#1a052e"),
+        "colors": {
+            "pri": "#b44aff", "mid": "#c85cff", "hot": "#eb9eff", "sec": "#a6ff2e",
+            "bone": "#f4e6be", "dim": "#4d127a", "deep": "#110422", "card": "#0a0214",
+            "obs": "#06010d", "ink": "#f5ecff", "muted": "#b896db",
+            "ecoPri": "#9d4edd", "ecoHot": "#b67be6", "ecoDim": "#360d59", "ecoBone": "#b8aa82",
+        },
+        "pads": ["#7622cc", "#9230e8", "#b44aff", "#d244ff", "#e86bff"],
+        "copy": {
+            "crown": "☩  THE HAVOC CROWN  ☩",
+            "sub": "SNAKE MOUNTAIN · ARCANE OVERLORD",
+            "ecoSub": "VOID CRYPT · SUPER FAST ECO",
+            "motto": "☩ BY THE POWER OF HAVOC · RULE THE VOID ☩",
+            "glyph": "✦", "sigilGlyph": "☩", "fxTag": "HAVOC", "fxOver": "OVERLORD",
+            "aiPill": "☩ HAVOC AI", "quickDeck": "☩ HAVOC DECK", "briefTitle": "☩ HAVOC DIAGNOSTICS",
+            "calTitle": "ARCANE CHRONO", "calBadge": "HAVOC", "calList": "DARK RITES",
+            "calToday": "TODAY'S DECREES", "calWeek": "7-DAY OMEN",
+            "vaultTitle": "HAVOC VAULT", "vaultMotto": "FROM SNAKE MOUNTAIN, ORDER",
+            "keybarTag": "HAVOC", "aiMorph": "☩ HAVOC · ROYAL PURPLE ⇄",
+        },
+    },
+}
+
+# Infernal Kyber crystal overrides (applied when mode == "infernal" and theme != "vader")
+KYBER = {
+    "maul": {
+        "colors": {
+            "pri": "#ff3b1f", "mid": "#ff5533", "hot": "#ff8566", "sec": "#17e0c0",
+            "dim": "#801b0d", "deep": "#260702", "card": "#140401", "obs": "#060100",
+            "ink": "#fff1ed", "muted": "#cf8674",
+            "ecoPri": "#b32b16", "ecoHot": "#d96a50", "ecoDim": "#4d1007",
+        },
+        "styleBorders": ("#3a0b04", "#ff3b1f", "#1a0401"),
+        "badge": "MAUL",
+    },
+    "revan": {
+        "colors": {
+            "pri": "#b517ff", "mid": "#c94dff", "hot": "#e08cff", "sec": "#ffb020",
+            "dim": "#580a80", "deep": "#1d032b", "card": "#0e0218", "obs": "#05000a",
+            "ink": "#f8edff", "muted": "#b286cf",
+            "ecoPri": "#8419bd", "ecoHot": "#b263d9", "ecoDim": "#36074f",
+        },
+        "styleBorders": ("#29053d", "#b517ff", "#14021f"),
+        "badge": "REVAN",
+    },
+    "bane": {
+        "colors": {
+            "pri": "#ffae00", "mid": "#ffc233", "hot": "#ffdb70", "sec": "#2f74ff",
+            "dim": "#805700", "deep": "#241600", "card": "#120b00", "obs": "#060400",
+            "ink": "#fff8e8", "muted": "#cfa85b",
+            "ecoPri": "#b87d00", "ecoHot": "#d4a644", "ecoDim": "#4d3300",
+        },
+        "styleBorders": ("#382500", "#ffae00", "#1a1100"),
+        "badge": "BANE",
+    },
+    "matrix": {
+        "colors": {
+            "pri": "#00ff88", "mid": "#33ffa0", "hot": "#7affc2", "sec": "#ff3d8f",
+            "dim": "#007a41", "deep": "#012412", "card": "#011209", "obs": "#000603",
+            "ink": "#edfff6", "muted": "#6ec99e",
+            "ecoPri": "#00a658", "ecoHot": "#4dd495", "ecoDim": "#004223",
+        },
+        "styleBorders": ("#003d20", "#00ff88", "#001c0e"),
+        "badge": "MATRIX",
+    },
+}
+
+def load_external_themes():
+    tdir = os.path.join(C, "themes")
+    if not os.path.isdir(tdir):
+        return
+    for fn in sorted(os.listdir(tdir)):
+        if not fn.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(tdir, fn), "r", encoding="utf-8") as f:
+                pack = json.load(f)
+            tid = pack.get("id") or os.path.splitext(fn)[0]
+            ptok = pack.get("tok")
+            if not isinstance(ptok, dict) or not isinstance(ptok.get("hex"), dict):
+                continue
+            hx = ptok["hex"]
+            colors = {
+                "pri": hx.get("pri", "#ff1e3c"), "mid": hx.get("mid", hx.get("pri", "#ff3850")),
+                "hot": hx.get("hot", "#ff8596"), "sec": hx.get("sec", "#00e5ff"),
+                "bone": hx.get("bone", "#ffffff"), "dim": hx.get("dim", "#404040"),
+                "deep": hx.get("deep", "#120408"), "card": hx.get("card", "#0a0205"),
+                "obs": hx.get("obs", "#050002"), "ink": hx.get("ink", "#ffffff"),
+                "muted": hx.get("muted", "#a0a0a0"),
+                "ecoPri": hx.get("ecoPri", hx.get("pri", "#b8263a")),
+                "ecoHot": hx.get("ecoHot", hx.get("hot", "#d94c5e")),
+                "ecoDim": hx.get("ecoDim", hx.get("dim", "#303030")),
+                "ecoBone": hx.get("ecoBone", hx.get("bone", "#cccccc")),
+            }
+            fp = ptok.get("fontPath") or "sans"
+            dfp = ptok.get("displayFontPath") or fp
+            is_blackops = "BlackOpsOne" in dfp
+            is_mono = ptok.get("bodyFont") == "mono"
+            MODES[tid] = {
+                "modeIdx": max(0, min(3, int(ptok.get("modeIdx", 0)))),
+                "omarchy": pack.get("omarchy", "infernal-amoled"),
+                "defaultFontFamily": "Black Ops One" if is_blackops else ("JetBrains Mono" if is_mono else "Russo One"),
+                "defaultFontPath": fp,
+                "defaultDisplayFontPath": dfp,
+                "cssDisplayFont": "'Black Ops One', 'Russo One', sans-serif" if is_blackops else ("'JetBrains Mono', monospace" if is_mono else "'Russo One', sans-serif"),
+                "styleBorders": pack.get("styleBorders") or (colors["dim"], colors["pri"], colors["deep"]),
+                "colors": colors,
+                "pads": ptok.get("pads") or [colors["dim"], colors["mid"], colors["pri"], colors["sec"], colors["hot"]],
+                "copy": ptok.get("copy") or {},
+                "faceId": pack.get("faceId", tid),
+                "iconTint": pack.get("iconTint", colors["mid"]),
+                "flair": pack.get("flair", colors["hot"]),
+            }
+        except Exception:
+            continue
+
+load_external_themes()
+
+def hex_to_rgb(h):
+    h = h.lstrip("#")
+    return [int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)]
+
+def load(p, d):
+    try:
+        with open(p) as f: return json.load(f)
+    except Exception:
+        return d
+
+def save(p, obj):
+    # in-place write (same inode) so the launcher's file() watcher fires instantly
+    data = json.dumps(obj, indent=2)
+    with open(p, "a+") as f:
+        f.seek(0); f.truncate(); f.write(data); f.flush(); os.fsync(f.fileno())
+
+def merged():
+    h = load(HUB, {})
+    out = json.loads(json.dumps(DEFAULTS))
+    for k, v in h.items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict): out[k].update(v)
+        else: out[k] = v
+    return out
+
+def compile_tokens(h):
+    mode = h.get("mode", "infernal")
+    if mode not in MODES:
+        mode = "infernal"
+    m = MODES[mode]
+    theme = h.get("theme", "vader")
+    colors = dict(m["colors"])
+    copy = dict(m["copy"])
+    style_borders = m["styleBorders"]
+    if mode == "infernal" and theme in KYBER:
+        k = KYBER[theme]
+        colors.update(k["colors"])
+        style_borders = k["styleBorders"]
+        copy["calBadge"] = k["badge"]
+        copy["keybarTag"] = k["badge"]
+    font_key = h.get("font", "sith")
+    if font_key in FONT_META:
+        style_font_family, font_path = FONT_META[font_key]
+        display_font_path = font_path
+    else:
+        style_font_family = m["defaultFontFamily"]
+        font_path = m["defaultFontPath"]
+        display_font_path = m["defaultDisplayFontPath"]
+    body_font = "mono" if font_key == "mono" else "sans"
+    tok = {"modeIdx": m["modeIdx"], "faceId": m.get("faceId", mode)}
+    for ck, ch in colors.items():
+        tok[ck] = hex_to_rgb(ch)
+    tok["iconTint"] = hex_to_rgb(m.get("iconTint", colors["mid"]))
+    tok["flair"] = hex_to_rgb(m.get("flair", colors["hot"]))
+    tok["hex"] = colors
+    tok["pads"] = m["pads"]
+    tok["fontPath"] = font_path
+    tok["displayFontPath"] = display_font_path
+    tok["bodyFont"] = body_font
+    tok["copy"] = copy
+    return tok, m, colors, style_font_family, style_borders
+
+def mirror(h, tok, m, colors):
+    mode = h.get("mode", "infernal")
+    a = load(os.path.join(C, "animations.json"), {})
+    a.update({"master": h["fx"] and not h["eco"], "haptics": h["haptics"], "speed": h["speed"]})
+    save(os.path.join(C, "animations.json"), a)
+    e = load(os.path.join(C, "eco-mode.json"), {})
+    e["enabled"] = h["eco"]
+    save(os.path.join(C, "eco-mode.json"), e)
+    save(os.path.join(C, "ui-mode.json"), {"mode": mode})
+    t = load(os.path.join(C, "sith-theme.json"), {})
+    presets = t.setdefault("presets", {})
+    if "skeletor" not in presets:
+        presets["skeletor"] = {
+            "id": "skeletor", "name": "Skeletor Havoc", "label": "HAVOC",
+            "crystal": "Snake Mountain Ultraviolet",
+            "accent": "#b44aff", "hot": "#eb9eff", "primary": "#b44aff",
+            "secondary": "#e82cff", "dim": "#4d127a", "bg": "#06010d",
+        }
+    t.update({
+        "active": h["theme"], "preset": h["theme"], "mode": mode,
+        "accent": colors["pri"], "hot": colors["hot"], "dim": colors["dim"], "bg": colors["obs"],
+        "eco": h["eco"], "speed": h["speed"],
+    })
+    save(os.path.join(C, "sith-theme.json"), t)
+
+def _set_toml_section_kv(txt, section, updates):
+    pat = re.compile(r"(^\[%s\]\s*\n)([\s\S]*?)(?=^\[|\Z)" % re.escape(section), re.M)
+    m = pat.search(txt)
+    if not m:
+        return txt
+    hdr, body = m.group(1), m.group(2)
+    new_body = body
+    for k, v in updates.items():
+        kpat = re.compile(r"^%s\s*=.*$" % re.escape(k), re.M)
+        line = '%s = "%s"' % (k, v)
+        if kpat.search(new_body):
+            new_body = kpat.sub(line, new_body, count=1)
+        else:
+            new_body = new_body.rstrip("\n") + "\n" + line + "\n"
+    return txt[:m.start()] + hdr + new_body + txt[m.end():]
+
+def _set_toml_head_kv(head, key, val):
+    line = '%s = "%s"' % (key, val)
+    if re.search(r"^%s\s*=.*$" % re.escape(key), head, re.M):
+        return re.sub(r"^%s\s*=.*$" % re.escape(key), line, head, count=1, flags=re.M)
+    return head.rstrip("\n") + "\n" + line + "\n\n"
+
+def mirror_style(h, m, style_font_family, style_borders):
+    sp = os.path.join(C, "style", "style.toml")
+    try:
+        with open(sp) as f: txt = f.read()
+    except Exception:
+        return
+    head_end = re.search(r"^\[", txt, re.M)
+    cut = head_end.start() if head_end else len(txt)
+    head, rest = txt[:cut], txt[cut:]
+    # Only switch Omarchy theme dir if it actually exists on disk
+    omarchy_dir = os.path.expanduser(os.path.join("~/.config/omarchy/themes", m["omarchy"]))
+    omarchy_theme = m["omarchy"] if os.path.isdir(omarchy_dir) else "infernal-amoled"
+    new_head = _set_toml_head_kv(head, "theme", omarchy_theme)
+    new_head = _set_toml_head_kv(new_head, "font", style_font_family)
+    new_txt = new_head + rest
+    w_border, w_focus, bar_border = style_borders
+    new_txt = _set_toml_section_kv(new_txt, "widgets", {"border": w_border, "border-focused": w_focus})
+    new_txt = _set_toml_section_kv(new_txt, "status-bar", {"background": "#000000", "border": bar_border})
+    new_txt = _set_toml_section_kv(new_txt, "navigation-bar", {"background": "#000000", "border": bar_border})
+    # Clean up dead swipe-down gesture pointing to nonexistent widget
+    m_sw = re.search(r'(?m)^swipe-down\s*=\s*"([^"]+)"', new_txt)
+    if m_sw and m_sw.group(1) != "none" and not os.path.isfile(os.path.join(WIDGETS_DIR, m_sw.group(1))):
+        new_txt = _set_toml_section_kv(new_txt, "gestures", {"swipe-down": "none"})
+    if new_txt != txt:
+        with open(sp, "a+") as f:
+            f.seek(0); f.truncate(); f.write(new_txt); f.flush(); os.fsync(f.fileno())
+
+def mirror_drawer_css(h, m, colors):
+    dp = os.path.join(C, "drawer.css")
+    try:
+        with open(dp) as f: txt = f.read()
+    except Exception:
+        return
+    new_txt = txt
+    if "--accent-mask:" not in new_txt and "--accent-future:" in new_txt:
+        new_txt = new_txt.replace(
+            "    --accent-future: #22d1ff;",
+            "    --accent-future: #22d1ff;\n    --accent-mask: #1aff5c;",
+            1,
+        )
+    if "--accent-skeletor:" not in new_txt and "--accent-mask:" in new_txt:
+        new_txt = new_txt.replace(
+            "    --accent-mask: #1aff5c;",
+            "    --accent-mask: #1aff5c;\n    --accent-skeletor: #b44aff;",
+            1,
+        )
+    if '.app-drawer[data-mode="mask"]' not in new_txt:
+        mask_block = (
+            '\n\n  /* Mask Mode Neon Cyber-Mask Green + Toxic Lime + Electric Gold Override */\n'
+            '  .app-drawer[data-mode="mask"] {\n'
+            "    --font-display: 'Russo One', 'Orbitron', sans-serif;\n"
+            '    --accent-active: #1aff5c;\n'
+            '    --accent-hot: #c6ff3d;\n'
+            '    --accent-gold: #ffe135;\n'
+            '    --accent-rgb: 26, 255, 92;\n'
+            '    --bg-chamber: #010803;\n'
+            '    --bg-card: #021207;\n'
+            '    --bg-card-hover: #062b12;\n'
+            '    --bg-surface: #041e0c;\n'
+            '    --bg-deep: #041e0c;\n'
+            '    --bg-popup: #010803;\n'
+            '    --text-primary: #e6ffec;\n'
+            '    --text-secondary: #34ff72;\n'
+            '    --text-muted: #6ec98a;\n'
+            '  }'
+        )
+        m_fut = re.search(r'(\.app-drawer\[data-mode="future"\]\s*\{[^}]*\})', new_txt)
+        if m_fut:
+            new_txt = new_txt[:m_fut.end()] + mask_block + new_txt[m_fut.end():]
+    if '.app-drawer[data-mode="skeletor"]' not in new_txt:
+        skel_block = (
+            '\n\n  /* Skeletor Mode Royal Ultraviolet + Spectral Bone-Ivory Override */\n'
+            '  .app-drawer[data-mode="skeletor"] {\n'
+            "    --font-display: 'Pirata One', 'Grenze Gotisch', Georgia, serif;\n"
+            '    --accent-active: #b44aff;\n'
+            '    --accent-hot: #eb9eff;\n'
+            '    --accent-bone: #f4e6be;\n'
+            '    --accent-rgb: 180, 74, 255;\n'
+            '    --bg-chamber: #06010d;\n'
+            '    --bg-card: #0a0214;\n'
+            '    --bg-card-hover: #180630;\n'
+            '    --bg-surface: #110422;\n'
+            '    --bg-deep: #110422;\n'
+            '    --bg-popup: #0a0214;\n'
+            '    --text-primary: #f5ecff;\n'
+            '    --text-secondary: #c85cff;\n'
+            '    --text-muted: #b896db;\n'
+            '  }'
+        )
+        m_mask = re.search(r'(\.app-drawer\[data-mode="mask"\]\s*\{[^}]*\})', new_txt)
+        if m_mask:
+            new_txt = new_txt[:m_mask.end()] + skel_block + new_txt[m_mask.end():]
+    r, g, b = hex_to_rgb(colors["pri"])
+    mode = h.get("mode", "infernal")
+    accent_var = {
+        "infernal": "var(--accent-crimson)" if h.get("theme", "vader") == "vader" else colors["pri"],
+        "future": "var(--accent-future)",
+        "mask": "var(--accent-mask)",
+        "skeletor": "var(--accent-skeletor)",
+        "pluto-faust": "var(--accent-faust)",
+        "hulk-gamma": "var(--accent-hulk)",
+    }.get(mode, colors["pri"])
+    root_vars = {
+        "--bg-chamber": colors["obs"],
+        "--bg-deep": colors["deep"],
+        "--bg-card": colors["card"],
+        "--bg-card-hover": colors["deep"],
+        "--bg-surface": colors["deep"],
+        "--bg-popup": colors["card"],
+        "--accent-active": accent_var,
+        "--accent-hot": colors["hot"],
+        "--accent-rgb": f"{r}, {g}, {b}",
+        "--font-display": m["cssDisplayFont"],
+        "--text-primary": colors["ink"],
+        "--text-secondary": colors["mid"],
+        "--text-muted": colors["muted"],
+    }
+    m_root = re.search(r"(:root\s*\{)([^}]*)(\})", new_txt)
+    if m_root:
+        rbody = m_root.group(2)
+        for k, v in root_vars.items():
+            rbody = re.sub(r"(%s\s*:\s*)([^;]+)(;)" % re.escape(k), r"\g<1>" + v + r"\g<3>", rbody, count=1)
+        new_txt = new_txt[:m_root.start(2)] + rbody + new_txt[m_root.end(2):]
+    if new_txt != txt:
+        with open(dp, "a+") as f:
+            f.seek(0); f.truncate(); f.write(new_txt); f.flush(); os.fsync(f.fileno())
+
+def main():
+    if len(sys.argv) == 2 and sys.argv[1] == "reset":
+        h = json.loads(json.dumps(DEFAULTS))
+    elif len(sys.argv) == 3:
+        h = merged()
+        key, raw = sys.argv[1], sys.argv[2]
+        try: val = json.loads(raw)
+        except Exception: val = raw
+        if key == "mode" and val not in MODES:
+            print(json.dumps({"ok": False, "msg": "bad mode: expected " + "|".join(MODES.keys())})); return
+        parts = key.split("."); node = h
+        for p in parts[:-1]: node = node.setdefault(p, {})
+        if not all(c.isalnum() or c == "_" for c in "".join(parts)):
+            print(json.dumps({"ok": False, "msg": "bad key"})); return
+        node[parts[-1]] = val
+    else:
+        print(json.dumps({"ok": False, "msg": "usage: owl-hub KEY VALUE | reset"})); return
+    tok, m, colors, style_font_family, style_borders = compile_tokens(h)
+    h["tok"] = tok
+    save(HUB, h)
+    mirror(h, tok, m, colors)
+    mirror_style(h, m, style_font_family, style_borders)
+    mirror_drawer_css(h, m, colors)
+    print(json.dumps({"ok": True, "msg": "hub: " + " ".join(sys.argv[1:])}))
+
+if __name__ == "__main__":
+    main()

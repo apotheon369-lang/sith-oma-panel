@@ -1,0 +1,176 @@
+{
+  "theme": "aether-prism",
+  "mode": "aether-prism",
+  "fx": true,
+  "fxLevel": 2,
+  "speed": 1,
+  "glow": 2,
+  "surface": "obsidian",
+  "texture": "hex",
+  "font": "oswald",
+  "radius": 0.6,
+  "haptics": true,
+  "eco": false,
+  "res": 0.34,
+  "busy": false,
+  "deck": {
+    "view": "feed",
+    "cardFont": "mono",
+    "cardSize": "lg",
+    "bodySz": 18,
+    "editorFont": 15.5,
+    "canvasGrid": true,
+    "canvasPages": 10
+  },
+  "drawer": {
+    "cellDp": 96,
+    "byName": true,
+    "showWork": true,
+    "voice": "off",
+    "shimmer": true,
+    "shimSpeed": 1.7,
+    "glitch": 1,
+    "scrollFx": 2
+  },
+  "keybar": {
+    "compact": true
+  },
+  "tok": {
+    "modeIdx": 2,
+    "faceId": "aether-prism",
+    "pri": [
+      0,
+      240,
+      255
+    ],
+    "mid": [
+      56,
+      189,
+      248
+    ],
+    "hot": [
+      245,
+      158,
+      11
+    ],
+    "sec": [
+      129,
+      140,
+      248
+    ],
+    "bone": [
+      241,
+      245,
+      249
+    ],
+    "dim": [
+      15,
+      39,
+      68
+    ],
+    "deep": [
+      3,
+      7,
+      18
+    ],
+    "card": [
+      7,
+      9,
+      14
+    ],
+    "obs": [
+      1,
+      2,
+      4
+    ],
+    "ink": [
+      248,
+      250,
+      252
+    ],
+    "muted": [
+      148,
+      163,
+      184
+    ],
+    "ecoPri": [
+      2,
+      132,
+      199
+    ],
+    "ecoHot": [
+      217,
+      119,
+      6
+    ],
+    "ecoDim": [
+      8,
+      47,
+      73
+    ],
+    "ecoBone": [
+      203,
+      213,
+      225
+    ],
+    "iconTint": [
+      56,
+      189,
+      248
+    ],
+    "flair": [
+      245,
+      158,
+      11
+    ],
+    "hex": {
+      "pri": "#00f0ff",
+      "mid": "#38bdf8",
+      "hot": "#f59e0b",
+      "sec": "#818cf8",
+      "bone": "#f1f5f9",
+      "dim": "#0f2744",
+      "deep": "#030712",
+      "card": "#07090e",
+      "obs": "#010204",
+      "ink": "#f8fafc",
+      "muted": "#94a3b8",
+      "ecoPri": "#0284c7",
+      "ecoHot": "#d97706",
+      "ecoDim": "#082f49",
+      "ecoBone": "#cbd5e1"
+    },
+    "pads": [
+      "#0f2744",
+      "#818cf8",
+      "#00f0ff",
+      "#38bdf8",
+      "#f59e0b"
+    ],
+    "fontPath": "~/.local/share/fonts/Oswald-Var.ttf",
+    "displayFontPath": "~/.local/share/fonts/Oswald-Var.ttf",
+    "bodyFont": "sans",
+    "copy": {
+      "crown": "\u25c8  AETHER \u00b7 PRISM  \u25c8",
+      "sub": "COHERENT FLUX \u00b7 GEOMETRIC MINIMALISM",
+      "ecoSub": "PASSIVE SPECTRA \u00b7 OPTICAL SLEEP",
+      "motto": "\u25c8 REFRACT \u00b7 REVOLVE \u00b7 TRANSCEND \u25c8",
+      "glyph": "\u25c8",
+      "sigilGlyph": "\u25c7",
+      "fxTag": "AETHER",
+      "fxOver": "PRISM",
+      "aiPill": "\u25c8 AETHER",
+      "quickDeck": "\u25c7 PRISM DECK",
+      "briefTitle": "\u25c8 AETHER TELEMETRY BRIEF",
+      "calTitle": "CHRONO SPECTRA",
+      "calBadge": "PRISM",
+      "calList": "OPTICAL NODES",
+      "calToday": "TODAY'S CYCLE",
+      "calWeek": "7-CYCLE DISPERSION",
+      "vaultTitle": "PRISM VAULT",
+      "vaultMotto": "PURE LIGHT \u00b7 BALANCED DISPERSION",
+      "keybarTag": "AETHER",
+      "aiMorph": "\u25c8 AETHER \u00b7 PRISM \u21c4"
+    }
+  }
+}

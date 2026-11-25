@@ -1,0 +1,876 @@
+app "nexus" {
+  meta {
+    owl: 22
+    description: "Unified 4-theme messenger inbox — Text Phone (SMS), FB Lite (Chats & Posts), Instagram, Discord, X — with direct compose & send, live notification reply, and visual difference highlighting."
+    category: "social"
+  }
+  title: ""
+  edge: true
+  back: open != "" || composing
+  onBack: {
+    if composing {
+      composing = false
+      composeMsg = ""
+    } else {
+      open = ""
+      draft = ""
+    }
+  }
+
+  source hub   = file("~/.config/omalauncher/hub.json") json optional
+  source n     = android.notifications
+  source d     = android.drawer
+  source bat   = android.battery
+  source modes = android.modes
+  source now   = clock every 30s
+
+  // ── Unified 4-Theme Token Engine (Infernal / Future-Ultron / Mask / Skeletor + Eco) ──
+  let curMode     = hub.mode ?? "infernal"
+  let ecoOn       = (hub.eco ?? false) == true
+  let saver       = ((bat.level ?? 100) < 20 && !((bat.charging ?? false) == true)) || (modes.saver ?? false) == true
+  let T           = hub.tok ?? {}
+  let tc          = T.copy ?? {}
+  let cPri        = ecoOn ? (T.ecoPri  != null ? rgb(T.ecoPri[0],  T.ecoPri[1],  T.ecoPri[2])  : #b8263a) : (T.pri != null ? rgb(T.pri[0], T.pri[1], T.pri[2]) : #ff1e3c)
+  let cMid        = T.mid   != null ? rgb(T.mid[0],   T.mid[1],   T.mid[2])   : #ff3850
+  let cHot        = ecoOn ? (T.ecoHot  != null ? rgb(T.ecoHot[0],  T.ecoHot[1],  T.ecoHot[2])  : #d94c5e) : (T.hot != null ? rgb(T.hot[0], T.hot[1], T.hot[2]) : #ff8596)
+  let cSec        = T.sec   != null ? rgb(T.sec[0],   T.sec[1],   T.sec[2])   : #3d9bff
+  let cBone       = ecoOn ? (T.ecoBone != null ? rgb(T.ecoBone[0], T.ecoBone[1], T.ecoBone[2]) : #c7a3a8) : (T.bone != null ? rgb(T.bone[0], T.bone[1], T.bone[2]) : #fff0f2)
+  let cDim        = ecoOn ? (T.ecoDim  != null ? rgb(T.ecoDim[0],  T.ecoDim[1],  T.ecoDim[2])  : #4d0c18) : (T.dim != null ? rgb(T.dim[0], T.dim[1], T.dim[2]) : #6b0918)
+  let cDeep       = T.deep  != null ? rgb(T.deep[0],  T.deep[1],  T.deep[2])  : #170206
+  let cCard       = T.card  != null ? rgb(T.card[0],  T.card[1],  T.card[2])  : #0c0104
+  let cObs        = T.obs   != null ? rgb(T.obs[0],   T.obs[1],   T.obs[2])   : #050002
+  let cInk        = T.ink   != null ? rgb(T.ink[0],   T.ink[1],   T.ink[2])   : #fff0f2
+  let cMuted      = T.muted != null ? rgb(T.muted[0], T.muted[1], T.muted[2]) : #c77c88
+  let uiFont      = T.fontPath ?? "sans"
+  let dispFont    = T.displayFontPath ?? uiFont
+  let bodyFont    = T.bodyFont ?? (hub.font == "mono" ? "mono" : "sans")
+  let hubRadius   = clamp(num(hub.radius, 1.0), 0.6, 1.4)
+  let animHaptics = (hub.haptics ?? true) != false
+
+  state fx          = true persist
+  state filter      = "all" persist
+  state showSamples = true persist
+  state open        = ""          // thread id "package|title" being read
+  state draft       = ""
+  state hist        = [] persist  // [{tid, id, pkg, who, text, time, me, sig, isPost}] newest first, capped at 400
+  state gone        = []          // notification keys dismissed this session
+  state toast       = ""
+
+  // Direct Send / Compose Modal States
+  state composing   = false
+  state composeChan = "sms"       // "sms" (Text Phone) | "fb" (FB Lite)
+  state composeTo   = ""
+  state composeMsg  = ""
+
+  let fxActive = fx && (hub.fx ?? true) == true && !ecoOn && !saver
+  fps: fxActive ? 20 : 1
+
+  // Theme-adaptive icon (`currentColor` follows the active Omarchy theme across Infernal / Future / Mask / Skeletor)
+  icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+    <rect width="256" height="256" rx="56" fill="#080206"/>
+    <circle cx="128" cy="128" r="96" fill="#140610"/>
+    <circle cx="128" cy="128" r="84" fill="none" stroke="currentColor" stroke-width="10" stroke-opacity="0.45"/>
+    <path d="M58 92a28 28 0 0 1 28-28h84a28 28 0 0 1 28 28v44a28 28 0 0 1-28 28h-46l-38 30v-30a26 26 0 0 1-28-26z" fill="currentColor"/>
+    <circle cx="98" cy="114" r="10" fill="#ffffff"/>
+    <circle cx="128" cy="114" r="10" fill="#ffffff"/>
+    <circle cx="158" cy="114" r="10" fill="#ffffff" fill-opacity="0.78"/>
+    <circle cx="192" cy="66" r="14" fill="#ffffff" stroke="#080206" stroke-width="6"/>
+  </svg>"""
+
+  // ── messengers: package → id ; id → look ──
+  let pkgId = {
+    "com.facebook.lite": "fb", "com.facebook.orca": "fb", "com.facebook.mlite": "fb", "com.facebook.katana": "fb",
+    "com.instagram.android": "ig", "com.instagram.barcelona": "ig",
+    "com.google.android.apps.messaging": "sms", "com.samsung.android.messaging": "sms", "com.android.mms": "sms",
+    "com.discord": "dc",
+    "com.twitter.android": "x",
+    "com.whatsapp": "wa", "com.whatsapp.w4b": "wa",
+    "org.telegram.messenger": "tg", "org.telegram.plus": "tg",
+    "org.thoughtcrime.securesms": "sig",
+    "com.snapchat.android": "snap"
+  }
+  let look = {
+    sms:     {name: "Text Phone",     glyph: "SMS",     tint: #3da8ff, defPkg: "com.google.android.apps.messaging", tag: "TXT PHONE"},
+    fb:      {name: "FB Lite · Chat", glyph: "FB CHAT", tint: #a35bff, defPkg: "com.facebook.lite",                 tag: "FB CHAT"},
+    fb_post: {name: "FB Lite · Post", glyph: "FB POST", tint: #ff9e3b, defPkg: "com.facebook.lite",                 tag: "FB POST"},
+    dc:      {name: "Discord",        glyph: "DC",      tint: #7d86ff, defPkg: "com.discord",                       tag: "DISCORD"},
+    ig:      {name: "Instagram",      glyph: "IG",      tint: #ff3d8b, defPkg: "com.instagram.android",             tag: "INSTAGRAM"},
+    x:       {name: "X",              glyph: "X",       tint: cBone,   defPkg: "com.twitter.android",               tag: "X / DM"},
+    wa:      {name: "WhatsApp",       glyph: "WA",      tint: #2bff8c, defPkg: "com.whatsapp",                     tag: "WHATSAPP"},
+    tg:      {name: "Telegram",       glyph: "TG",      tint: #39c3ff, defPkg: "org.telegram.messenger",           tag: "TELEGRAM"},
+    sig:     {name: "Signal",         glyph: "SIG",     tint: #5b8cff, defPkg: "org.thoughtcrime.securesms",        tag: "SIGNAL"},
+    snap:    {name: "Snapchat",       glyph: "SN",      tint: #ffe14a, defPkg: "com.snapchat.android",             tag: "SNAPCHAT"}
+  }
+
+  // Installed messenger quick-links (tap to open app directly)
+  let drawerApps = d.apps ?? []
+  let quickLinks = [
+    {id: "sms", label: "TXT PHONE", pkg: "com.google.android.apps.messaging", tint: #3da8ff},
+    {id: "fb",  label: "FB LITE",   pkg: "com.facebook.lite",                 tint: #a35bff},
+    {id: "dc",  label: "DISCORD",   pkg: "com.discord",                       tint: #7d86ff},
+    {id: "ig",  label: "IG",        pkg: "com.instagram.android",             tint: #ff3d8b},
+    {id: "x",   label: "X",         pkg: "com.twitter.android",               tint: cHot}
+  ].map(q => merge(q, {
+    dKey: (drawerApps.find(a => startsWith(a.key, "a:${q.pkg}/") || a.key == q.pkg) ?? {key: ""}).key
+  })).filter(q => q.dKey != "")
+
+  // ── Filter & Classification Engine ──
+  // Captures SMS text phone chats and FB Lite (both chat messages AND feed posts)
+  // Drops pure account spam (login codes, passwords, marketplace junk)
+  let social = ["fb", "ig", "x"]
+  let authSpam = "(birthday (is )?today|birthdays today|have birthdays|wish .* a happy birthday|friend request|(invited you to|interested in|going to) (an |the |your )?event|event (starts|is tomorrow|is today)|suggested for you|people you may know|marketplace|joined (facebook|instagram)|new login|security (alert|check)|(reset|change) your password|your (login|verification|security) code|code is \\d)"
+  let fbChatHint = "(sent (you )?(a |an )?(message|photo|video|voice|audio|sticker|gif|attachment|reel|link)|messaged you|new message|replied to your message|: )"
+
+  let live = (n.items ?? []).filter(i =>
+    get(pkgId, i.package, null) != null
+    && indexOf(gone, i.key) < 0
+    && trim(i.text ?? "") != ""
+    && (indexOf(social, get(pkgId, i.package, "")) < 0 || (
+      !any(i.actions ?? [], a => a.title == "Repost" || a.title == "Retweet")
+      && match(lower("${i.title ?? ""} ${i.text ?? ""}"), authSpam) == null
+      && (get(pkgId, i.package, "") != "ig" || any(i.actions ?? [], a => a.reply == true))
+    ))
+  ).map(i => [[
+    get(pkgId, i.package, "fb"),
+    trim(i.title ?? ""),
+    match(i.text ?? "", "^([^:]{2,32}):\\s+(.+)$"),
+    match(i.text ?? "", "^(.{2,32}?)\\s+sent (you )?(a |an )?message")
+  ]].map(m => [[
+    indexOf(["facebook", "facebook lite", "lite", ""], lower(m[1])) >= 0
+      ? (m[2] != null ? m[2][0] : (m[3] != null ? m[3][0] : (m[0] == "fb" ? "FB Lite Update" : (i.app ?? "Chat"))))
+      : m[1],
+    indexOf(["facebook", "facebook lite", "lite", ""], lower(m[1])) >= 0 && m[2] != null ? m[2][1] : (i.text ?? ""),
+    m[0] == "fb" && !any(i.actions ?? [], a => a.reply == true) && match(lower(i.text ?? ""), fbChatHint) == null
+  ]].map(sc => merge(i, {
+    id: sc[2] ? "fb_post" : m[0],
+    isPost: sc[2],
+    who: sc[0],
+    cleanText: sc[1],
+    tid: "${i.package}|${sc[2] ? "post|" : ""}${sc[0]}",
+    reply: indexOf((i.actions ?? []).map(a => a.reply == true), true)
+  }))[0])[0])
+
+  // Record every incoming message into persistent thread history (deduped by key+text)
+  on live first {
+    let seen = hist.map(h => h.sig)
+    let fresh = value.filter(i => indexOf(seen, "${i.key}|${i.cleanText}") < 0).map(i => {
+      tid: i.tid, id: i.id, pkg: i.package, who: i.who, text: i.cleanText, time: i.time ?? 0, me: false, isPost: i.isPost ?? false, sig: "${i.key}|${i.cleanText}"
+    })
+    if len(fresh) > 0 { hist = flatten([fresh, hist]).take(400) }
+  }
+
+  // Preview threads highlighting differences between Text Phone SMS, FB Lite Chat, FB Lite Post, and Discord
+  let baseTs = now ?? 1795488000
+  let sampleEntries = (showSamples && len(hist) == 0 && len(live) == 0) ? [
+    {tid: "com.google.android.apps.messaging|Studio Collab", id: "sms", pkg: "com.google.android.apps.messaging", who: "you", text: "Locked in for Friday 7pm — bringing the Odin synth setup", time: baseTs - 60, me: true, isPost: false, sample: true, sig: "s1"},
+    {tid: "com.google.android.apps.messaging|Studio Collab", id: "sms", pkg: "com.google.android.apps.messaging", who: "Studio Collab", text: "Are we still on for the music session Friday?", time: baseTs - 180, me: false, isPost: false, sample: true, sig: "s2"},
+    {tid: "com.facebook.lite|Maya (FB Lite)", id: "fb", pkg: "com.facebook.lite", who: "Maya (FB Lite)", text: "Bet, send the bounce when you export it 🔥", time: baseTs - 400, me: false, isPost: false, sample: true, sig: "s3"},
+    {tid: "com.facebook.lite|Maya (FB Lite)", id: "fb", pkg: "com.facebook.lite", who: "you", text: "Just finished mixing the new synth pad patch on the phone", time: baseTs - 620, me: true, isPost: false, sample: true, sig: "s4"},
+    {tid: "com.facebook.lite|post|Marcus Vance", id: "fb_post", pkg: "com.facebook.lite", who: "Marcus Vance", text: "Shared a new post: Denver Underground Electronic session recap + audio clips 🔊", time: baseTs - 1500, me: false, isPost: true, sample: true, sig: "s5"},
+    {tid: "com.discord|SecOps Lab", id: "dc", pkg: "com.discord", who: "you", text: "Pushed the W=0/W=1 localhost range + detection rules", time: baseTs - 7200, me: true, isPost: false, sample: true, sig: "s6"}
+  ] : []
+
+  let allHist = flatten([hist, sampleEntries])
+
+  // Merge live unread notifications + persisted/sent history threads
+  let liveByTid = groupBy(live, i => i.tid)
+  let histByTid = groupBy(allHist, h => h.tid)
+  let allTids   = unique(flatten([live.map(i => i.tid), allHist.map(h => h.tid)]))
+
+  let threads = allTids.map(tid => [[
+    get(liveByTid, tid, []),
+    get(histByTid, tid, [])
+  ]].map(gh => [[
+    len(gh[0]) > 0 ? gh[0][0] : null,
+    len(gh[1]) > 0 ? gh[1][0] : null,
+    len(gh[0]) > 0
+  ]].map(th0 => [[
+    th0[2] ? th0[0].package : (th0[1] != null && th0[1].pkg != null ? th0[1].pkg : split(tid, "|")[0]),
+    th0[1] != null && (!th0[2] || (th0[1].time ?? 0) > (th0[0].time ?? 0)) ? th0[1].text : (th0[2] ? th0[0].cleanText : ""),
+    th0[2] ? (th0[0].isPost ?? false) : (th0[1] != null ? (th0[1].isPost ?? false) : indexOf(tid, "|post|") >= 0)
+  ]].map(pk => {
+    tid: tid,
+    id: th0[2] ? th0[0].id : (th0[1] != null && th0[1].id != null ? th0[1].id : (pk[2] ? "fb_post" : get(pkgId, pk[0], "sms"))),
+    pkg: pk[0],
+    isPost: pk[2],
+    who: th0[2] ? th0[0].who : (len(split(tid, "|")) > (pk[2] ? 2 : 1) ? split(tid, "|")[pk[2] ? 2 : 1] : (th0[1] != null ? th0[1].who : "Chat")),
+    text: (th0[1] != null && th0[1].me == true && (!th0[2] || (th0[1].time ?? 0) >= (th0[0].time ?? 0))) ? "You: ${pk[1]}" : pk[1],
+    time: max(th0[2] ? (th0[0].time ?? 0) : 0, th0[1] != null ? (th0[1].time ?? 0) : 0),
+    icon: th0[2] ? th0[0].icon : "app:${pk[0]}",
+    key: th0[2] ? th0[0].key : "",
+    count: len(gh[0]),
+    sentCount: len(gh[1].filter(x => x.me == true)),
+    lastMe: !th0[2] && th0[1] != null && th0[1].me == true,
+    sample: !th0[2] && th0[1] != null && th0[1].sample == true,
+    reply: th0[2] ? th0[0].reply : -1,
+    keys: gh[0].filter(x => x.clearable).map(x => x.key)
+  })[0])[0])[0]).sortBy(t => -t.time)
+
+  let ids       = unique(flatten([["sms", "fb", "fb_post"], threads.map(t => t.id)]))
+  let curF      = filter == "all" || indexOf(ids, filter) >= 0 ? filter : "all"
+  let shown     = curF == "all" ? threads : threads.filter(t => t.id == curF)
+  let unread    = sum(threads.map(t => t.count))
+  let sentTotal = len(allHist.filter(h => h.me == true))
+  let th        = threads.find(t => t.tid == open)
+  let thLog     = allHist.filter(h => h.tid == open).take(60).reverse()
+  let thHist    = len(thLog) > 0 ? thLog : (th == null ? [] : [{text: th.text, time: th.time, me: false, isPost: th.isPost ?? false}])
+  let openPkg   = th != null ? th.pkg : (len(split(open, "|")) > 0 ? split(open, "|")[0] : "com.google.android.apps.messaging")
+  let openId    = th != null ? th.id : get(pkgId, openPkg, "sms")
+  let thLook    = get(look, openId, look.sms)
+
+  // Header sigil: 4-mode aware rotating reticle + pentagram/hex core, zero wakeups when FX/Eco off
+  component Sigil(sz) {
+    Canvas {
+      width: sz
+      height: sz
+      let c = sz / 2
+      let r = sz / 2 - 3
+      let t = fxActive ? time : 0
+      circle(c, c, r, stroke: alpha(cPri, 0.52), width: 1.5)
+      rotate(t * 22, c, c) {
+        for i in range(12) {
+          rotate(i * 30, c, c) { line(c, 3, c, i % 3 == 0 ? cHot : cPri, width: 1.4) }
+        }
+      }
+      if curMode == "future" {
+        rotate(-t * 14, c, c) {
+          path(range(6).map(k => [c + (r - 8) * cos(rad(k * 60)), c + (r - 8) * sin(rad(k * 60))]), closed: true, stroke: cPri, width: 1.6)
+        }
+      } else {
+        rotate(-t * 12, c, c) {
+          path(range(6).map(k => [c + (r - 8) * sin(rad(k * 144)), c - (r - 8) * cos(rad(k * 144))]), stroke: cPri, width: 1.6)
+        }
+      }
+      circle(c, c, 4 + (fxActive ? 1.4 * sin(t * 3) : 0), fill: unread > 0 ? cHot : alpha(cPri, 0.5))
+    }
+  }
+
+  component Chip(k, label, tint, cnt) {
+    Row {
+      gap: 6
+      align: center
+      padding: [11, 6]
+      radius: 14 * corners * hubRadius
+      border: 1
+      borderColor: curF == k ? tint : alpha(cPri, 0.28)
+      background: curF == k ? alpha(tint, 0.20) : alpha(cCard, 0.88)
+      onTap: { filter = k; if animHaptics { haptic() } }
+      Text { font: bodyFont; text: label; color: curF == k ? cInk : cMuted; fontSize: 10.5; letterSpacing: 1.3; fontWeight: 800 }
+      if cnt > 0 { Text { font: "mono"; text: "${cnt}"; color: tint; fontSize: 10.5; fontWeight: 900 } }
+    }
+  }
+
+  component Pill(label, tint) {
+    Row {
+      padding: [11, 6]
+      radius: 14 * corners * hubRadius
+      border: 1
+      borderColor: alpha(tint, 0.55)
+      background: alpha(cCard, 0.88)
+      Text { font: bodyFont; text: label; color: tint; fontSize: 10; letterSpacing: 1.3; fontWeight: 800 }
+    }
+  }
+
+  Box {
+    fill: true
+    background: ecoOn ? #000000 : radial(0.5, 0, 1.15, [cDeep, cObs, #000000])
+    Column {
+      fill: true
+      padding: [12, 8, 12, 0]
+      gap: 9
+
+      // ─────────────── HEADER ───────────────
+      Row {
+        align: center
+        gap: 10
+        if open == "" && !composing {
+          Sigil { sz: 44 }
+          Column {
+            weight: 1
+            gap: 1
+            Text { font: dispFont; text: "N E X U S"; color: cPri; fontSize: 20; fontWeight: 900; letterSpacing: 2.6 }
+            Text {
+              font: bodyFont
+              text: n.available == false ? "grant notification access" : "${unread} unread · ${sentTotal} sent · ${upper(curMode)}"
+              color: cMuted; fontSize: 10.5; letterSpacing: 0.9; maxLines: 1
+            }
+          }
+          Row {
+            onTap: { composing = true; if animHaptics { haptic() } }
+            Pill { label: "✚ SEND"; tint: #3da8ff }
+          }
+          if len(hist) == 0 && len(live) == 0 {
+            Row {
+              onTap: { showSamples = !showSamples; if animHaptics { haptic() } }
+              Pill { label: showSamples ? "DEMO ●" : "DEMO ○"; tint: showSamples ? cHot : cMuted }
+            }
+          }
+          Row {
+            onTap: { fx = !fx; if animHaptics { haptic() } }
+            Pill { label: fxActive ? "FX ●" : "FX ○"; tint: fxActive ? cHot : cMuted }
+          }
+        } else if composing {
+          Row {
+            onTap: { composing = false; composeMsg = ""; if animHaptics { haptic() } }
+            Pill { label: "‹ CANCEL"; tint: cHot }
+          }
+          Column {
+            weight: 1
+            gap: 1
+            Text { font: dispFont; text: "COMPOSE & SEND"; color: cInk; fontSize: 16; fontWeight: 900; letterSpacing: 1.5 }
+            Text { font: bodyFont; text: composeChan == "sms" ? "DIRECT TEXT PHONE (SMS)" : "FACEBOOK LITE DISPATCH"; color: composeChan == "sms" ? #3da8ff : #a35bff; fontSize: 9.5; letterSpacing: 1.4; fontWeight: 800 }
+          }
+        } else {
+          Row { onTap: { open = ""; draft = ""; if animHaptics { haptic() } }; Pill { label: "‹ BACK"; tint: cHot } }
+          Box {
+            width: 38
+            height: 38
+            align: center
+            radius: 19
+            border: 1.6
+            borderColor: thLook.tint
+            background: alpha(thLook.tint, 0.14)
+            Image { src: th != null ? th.icon : "app:${openPkg}"; width: 21; height: 21 }
+          }
+          Column {
+            weight: 1
+            gap: 1
+            Text { font: dispFont; text: th == null ? (len(split(open, "|")) > 1 ? split(open, "|")[1] : "Chat") : th.who; color: cInk; fontSize: 15.5; fontWeight: 800; maxLines: 1 }
+            Text { font: bodyFont; text: upper(thLook.name); color: thLook.tint; fontSize: 9.5; letterSpacing: 1.6; fontWeight: 800 }
+          }
+          Row {
+            onTap: {
+              if animHaptics { haptic() }
+              if th != null && th.id == "sms" && th.who != "" && th.who != "you" {
+                url("sms:${th.who}")
+              } else if th != null && th.key != "" {
+                notification("open", th.key)
+              } else {
+                androidApp(openPkg)
+              }
+            }
+            Pill { label: "OPEN APP ↗"; tint: thLook.tint }
+          }
+        }
+      }
+
+      if n.available == false {
+        Column {
+          gap: 8
+          padding: 14
+          radius: 18 * corners * hubRadius
+          border: 1
+          borderColor: alpha(cPri, 0.45)
+          background: alpha(cCard, 0.9)
+          Text { font: dispFont; text: "◈ GRANT NOTIFICATION ACCESS"; color: cHot; fontSize: 11.5; letterSpacing: 1.8; fontWeight: 800 }
+          Text { font: bodyFont; text: "Nexus links Text Phone (SMS), FB Lite Chats & Posts, Discord & X into live threads with direct sending."; color: cInk; fontSize: 12.5 }
+          Row { onTap: notification("open", ""); Pill { label: "ALLOW ACCESS ↗"; tint: cPri } }
+        }
+      }
+
+      // ─────────────── COMPOSE VIEW (SEND SMS / FB LITE) ───────────────
+      if composing {
+        Column {
+          weight: 1
+          gap: 12
+          padding: [14, 12]
+          radius: 18 * corners * hubRadius
+          border: 1
+          borderColor: composeChan == "sms" ? alpha(#3da8ff, 0.6) : alpha(#a35bff, 0.6)
+          background: linear(0, 0, 1, 1, [alpha(cCard, 0.95), alpha(cObs, 0.98)])
+
+          Text {
+            font: dispFont
+            text: "◈ CHOOSE CHANNEL TO SEND"
+            color: cHot
+            fontSize: 10.5
+            letterSpacing: 1.6
+            fontWeight: 800
+          }
+
+          // Channel selector chips
+          Row {
+            gap: 8
+            Row {
+              onTap: { composeChan = "sms"; if animHaptics { haptic() } }
+              Pill { label: "📱 TEXT PHONE (SMS)"; tint: composeChan == "sms" ? #3da8ff : cMuted }
+            }
+            Row {
+              onTap: { composeChan = "fb"; if animHaptics { haptic() } }
+              Pill { label: "⚡ FB LITE"; tint: composeChan == "fb" ? #a35bff : cMuted }
+            }
+          }
+
+          Text {
+            font: bodyFont
+            text: composeChan == "sms" ? "Direct Android SMS dispatch with instant contact prefill" : "Copies text to clipboard and opens FB Lite / Messenger chat"
+            color: cMuted
+            fontSize: 11
+          }
+
+          // Recipient input
+          Column {
+            gap: 4
+            Text { font: dispFont; text: composeChan == "sms" ? "PHONE NUMBER OR CONTACT NAME" : "RECIPIENT NAME (OPTIONAL)"; color: cInk; fontSize: 10; letterSpacing: 1.2; fontWeight: 800 }
+            Box {
+              fill: width
+              padding: [12, 8]
+              radius: 12 * corners * hubRadius
+              border: 1
+              borderColor: alpha(cPri, 0.4)
+              background: alpha(cObs, 0.9)
+              Input {
+                text: composeTo
+                placeholder: composeChan == "sms" ? "e.g. 555-0199 or name…" : "e.g. Maya, Marcus, or leave blank…"
+                color: cInk
+                fontSize: 14
+                underline: false
+                clear: true
+                onChange: composeTo = value
+              }
+            }
+          }
+
+          // Message body input
+          Column {
+            gap: 4
+            Text { font: dispFont; text: "MESSAGE BODY"; color: cInk; fontSize: 10; letterSpacing: 1.2; fontWeight: 800 }
+            Box {
+              fill: width
+              padding: [12, 10]
+              radius: 12 * corners * hubRadius
+              border: 1
+              borderColor: alpha(cPri, 0.4)
+              background: alpha(cObs, 0.9)
+              Input {
+                text: composeMsg
+                placeholder: "Type your message here…"
+                color: cInk
+                fontSize: 14
+                underline: false
+                clear: true
+                onChange: composeMsg = value
+              }
+            }
+          }
+
+          // Dispatch Action Button
+          Row {
+            align: center
+            gap: 10
+            Row {
+              onTap: {
+                let body = trim(composeMsg)
+                let toWho = trim(composeTo)
+                if body != "" {
+                  let tsNow = now ?? 1795488000
+                  if composeChan == "sms" {
+                    if toWho != "" { url("sms:${toWho}?body=${enc(body)}") } else { url("sms:?body=${enc(body)}") }
+                    let tid = "com.google.android.apps.messaging|${toWho != "" ? toWho : "Direct SMS"}"
+                    hist = flatten([[{tid: tid, id: "sms", pkg: "com.google.android.apps.messaging", who: toWho != "" ? toWho : "Direct SMS", text: body, time: tsNow, me: true, isPost: false, sig: "me|${tsNow}|${body}"}], hist]).take(400)
+                    toast = "Sent SMS to ${toWho != "" ? toWho : "phone"}"
+                  } else {
+                    copy(body)
+                    androidApp("com.facebook.lite")
+                    let tid = "com.facebook.lite|${toWho != "" ? toWho : "FB Lite Contact"}"
+                    hist = flatten([[{tid: tid, id: "fb", pkg: "com.facebook.lite", who: toWho != "" ? toWho : "FB Lite Contact", text: body, time: tsNow, me: true, isPost: false, sig: "me|${tsNow}|${body}"}], hist]).take(400)
+                    toast = "Copied text & opened FB Lite"
+                  }
+                  composing = false
+                  composeMsg = ""
+                  composeTo = ""
+                  if animHaptics { haptic() }
+                }
+              }
+              Pill {
+                label: composeChan == "sms" ? "➤ SEND VIA SMS" : "➤ OPEN FB LITE WITH MESSAGE";
+                tint: composeChan == "sms" ? #3da8ff : #a35bff
+              }
+            }
+            Text { font: bodyFont; text: trim(composeMsg) == "" ? "enter text to send" : "ready to dispatch"; color: cMuted; fontSize: 10.5 }
+          }
+          Spacer { weight: 1 }
+        }
+      } else if open == "" {
+        // ─────────────── INBOX VIEW ───────────────
+        // Direct Messenger Bridge Bar
+        Column {
+          gap: 6
+          padding: [11, 9]
+          radius: 16 * corners * hubRadius
+          border: 1
+          borderColor: alpha(cPri, 0.34)
+          background: linear(0, 0, 1, 0, [alpha(cPri, 0.12), alpha(cCard, 0.90)])
+          Row {
+            align: center
+            gap: 6
+            Text { font: dispFont; text: "${tc.glyph ?? "◈"} LINKED MESSENGERS"; color: cHot; fontSize: 10; letterSpacing: 1.8; fontWeight: 800; weight: 1 }
+            Text { font: bodyFont; text: "TAP TO OPEN CHATS"; color: cMuted; fontSize: 9; letterSpacing: 1.0 }
+          }
+          Flow {
+            gap: 6
+            for q in quickLinks key q.id {
+              Row {
+                align: center
+                gap: 5
+                padding: [10, 6]
+                radius: 12 * corners * hubRadius
+                border: 1
+                borderColor: alpha(q.tint, 0.52)
+                background: alpha(cObs, 0.9)
+                onTap: { if animHaptics { haptic() }; open(q.dKey) }
+                Image { src: "app:${q.pkg}"; width: 14; height: 14 }
+                Text { font: bodyFont; text: "${q.label} ↗"; color: cInk; fontSize: 10; letterSpacing: 1.1; fontWeight: 800 }
+              }
+            }
+          }
+        }
+
+        // Highlighted Filter chips (SMS, FB Chat, FB Post, Discord, etc.)
+        Flow {
+          gap: 6
+          Chip { k: "all"; label: "ALL"; tint: cPri; cnt: len(threads) }
+          Chip { k: "sms"; label: "TXT PHONE"; tint: #3da8ff; cnt: len(threads.filter(t => t.id == "sms")) }
+          Chip { k: "fb"; label: "FB CHATS"; tint: #a35bff; cnt: len(threads.filter(t => t.id == "fb")) }
+          Chip { k: "fb_post"; label: "FB POSTS"; tint: #ff9e3b; cnt: len(threads.filter(t => t.id == "fb_post")) }
+          for mid in ids {
+            if mid != "sms" && mid != "fb" && mid != "fb_post" {
+              let lk = get(look, mid, look.sms)
+              Chip { k: mid; label: lk.glyph; tint: lk.tint; cnt: len(threads.filter(t => t.id == mid)) }
+            }
+          }
+        }
+
+        // Thread cards with HIGHLIGHTED DIFFERENCES
+        Column {
+          weight: 1
+          lazy: true
+          gap: 8
+          for t in shown key t.tid {
+            let lk = get(look, t.id, look.sms)
+            Row {
+              align: center
+              gap: 10
+              padding: [11, 10]
+              radius: 18 * corners * hubRadius
+              border: 1
+              borderColor: alpha(t.count > 0 ? lk.tint : (t.isPost ? #ff9e3b : cPri), t.count > 0 ? 0.65 : 0.32)
+              background: linear(0, 0, 1, 0, [alpha(lk.tint, t.count > 0 ? 0.16 : 0.06), alpha(cCard, 0.90)])
+              onTap: { open = t.tid; if animHaptics { haptic() } }
+              onLongPress: {
+                if t.count > 0 { gone = flatten([gone, t.keys]); toast = "marked read: ${t.who}" }
+                else if t.sample { showSamples = false; toast = "hid sample preview" }
+                else { hist = hist.filter(h => h.tid != t.tid); toast = "removed thread: ${t.who}" }
+                if animHaptics { haptic() }
+              }
+
+              // Avatar + Category Badge (highlighting SMS vs FB Chat vs FB Post)
+              Box {
+                width: 44
+                height: 44
+                align: topEnd
+                Box {
+                  width: 44
+                  height: 44
+                  align: center
+                  radius: 22
+                  border: 1.8
+                  borderColor: t.count > 0 ? lk.tint : alpha(lk.tint, 0.48)
+                  background: alpha(lk.tint, 0.12)
+                  Image { src: t.icon; width: 23; height: 23 }
+                }
+                if t.isPost {
+                  Row {
+                    align: center
+                    padding: [4, 1]
+                    radius: 7
+                    background: #ff9e3b
+                    Text { font: "mono"; text: "FEED"; color: #000000; fontSize: 7.5; fontWeight: 900 }
+                  }
+                } else if t.count > 0 {
+                  Row {
+                    align: center
+                    padding: [5, 1]
+                    radius: 9
+                    background: cPri
+                    Text { font: "mono"; text: "${t.count}"; color: #ffffff; fontSize: 9.5; fontWeight: 900 }
+                  }
+                } else if t.sentCount > 0 {
+                  Row {
+                    align: center
+                    padding: [4, 1]
+                    radius: 8
+                    background: alpha(cDeep, 0.95)
+                    border: 1
+                    borderColor: alpha(cHot, 0.6)
+                    Text { font: "mono"; text: "✓"; color: cHot; fontSize: 8.5; fontWeight: 900 }
+                  }
+                }
+              }
+
+              // Sender + Message Preview + Type Highlight Pill
+              Column {
+                weight: 1
+                gap: 2
+                Row {
+                  align: center
+                  gap: 6
+                  Text { font: bodyFont; text: t.who; color: cInk; fontSize: 14.5; fontWeight: 800; maxLines: 1; weight: 1 }
+                  Text { font: "mono"; text: fmtAgo(t.time, now ?? t.time); color: cMuted; fontSize: 9.5 }
+                }
+                Text { font: bodyFont; text: t.text; color: t.lastMe ? cHot : alpha(cInk, 0.84); fontSize: 12.5; maxLines: 2 }
+                Row {
+                  align: center
+                  gap: 6
+                  Text {
+                    font: bodyFont
+                    text: t.id == "sms" ? "◈ TXT PHONE · DIRECT SMS" : (t.id == "fb_post" ? "◈ FB LITE · FEED POST" : (t.id == "fb" ? "◈ FB LITE · CHAT / MSGR" : "◈ ${upper(lk.name)}"))
+                    color: lk.tint
+                    fontSize: 9
+                    letterSpacing: 1.2
+                    fontWeight: 800
+                    maxLines: 1
+                  }
+                  if t.reply >= 0 {
+                    Text { font: bodyFont; text: "· ↩ INLINE REPLY"; color: #2bff8c; fontSize: 9; fontWeight: 800 }
+                  } else if t.sentCount > 0 {
+                    Text { font: bodyFont; text: "· ✓ ${t.sentCount} SENT"; color: cHot; fontSize: 9; fontWeight: 800 }
+                  } else if t.sample {
+                    Text { font: bodyFont; text: "· PREVIEW"; color: cMuted; fontSize: 8.5 }
+                  }
+                }
+              }
+
+              // Right-Side Action Rail (↗ open in app / SMS, ✓/✕ mark read or clear)
+              Column {
+                gap: 5
+                align: center
+                Box {
+                  width: 30
+                  height: 28
+                  radius: 9 * corners * hubRadius
+                  align: center
+                  border: 1
+                  borderColor: alpha(lk.tint, 0.5)
+                  background: alpha(cObs, 0.9)
+                  onTap: {
+                    if animHaptics { haptic() }
+                    if t.id == "sms" && t.who != "" && t.who != "you" && t.who != "Direct SMS" {
+                      url("sms:${t.who}")
+                    } else if t.key != "" {
+                      notification("open", t.key)
+                    } else {
+                      androidApp(t.pkg)
+                    }
+                  }
+                  Text { font: bodyFont; text: "↗"; color: lk.tint; fontSize: 12; fontWeight: 900; align: center }
+                }
+                Box {
+                  width: 30
+                  height: 28
+                  radius: 9 * corners * hubRadius
+                  align: center
+                  border: 1
+                  borderColor: alpha(cMuted, 0.35)
+                  background: alpha(cObs, 0.9)
+                  onTap: {
+                    if animHaptics { haptic() }
+                    if t.key != "" {
+                      notification("dismiss", t.key)
+                      gone = flatten([gone, t.keys])
+                      toast = "marked read: ${t.who}"
+                    } else if t.sample {
+                      showSamples = false
+                      toast = "cleared sample preview"
+                    } else {
+                      hist = hist.filter(h => h.tid != t.tid)
+                      toast = "archived ${t.who}"
+                    }
+                  }
+                  Text { font: bodyFont; text: t.count > 0 ? "✓" : "✕"; color: cMuted; fontSize: 11; fontWeight: 800; align: center }
+                }
+              }
+            }
+          }
+
+          if len(shown) == 0 && n.available != false {
+            Column {
+              align: center
+              fill: width
+              padding: [0, 36]
+              gap: 10
+              Sigil { sz: 78 }
+              Text { font: dispFont; text: curF == "sms" ? "NO ACTIVE TEXT PHONE MESSAGES" : (curF == "fb_post" ? "NO ACTIVE FB LITE POSTS" : (curF == "fb" ? "NO ACTIVE FB LITE CHATS" : "THE VOID IS SILENT")); color: cHot; fontSize: 13; letterSpacing: 1.5; align: center; fill: width }
+              Text { font: bodyFont; text: "Text Phone SMS, FB Lite chats & posts, Discord & X messages appear here with instant dispatch and replies."; color: cMuted; fontSize: 11.5; align: center; fill: width }
+              Row {
+                gap: 8
+                Row {
+                  onTap: { composing = true; composeChan = "sms"; if animHaptics { haptic() } }
+                  Pill { label: "SEND TEXT (SMS) ↗"; tint: #3da8ff }
+                }
+                Row {
+                  onTap: { if animHaptics { haptic() }; androidApp("com.facebook.lite") }
+                  Pill { label: "OPEN FB LITE ↗"; tint: #a35bff }
+                }
+              }
+            }
+          }
+
+          if toast != "" { Text { font: bodyFont; text: toast; color: cMuted; fontSize: 10.5; align: center; fill: width } }
+          Spacer { height: screenInset + 10 }
+        }
+      } else {
+        // ─────────────── THREAD CONVERSATION VIEW (RECEIVED + SENT BUBBLES) ───────────────
+        Column {
+          weight: 1
+          lazy: true
+          gap: 8
+
+          // If thread is a post, show special post header card
+          if th != null && (th.isPost ?? false) {
+            Column {
+              gap: 6
+              padding: 12
+              radius: 14 * corners * hubRadius
+              border: 1
+              borderColor: alpha(#ff9e3b, 0.5)
+              background: linear(0, 0, 1, 0, [alpha(#ff9e3b, 0.12), alpha(cCard, 0.92)])
+              Row {
+                align: center
+                gap: 6
+                Text { font: dispFont; text: "◈ FACEBOOK LITE FEED POST"; color: #ff9e3b; fontSize: 11; letterSpacing: 1.5; fontWeight: 800; weight: 1 }
+                Text { font: "mono"; text: fmtAgo(th.time, now ?? th.time); color: cMuted; fontSize: 9.5 }
+              }
+              Text { font: bodyFont; text: th.text; color: cInk; fontSize: 13.5 }
+              Row {
+                onTap: {
+                  if animHaptics { haptic() }
+                  if th.key != "" { notification("open", th.key) } else { androidApp(openPkg) }
+                }
+                Pill { label: "VIEW FULL POST IN FB LITE ↗"; tint: #ff9e3b }
+              }
+            }
+          }
+
+          for h in thHist {
+            Row {
+              fill: width
+              justify: h.me ? "end" : "start"
+              Column {
+                gap: 3
+                padding: [13, 9]
+                radius: 18 * corners * hubRadius
+                border: 1
+                borderColor: h.me ? alpha(cHot, 0.72) : alpha(thLook.tint, 0.42)
+                background: h.me ? linear(0, 0, 1, 1, [alpha(cPri, 0.42), alpha(cDeep, 0.95)]) : alpha(cCard, 0.92)
+                Text {
+                  font: bodyFont
+                  text: h.me ? "YOU · SENT" : upper(h.who ?? thLook.name)
+                  color: h.me ? cHot : thLook.tint
+                  fontSize: 8.5
+                  fontWeight: 800
+                  letterSpacing: 1.2
+                  align: h.me ? "end" : "start"
+                }
+                Text { font: bodyFont; text: h.text; color: cInk; fontSize: 14 }
+                Text { font: "mono"; text: fmtTime(h.time, "HH:mm"); color: cMuted; fontSize: 9; align: h.me ? "end" : "start" }
+              }
+            }
+          }
+          Spacer { height: 4 }
+        }
+
+        // Composer: Sends SMS via Android url intent, replies via Direct Reply token, or copies & jumps to app
+        Row {
+          align: center
+          gap: 8
+          padding: [12, 4, 6, 4]
+          radius: 22 * corners * hubRadius
+          border: 1
+          borderColor: alpha(cPri, 0.55)
+          background: alpha(cCard, 0.94)
+          Input {
+            weight: 1
+            text: draft
+            placeholder: (th != null && th.reply >= 0) ? "reply inline via ${thLook.name}…" : ((openId == "sms" || openPkg == "com.google.android.apps.messaging") ? "type SMS & send to ${th != null ? th.who : "contact"}…" : "type message & open ${thLook.name}…")
+            color: cInk
+            fontSize: 14
+            underline: false
+            clear: true
+            onChange: draft = value
+            onSubmit: {
+              let msg = trim(value)
+              if msg != "" {
+                let tsNow = now ?? (th != null ? th.time : baseTs)
+                if th != null && th.reply >= 0 && th.key != "" {
+                  notification("reply", th.key, msg)
+                } else if openId == "sms" || openPkg == "com.google.android.apps.messaging" {
+                  let rec = th != null ? th.who : ""
+                  if rec != "" && rec != "you" && rec != "Chat" && rec != "Direct SMS" {
+                    url("sms:${rec}?body=${enc(msg)}")
+                  } else {
+                    url("sms:?body=${enc(msg)}")
+                  }
+                } else {
+                  copy(msg)
+                  if th != null && th.key != "" { notification("open", th.key) } else { androidApp(openPkg) }
+                }
+                hist = flatten([[{tid: open, id: openId, pkg: openPkg, who: "you", text: msg, time: tsNow, me: true, isPost: false, sig: "me|${tsNow}|${msg}"}], hist]).take(400)
+                draft = ""
+                if animHaptics { haptic() }
+              }
+            }
+          }
+          Row {
+            padding: [14, 9]
+            radius: 18 * corners * hubRadius
+            background: trim(draft) == "" ? alpha(cPri, 0.25) : cPri
+            onTap: {
+              let msg = trim(draft)
+              if msg != "" {
+                let tsNow = now ?? (th != null ? th.time : baseTs)
+                if th != null && th.reply >= 0 && th.key != "" {
+                  notification("reply", th.key, msg)
+                } else if openId == "sms" || openPkg == "com.google.android.apps.messaging" {
+                  let rec = th != null ? th.who : ""
+                  if rec != "" && rec != "you" && rec != "Chat" && rec != "Direct SMS" {
+                    url("sms:${rec}?body=${enc(msg)}")
+                  } else {
+                    url("sms:?body=${enc(msg)}")
+                  }
+                } else {
+                  copy(msg)
+                  if th != null && th.key != "" { notification("open", th.key) } else { androidApp(openPkg) }
+                }
+                hist = flatten([[{tid: open, id: openId, pkg: openPkg, who: "you", text: msg, time: tsNow, me: true, isPost: false, sig: "me|${tsNow}|${msg}"}], hist]).take(400)
+                draft = ""
+                if animHaptics { haptic() }
+              }
+            }
+            Text { font: bodyFont; text: (th != null && th.reply >= 0) ? "➤" : ((openId == "sms" || openPkg == "com.google.android.apps.messaging") ? "➤" : "↗"); color: #ffffff; fontSize: 14; fontWeight: 900 }
+          }
+        }
+
+        Row {
+          gap: 8
+          if th != null && th.key != "" {
+            Row {
+              onTap: { notification("dismiss", th.key); gone = flatten([gone, th.keys]); open = ""; if animHaptics { haptic() } }
+              Pill { label: "MARK READ ✓"; tint: cHot }
+            }
+          }
+          Row {
+            onTap: {
+              if th != null && th.sample { showSamples = false }
+              else { hist = hist.filter(h => h.tid != open) }
+              open = ""
+              if animHaptics { haptic() }
+            }
+            Pill { label: "CLEAR THREAD ✕"; tint: cMuted }
+          }
+        }
+        Spacer { height: screenInset + 8 }
+      }
+    }
+  }
+}

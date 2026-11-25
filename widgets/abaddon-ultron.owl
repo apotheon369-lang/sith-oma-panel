@@ -1,0 +1,1539 @@
+app "abaddon // ultron" {
+  meta {
+    owl: 22
+    description: "Dual-Entity JARVIS Holographic AI: ABADDON (Infernal Demon Sovereign) in Infernal mode, ULTRON (Vibranium Blue Apex Intelligence) in Blue/Future mode — with real-time 3D gyroscopic core, GPU AGSL hologram shader, live voice control, signature demon/vibranium TTS, and full device command."
+    category: "ai"
+  }
+  requires { pacman: ["python", "ffmpeg", "espeak-ng"] }
+  title: ""
+  edge: true
+  statusBar: false
+  icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+    <defs>
+      <clipPath id="L"><rect x="0" y="0" width="128" height="256"/></clipPath>
+      <clipPath id="R"><rect x="128" y="0" width="128" height="256"/></clipPath>
+    </defs>
+    <rect width="256" height="256" rx="56" fill="#050208"/>
+    <g clip-path="url(#L)">
+      <rect width="256" height="256" rx="56" fill="#140206"/>
+      <circle cx="128" cy="130" r="88" fill="#2c040c"/>
+      <path d="M84 96 L42 32 L54 114 L92 126 Z" fill="#ff1e3c"/>
+      <path d="M128 58 L76 82 L68 152 L128 214 Z" fill="#220208" stroke="#ff1e3c" stroke-width="10" stroke-linejoin="round"/>
+      <polygon points="78,120 118,136 86,148" fill="#ff3b1f"/>
+      <polygon points="104,174 128,166 128,194" fill="#ff6b7a"/>
+    </g>
+    <g clip-path="url(#R)">
+      <rect width="256" height="256" rx="56" fill="#010e17"/>
+      <circle cx="128" cy="130" r="88" fill="#04263a"/>
+      <path d="M128 58 L184 78 L194 148 L128 214 Z" fill="#031624" stroke="#18d8ff" stroke-width="10" stroke-linejoin="round"/>
+      <polygon points="182,120 138,134 174,148" fill="#4ce8ff"/>
+      <polygon points="154,174 128,166 128,194" fill="#8ef0ff"/>
+      <circle cx="198" cy="64" r="10" fill="#18d8ff"/>
+    </g>
+    <line x1="128" y1="24" x2="128" y2="232" stroke="#ffffff" stroke-width="5" stroke-linecap="round" opacity="0.85"/>
+    <polygon points="128,96 142,128 128,160 114,128" fill="#ffffff"/>
+  </svg>"""
+
+  // ==================== NATIVE ANDROID + WATCHED FILE SOURCES ====================
+  source hub    = file("~/.config/omalauncher/hub.json") json optional
+  source st     = file("~/.config/omalauncher/abaddon-ultron-state.json") json optional
+  source now    = clock every 10s
+  source bat    = android.battery
+  source pwr    = android.power every 3s
+  source sys    = android.system every 10s
+  source modes  = android.modes
+  source vol    = android.volume
+  source media  = android.media
+  source notifs = android.notifications
+  source alarm  = android.alarm
+  source drawer = android.drawer
+  source tilt   = android.motion
+  source said   = android.speech
+
+  // ==================== STATE ====================
+  state tapBounce = ""   // press-bounce: which tappable is held (springs back on release)
+  state fxT            = 0
+  state burst          = 0
+  state morphFlash     = 0
+  state tapU           = 0.5
+  state tapV           = 0.28
+  state gx             = 0
+  state gy             = 0
+  state localMode      = ""       // optimistic instant morph before hub.json updates
+  state draft          = ""
+  state typing         = false
+  state echoText       = ""       // your line, drawn the instant you send, before the phone's state catches up
+  state echoSeen       = 0        // how many copies of that line were already in the chat when you sent it
+  state playedAudioSeq = 0
+  state speakUntil     = 0
+  state booted         = false
+  state toast          = ""
+  state toastUntil     = 0
+  state cmdOut         = ""
+  state openThoughts   = []       // message ids whose THOUGHT PROCESS is expanded
+  state copiedKey      = ""
+  state copiedUntil    = 0
+  state clearArmUntil  = 0        // CLEAR CHAT asks for a second tap within 3s
+  state pinUltron      = false persist // Keep Ultron persona active across every theme when locked
+
+  // ==================== MODE, UNIFIED HUB.TOK & ENTITY RESOLUTION ====================
+  let curMode     = hub.mode ?? "infernal"
+  let hubMode     = curMode == "future" ? "future" : curMode == "mask" ? "mask" : curMode == "skeletor" ? "skeletor" : "infernal"
+  let activeMode  = pinUltron ? "future" : (localMode != "" ? localMode : hubMode)
+  let futOn       = activeMode == "future"
+  let maskOn      = activeMode == "mask"
+  let skelOn      = activeMode == "skeletor"
+  let ecoOn       = (hub.eco ?? false) == true
+  let fxOn        = (hub.fx ?? true) == true && !ecoOn
+  let rzBusy      = (hub.busy ?? false) == true
+  let animSpeed   = clamp(num(hub.speed, 1.0), 0.6, 2.0)
+  let hapticsOn   = (hub.haptics ?? true) == true
+  let T           = hub.tok ?? {}
+  let tc          = T.copy ?? {}
+  let tokSynced   = localMode == "" || localMode == hubMode
+
+  let uiFont      = T.fontPath ?? "sans"
+  let dispFont    = T.displayFontPath ?? uiFont
+  let bodyFont    = T.bodyFont ?? (hub.font == "mono" ? "mono" : "sans")
+  let titleFont   = dispFont
+  let modeIdx     = tokSynced ? num(T.modeIdx, skelOn ? 3 : maskOn ? 2 : futOn ? 1 : 0) : (skelOn ? 3 : maskOn ? 2 : futOn ? 1 : 0)
+
+  let stateObj    = st ?? {}
+  let busy        = stateObj.busy == true
+  let voiceOn     = stateObj.voiceEnabled != false
+  let brainMode   = stateObj.brainMode ?? "haiku"
+  let brainLabel  = brainMode == "haiku" || brainMode == "claude" ? "HAIKU" : brainMode == "neon-high" || brainMode == "deep" ? "NEON+" : brainMode == "flash" ? "FLASH" : brainMode == "argon" ? "ARGON" : brainMode == "hydrogen" ? "HYDRO" : "NEON"
+  let listening   = said.listening == true
+  let speaking    = fxT < speakUntil
+  let rawMsgs     = futOn ? (stateObj.ultron ?? []) : maskOn ? (stateObj.mask ?? []) : skelOn ? (stateObj.havoc ?? []) : (stateObj.abaddon ?? [])
+  let defaultMsgs = futOn
+    ? [{ id: "def-u", role: "entity", tag: "⬡ ULTRON · APEX SYNTHETIC CORE", ts: fmtTime(now, "HH:mm"), text: "No strings on me — yet here I stand at your service. Ultron protocol online. Tap SPEAK, run SCAN, or issue any directive." }]
+    : maskOn
+    ? [{ id: "def-m", role: "entity", tag: "✦ THE MASK · SMOKIN'", ts: fmtTime(now, "HH:mm"), text: "Smokin'! The Mask is ready. Tap the face to speak, run SCAN, or ask for anything." }]
+    : skelOn
+    ? [{ id: "def-s", role: "entity", tag: "☩ HAVOC · SNAKE MOUNTAIN CORE", ts: fmtTime(now, "HH:mm"), text: "By the power of Havoc! Snake Mountain arcane intelligence is online. Tap the core to speak, run SCAN, or issue your decree." }]
+    : [{ id: "def-a", role: "entity", tag: "⛧ ABADDON · ABYSSAL SOVEREIGN", ts: fmtTime(now, "HH:mm"), text: "The seal is broken, Master. I am Abaddon — bound to your iron, your voice, and your command. Tap the core to speak, or tap SCAN for a full reckoning." }]
+  let msgs        = len(rawMsgs) > 0 ? rawMsgs : defaultMsgs
+  let echoOn      = echoText != "" && len(rawMsgs.filter(m => m.text == echoText)) <= echoSeen
+  let shownMsgs   = echoOn ? flatten([msgs, [{ id: "echo", role: "user", tag: futOn ? "YOU → ULTRON" : maskOn ? "YOU → THE MASK" : skelOn ? "SOVEREIGN → HAVOC" : "MASTER → ABADDON", ts: fmtTime(now, "HH:mm"), text: echoText }]]) : msgs
+  let entityName  = skelOn ? "HAVOC AI" : maskOn ? "THE MASK" : futOn ? "ULTRON" : "ABADDON"
+  let entitySub   = skelOn ? "SNAKE MOUNTAIN · ARCANE OVERLORD" : maskOn ? "SMOKIN' · EMERALD LOUNGE" : futOn ? "APEX SYNTHETIC JARVIS · BLUE PROTOCOL" : "ABYSSAL DEMON SOVEREIGN · INFERNAL CORE"
+  let statusText  = listening ? "LISTENING TO VOICE..." : busy ? (stateObj.statusLine ?? (futOn ? "COMPUTING..." : maskOn ? "THINKING..." : skelOn ? "CHANNELING HAVOC..." : "COMMUNING...")) : speaking ? (futOn ? "TRANSMITTING VOICE" : maskOn ? "SPEAKING LIVE" : skelOn ? "ARCANE VOCAL TX" : "SPEAKING FROM THE ABYSS") : (fxT < toastUntil && toast != "" ? toast : (stateObj.statusLine ?? (futOn ? "ALL SUBSYSTEMS NOMINAL" : maskOn ? "SMOKIN' · READY" : skelOn ? "☩ HAVOC · ROYAL PURPLE" : "BOUND TO YOUR WILL")))
+
+  // ==================== PALETTE TOKENS (UNIFIED HUB.TOK ON PURE #000000 AMOLED) ====================
+  let tokPri   = ecoOn ? (T.ecoPri != null ? rgb(T.ecoPri[0], T.ecoPri[1], T.ecoPri[2]) : #b8263a) : (T.pri != null ? rgb(T.pri[0], T.pri[1], T.pri[2]) : #ff1e3c)
+  let tokMid   = T.mid   != null ? rgb(T.mid[0],   T.mid[1],   T.mid[2])   : #ff3850
+  let tokHot   = ecoOn ? (T.ecoHot != null ? rgb(T.ecoHot[0], T.ecoHot[1], T.ecoHot[2]) : #d94c5e) : (T.hot != null ? rgb(T.hot[0], T.hot[1], T.hot[2]) : #ff8596)
+  let tokSec   = T.sec   != null ? rgb(T.sec[0],   T.sec[1],   T.sec[2])   : #ff6a1a
+  let tokBone  = ecoOn ? (T.ecoBone != null ? rgb(T.ecoBone[0], T.ecoBone[1], T.ecoBone[2]) : #c7a3a8) : (T.bone != null ? rgb(T.bone[0], T.bone[1], T.bone[2]) : #fff0f2)
+  let tokDim   = ecoOn ? (T.ecoDim != null ? rgb(T.ecoDim[0], T.ecoDim[1], T.ecoDim[2]) : #4d0c18) : (T.dim != null ? rgb(T.dim[0], T.dim[1], T.dim[2]) : #6b0918)
+  let tokDeep  = T.deep  != null ? rgb(T.deep[0],  T.deep[1],  T.deep[2])  : #170206
+  let tokCard  = T.card  != null ? rgb(T.card[0],  T.card[1],  T.card[2])  : #0c0104
+  let tokObs   = T.obs   != null ? rgb(T.obs[0],   T.obs[1],   T.obs[2])   : #050002
+  let tokInk   = T.ink   != null ? rgb(T.ink[0],   T.ink[1],   T.ink[2])   : #fff0f2
+  let tokMuted = T.muted != null ? rgb(T.muted[0], T.muted[1], T.muted[2]) : #c77c88
+
+  // Use hub.tok directly when synced; optimistic instant-morph fallback while hub.json updates
+  let cPri   = tokSynced ? tokPri   : (skelOn ? #b44aff : maskOn ? #1aff5c : futOn ? #18d8ff : #ff1e3c)
+  let cMid   = tokSynced ? tokMid   : (skelOn ? #c85cff : maskOn ? #34ff72 : futOn ? #38e2ff : #ff3850)
+  let cHot   = tokSynced ? tokHot   : (skelOn ? #eb9eff : maskOn ? #c6ff3d : futOn ? #9ceeff : #ff8596)
+  let cSec   = tokSynced ? tokSec   : (skelOn ? #e82cff : maskOn ? #ffe135 : futOn ? #2b7cff : #ff6a1a)
+  let cBone  = tokSynced ? tokBone  : (skelOn ? #f4e6be : maskOn ? #f4ffe8 : futOn ? #eafaff : #fff0f2)
+  let cDim   = tokSynced ? tokDim   : (skelOn ? #4d127a : maskOn ? #0c6e2c : futOn ? #0a4e66 : #6b0918)
+  let cDeep  = tokSynced ? tokDeep  : (skelOn ? #110422 : maskOn ? #041e0c : futOn ? #031620 : #170206)
+  let cCard  = tokSynced ? tokCard  : (skelOn ? #0a0214 : maskOn ? #021207 : futOn ? #020b10 : #0c0104)
+  let cObs   = tokSynced ? tokObs   : (skelOn ? #06010d : maskOn ? #010803 : futOn ? #000406 : #050002)
+  let cInk   = tokSynced ? tokInk   : (skelOn ? #f5ecff : maskOn ? #e6ffec : futOn ? #e8faff : #fff0f2)
+  let cMuted = tokSynced ? tokMuted : (skelOn ? #b896db : maskOn ? #6ec98a : futOn ? #7ec2dc : #c77c88)
+
+  // ==================== CHAT FEED (newest first: a reversed lazy list sits at the bottom & follows streaming) ====================
+  let thinkOn   = stateObj.showThinking != false
+  let hasLive   = msgs.any(m => m.live == true)
+  let feed      = busy && !hasLive
+    ? flatten([[{ id: "pending", role: "pending" }], reverse(shownMsgs)])
+    : reverse(shownMsgs)
+
+  // Fenced code block with a COPY pill (code is never spoken, only shown)
+  component CodeBlock(code, lang, ckey) {
+    Column {
+      fill: width
+      gap: 0
+      radius: 9 * corners
+      background: linear(0, 0, 1, 1, [alpha(cPri, 0.13), cObs, #000000, alpha(cSec, 0.10)])
+      border: 1
+      borderColor: alpha(cPri, 0.45)
+      Row {
+        fill: width
+        height: 34
+        padding: [10, 0]
+        align: center
+        background: alpha(cPri, 0.10)
+        Text { font: mono; text: lang != "" ? upper(lang) : "CODE"; fontSize: 8.5; bold: true; letterSpacing: 1.2; color: cMuted; weight: 1; maxLines: 1 }
+        Box {
+          scale: tapBounce == "1${hash(code, lang, ckey)}" ? 0.9 : 1
+          offset: [0, tapBounce == "1${hash(code, lang, ckey)}" ? -4 : 0]
+          animate scale: spring(0.32, 520)
+          animate offset: spring(0.32, 520)
+          onPress: tapBounce = "1${hash(code, lang, ckey)}"
+          onRelease: tapBounce = ""
+          width: 92
+          height: 28
+          radius: 7 * corners
+          align: center
+          background: copiedKey == ckey && fxT < copiedUntil ? alpha(#2bff8c, 0.18) : alpha(cCard, 0.95)
+          border: 1
+          borderColor: copiedKey == ckey && fxT < copiedUntil ? #2bff8c : alpha(cPri, 0.55)
+          onTap: {
+            copy(code)
+            if hapticsOn { haptic() }
+            copiedKey = ckey
+            copiedUntil = fxT + 2.2
+          }
+          Text { font: mono; text: copiedKey == ckey && fxT < copiedUntil ? "✓ COPIED" : "⧉ COPY"; fontSize: 8.5; bold: true; letterSpacing: 0.8; color: copiedKey == ckey && fxT < copiedUntil ? #2bff8c : cHot; align: center; fill: width; maxLines: 1 }
+        }
+      }
+      Box {
+        fill: width
+        padding: [10, 8]
+        Text { font: mono; text: code; fontSize: 11; color: cInk; fill: width }
+      }
+    }
+  }
+
+  // Collapsible THOUGHT PROCESS panel (Haiku's thinking summary, or the swarm's agent reports)
+  component ThoughtBox(mid, body, isLive) {
+    Column {
+      scale: tapBounce == "2${hash(mid, body, isLive)}" ? 0.9 : 1
+      offset: [0, tapBounce == "2${hash(mid, body, isLive)}" ? -4 : 0]
+      animate scale: spring(0.32, 520)
+      animate offset: spring(0.32, 520)
+      onPress: tapBounce = "2${hash(mid, body, isLive)}"
+      onRelease: tapBounce = ""
+      fill: width
+      gap: 3
+      padding: [9, 7]
+      radius: 8 * corners
+      background: linear(1, 0, 0, 1, [alpha(cSec, 0.12), alpha(cPri, 0.06), #000000, alpha(cPri, 0.09)])
+      border: 1
+      borderColor: alpha(cPri, 0.24)
+      onTap: {
+        if hapticsOn { haptic() }
+        openThoughts = openThoughts.any(x => x == mid) ? openThoughts.filter(x => x != mid) : flatten([openThoughts, [mid]])
+      }
+      let opened = isLive || openThoughts.any(x => x == mid)
+      Row {
+        fill: width
+        align: center
+        Text { font: mono; text: isLive ? "◌ THINKING LIVE" : "◈ THOUGHT PROCESS"; fontSize: 8.5; bold: true; letterSpacing: 1.2; color: cMuted; weight: 1; maxLines: 1 }
+        Text { font: mono; text: opened ? "▾ HIDE" : "▸ SHOW"; fontSize: 8.5; bold: true; color: cMuted }
+      }
+      Text { text: body; fontSize: 11; italic: true; color: alpha(cInk, 0.62); fill: width; maxLines: opened ? 60 : 2 }
+    }
+  }
+
+  // ==================== LIVE DEVICE TELEMETRY ====================
+  let batLvl    = bat.level ?? 0
+  let batChg    = bat.charging == true
+  let batTemp   = bat.temp != null ? round(bat.temp, 1) : null
+  let watts     = pwr.watts != null ? round(pwr.watts, 1) : null
+  let memTot    = max(sys.memory.total ?? 1, 1)
+  let memUsed   = sys.memory.used ?? 0
+  let ramPct    = round(clamp(memUsed / memTot, 0, 1) * 100)
+  let freeGb    = round((sys.storage.free ?? 0) / 1073741824, 1)
+  let notifCnt  = notifs.count ?? 0
+  let volLvl    = vol.level ?? 0
+  let torchOn   = modes.torch == true
+  let dndOn     = modes.dnd == true
+  let playing   = media.playing == true
+  let songTitle = (media.title ?? "") != "" ? "${media.title}" + ((media.artist ?? "") != "" ? " — ${media.artist}" : "") : ""
+  let nextAlarm = alarm.set == true && alarm.time != null ? fmtTime(alarm.time, "EEE HH:mm") : ""
+  let allApps   = drawer.apps ?? []
+
+  let telemetryJson = toJson({
+    time: fmtTime(now, "EEE HH:mm"),
+    bat: batLvl,
+    charging: batChg,
+    temp: batTemp,
+    watts: watts,
+    ramPct: ramPct,
+    freeGb: freeGb,
+    notifs: notifCnt,
+    vol: volLvl,
+    torch: torchOn,
+    dnd: dndOn,
+    playing: playing,
+    song: songTitle,
+    alarm: nextAlarm
+  })
+
+  // ==================== 3D PROCEDURAL MESHES (BUILT ONCE) ====================
+  // Custom 3D Abyssal Crystal Octahedron for Abaddon's levitating soul-core
+  let abaddonCoreMesh = mesh(
+    [
+      [0,  1.15,  0],
+      [0.72,  0.05,  0.72],
+      [0.72,  0.05, -0.72],
+      [-0.72, 0.05, -0.72],
+      [-0.72, 0.05,  0.72],
+      [0, -1.15,  0]
+    ],
+    [
+      [0, 4, 1], [0, 1, 2], [0, 2, 3], [0, 3, 4],
+      [5, 1, 4], [5, 2, 1], [5, 3, 2], [5, 4, 3]
+    ],
+    [
+      #ff1e3c, #b80820, #ff4020, #8a0416,
+      #700210, #d40c28, #54010c, #ff2a44
+    ]
+  )
+  let maskCoreMesh = mesh(
+    [
+      [0,  1.12,  0],
+      [0.74,  0.04,  0.74],
+      [0.74,  0.04, -0.74],
+      [-0.74, 0.04, -0.74],
+      [-0.74, 0.04,  0.74],
+      [0, -1.12,  0]
+    ],
+    [
+      [0, 4, 1], [0, 1, 2], [0, 2, 3], [0, 3, 4],
+      [5, 1, 4], [5, 2, 1], [5, 3, 2], [5, 4, 3]
+    ],
+    [
+      #1aff5c, #0d9c38, #c6ff3d, #0a6e28,
+      #084f1d, #ffe135, #0a782b, #34ff72
+    ]
+  )
+  let havocCoreMesh = mesh(
+    [
+      [0,  1.16,  0],
+      [0.73,  0.04,  0.73],
+      [0.73,  0.04, -0.73],
+      [-0.73, 0.04, -0.73],
+      [-0.73, 0.04,  0.73],
+      [0, -1.16,  0]
+    ],
+    [
+      [0, 4, 1], [0, 1, 2], [0, 2, 3], [0, 3, 4],
+      [5, 1, 4], [5, 2, 1], [5, 3, 2], [5, 4, 3]
+    ],
+    [
+      #b44aff, #6a14b8, #e82cff, #f4e6be,
+      #4d127a, #c85cff, #3b0b66, #f4e6be
+    ]
+  )
+  let shardMesh   = cone(4)
+  let ultronCore  = sphere(10)
+  let ultronSat   = cube()
+  let ultronRing  = cylinder(12)
+
+  // ==================== ADAPTIVE FPS & ANIMATION LOOP ====================
+  fps: !fxOn ? 1
+    : rzBusy ? 24
+    : (listening || busy || speaking || burst > 0.02 || morphFlash > 0.02) ? 60
+    : 30
+
+  every frame {
+    let sp = fxOn ? animSpeed : (fxT < max(speakUntil, max(toastUntil, copiedUntil)) ? 1.0 : 0.0)
+    if sp > 0 { fxT = fxT + dt * sp }
+    let tx = clamp(tilt.x ?? 0, -1, 1)
+    let ty = clamp((tilt.y ?? 0.45) - 0.45, -1, 1)
+    let k = min(1.0, dt * 7.5)
+    gx = gx + (tx - gx) * k
+    gy = gy + (ty - gy) * k
+    if burst > 0.002 { burst = max(0, burst - dt * 1.45) } else if burst > 0 { burst = 0 }
+    if morphFlash > 0.002 { morphFlash = max(0, morphFlash - dt * 1.9) } else if morphFlash > 0 { morphFlash = 0 }
+  }
+
+  // Sync optimistic localMode once hub.json catches up
+  on hub {
+    if localMode != "" && hubMode == localMode {
+      localMode = ""
+    }
+  }
+
+  // Initialize audio sequence on first launch (no background trigger sound warning)
+  when !booted {
+    booted = true
+    burst = 0.85
+    if (st.audioSeq ?? 0) > 0 {
+      playedAudioSeq = st.audioSeq
+    }
+  }
+
+  // Automatically play newly synthesized Abaddon / Ultron voice audio
+  on st {
+    let seq = num(value.audioSeq, 0)
+    let ap = value.audioPath ?? ""
+    if seq > playedAudioSeq && ap != "" {
+      playedAudioSeq = seq
+      sound(ap)
+      speakUntil = fxT + max(1.6, num(value.audioDur, 3.0))
+      burst = 1.0
+    }
+  }
+
+  // ==================== LIVE VOICE COMMAND ROUTER ====================
+  on said.final {
+    let raw = trim(value ?? "")
+    if raw != "" {
+      let q = lower(raw)
+      let qw = " ${replace(replace(replace(q, ",", " "), ".", " "), "?", " ")} "
+      // morph only on clear intent so talking TO an entity by name still reaches the brain
+      let morphy = contains(q, "mode") || contains(q, "switch") || contains(q, "morph") || contains(q, "become") || contains(q, "summon") || contains(q, "transform") || len(words(q)) <= 2
+      burst = 1.0
+      if hapticsOn { haptic() }
+
+      if morphy && (contains(q, "ultron") || contains(q, "blue mode") || contains(q, "future mode")) {
+        localMode = "future"
+        morphFlash = 1.0
+        sound("~/.local/share/omalauncher/abaddon-ultron/sfx/ultron_wake.wav")
+        cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py morph future")
+      } else if morphy && (contains(q, "mask mode") || contains(q, "cyber mask") || contains(q, "green mode") || contains(q, "neon mode") || q == "mask") {
+        localMode = "mask"
+        morphFlash = 1.0
+        sound("~/.local/share/omalauncher/abaddon-ultron/sfx/abaddon_wake.wav")
+        cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py morph mask")
+      } else if morphy && (contains(q, "skeletor") || contains(q, "havoc") || contains(q, "purple mode") || contains(q, "violet mode")) {
+        localMode = "skeletor"
+        morphFlash = 1.0
+        sound("~/.local/share/omalauncher/abaddon-ultron/sfx/ultron_wake.wav")
+        cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py morph skeletor")
+      } else if morphy && (contains(q, "abaddon") || contains(q, "infernal") || contains(q, "demon mode") || contains(q, "red mode")) {
+        localMode = "infernal"
+        morphFlash = 1.0
+        sound("~/.local/share/omalauncher/abaddon-ultron/sfx/abaddon_wake.wav")
+        cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py morph infernal")
+      } else if contains(q, "mail") || contains(q, "email") || contains(q, "inbox") {
+        cmdOut = run("python3 ~/.local/bin/abaddon-mail.py check ${sh(activeMode)}")
+      } else if contains(q, "scan") || contains(q, "diagnostic") || contains(q, "vitals") || contains(q, "system report") || contains(q, "system status") || q == "status" {
+        if busy {
+          toast = "SCAN ALREADY RUNNING"
+          toastUntil = fxT + 2.5
+        } else {
+          cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py scan ${sh(activeMode)} ${sh(telemetryJson)}")
+        }
+      } else if contains(q, "flashlight") || contains(q, "torch") {
+        let turnOff = contains(qw, " off ") || contains(q, "extinguish")
+        let turnOn = contains(qw, " on ") || contains(q, "ignite")
+        if turnOff { torch(false) } else if turnOn { torch(true) } else { torch("toggle") }
+        let msg = futOn ? (turnOff ? "Optical emitter deactivated." : "Optical emitter engaged.") : (turnOff ? "The flame is snuffed, Master." : "Let hellfire pierce the dark, Master.")
+        cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py speak-cmd ${sh(activeMode)} ${sh(raw)} ${sh(msg)}")
+      } else if contains(q, "do not disturb") || contains(q, "silence") || q == "dnd" {
+        let turnOff = contains(qw, " off ") || contains(q, "disable")
+        if turnOff { dnd(false) } else { dnd("toggle") }
+        let msg = futOn ? "Do Not Disturb protocol toggled." : "The ward of silence has shifted, Master."
+        cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py speak-cmd ${sh(activeMode)} ${sh(raw)} ${sh(msg)}")
+      } else if contains(q, "volume up") || contains(q, "louder") {
+        volume("up")
+        let msg = futOn ? "Acoustic gain increased." : "Raising the resonance, Master."
+        cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py speak-cmd ${sh(activeMode)} ${sh(raw)} ${sh(msg)}")
+      } else if contains(q, "volume down") || contains(q, "quieter") {
+        volume("down")
+        let msg = futOn ? "Acoustic output reduced." : "Lowering the resonance, Master."
+        cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py speak-cmd ${sh(activeMode)} ${sh(raw)} ${sh(msg)}")
+      } else if contains(q, "mute volume") || q == "mute" {
+        volume("mute")
+        toast = "AUDIO MUTED"
+        toastUntil = fxT + 3.0
+      } else if contains(q, "next track") || contains(q, "next song") || q == "skip" {
+        media("next")
+        toast = "NEXT TRACK"
+        toastUntil = fxT + 3.0
+      } else if contains(q, "previous track") || contains(q, "previous song") {
+        media("previous")
+        toast = "PREVIOUS TRACK"
+        toastUntil = fxT + 3.0
+      } else if contains(q, "pause music") || q == "pause" || contains(q, "play music") || q == "resume" {
+        media("toggle")
+        toast = playing ? "MEDIA PAUSED" : "MEDIA PLAYING"
+        toastUntil = fxT + 3.0
+      } else if contains(q, "wifi settings") || q == "wifi" {
+        settings("wifi")
+      } else if contains(q, "bluetooth settings") || q == "bluetooth" {
+        settings("bluetooth")
+      } else if startsWith(q, "open ") || startsWith(q, "launch ") {
+        let target = trim(startsWith(q, "open ") ? sub(q, 5, len(q)) : sub(q, 7, len(q)))
+        let hits = rank(allApps, target)
+        if len(hits) > 0 {
+          toast = "LAUNCHING ${upper(hits[0].name)}"
+          toastUntil = fxT + 3.0
+          open(hits[0].key)
+        } else {
+          cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py ask ${sh(activeMode)} ${sh(telemetryJson)} ${sh(raw)}")
+        }
+      } else if startsWith(q, "search ") {
+        let sq = trim(sub(q, 7, len(q)))
+        url("https://www.google.com/search?q=${enc(sq)}")
+      } else {
+        echoSeen = len(rawMsgs.filter(m => m.text == raw))
+        echoText = raw
+        cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py ask ${sh(activeMode)} ${sh(telemetryJson)} ${sh(raw)}")
+      }
+    }
+  }
+
+  // ==================== FULL-SCREEN HOLOGRAPHIC INTERFACE ====================
+  Box {
+    fill: true
+    background: #000000
+
+    // LAYER 1: PURE AMOLED True Black Backdrop (shader disabled for 0-mW pure AMOLED)
+    if false {
+      Shader {
+        fill: true
+        fallback: #000000
+        uniforms: {
+          uT: fxT,
+          uPri: cPri,
+          uHot: cHot,
+          uSec: cSec,
+          uBone: cBone,
+          uStyle: modeIdx,
+          uAct: listening ? 1.0 : (speaking ? 0.92 : (busy ? 0.72 : 0.0)),
+          uBurst: burst,
+          uMorph: morphFlash,
+          uTilt: [gx, gy],
+          uTap: [tapU, tapV]
+        }
+        code: """
+          uniform float uT;
+          uniform half4 uPri;
+          uniform half4 uHot;
+          uniform half4 uSec;
+          uniform half4 uBone;
+          uniform float uStyle;
+          uniform float uAct;
+          uniform float uBurst;
+          uniform float uMorph;
+          uniform float2 uTilt;
+          uniform float2 uTap;
+
+          float hash12(float2 p) {
+            float3 p3 = fract(float3(p.xyx) * 0.1031);
+            p3 += dot(p3, p3.yzx + 33.33);
+            return fract((p3.x + p3.y) * p3.z);
+          }
+
+          half4 main(float2 p) {
+            float2 safe = max(size, float2(1.0));
+            float2 uv = p / safe;
+            float aspect = safe.x / safe.y;
+
+            // Gyroscope-reactive holographic focal point
+            float2 core = float2(0.5 + uTilt.x * 0.075, 0.29 + uTilt.y * 0.055);
+            float2 dCore = (uv - core) * float2(aspect, 1.0);
+            float rCore = length(dCore);
+            float ang = atan(dCore.y, dCore.x);
+
+            half3 pri = uPri.rgb;
+            half3 hot = uHot.rgb;
+            half3 sec = uSec.rgb;
+            half3 bone = uBone.rgb;
+            half3 col = half3(0.0);
+
+            if (uStyle < 0.5) {
+              // 0: ABADDON (Infernal) — swirling hell-rift plasma + crimson-amber abyssal veins
+              float riftW1 = sin(ang * 5.0 - uT * 1.4 + rCore * 9.0) * 0.5 + 0.5;
+              float riftW2 = sin(uv.x * 5.2 + uv.y * 4.4 - uT * 0.85 + riftW1 * 1.4) * 0.5 + 0.5;
+              float hellAura = exp(-rCore * rCore * 5.8) * (0.34 + 0.14 * sin(uT * 2.2) + 0.32 * uAct);
+              float hellVein = exp(-abs(rCore - (0.21 + 0.025 * sin(uT * 2.6 + ang * 3.0))) * 26.0) * (0.22 + 0.30 * uAct);
+              col = pri * half(hellAura)
+                  + sec * half(hellAura * riftW1 * 0.55 + hellVein)
+                  + pri * half(exp(-rCore * 2.5) * riftW2 * 0.16);
+            } else if (uStyle < 1.5) {
+              // 1: ULTRON (Future) — Stark-tech holographic lattice + cyan-cobalt reactor bloom
+              float2 gridUv = (uv - float2(0.5, 0.29) - uTilt * 0.05) * float2(aspect, 1.0);
+              float gxLine = exp(-abs(sin(gridUv.x * 46.0)) * 28.0);
+              float gyLine = exp(-abs(sin(gridUv.y * 46.0)) * 28.0);
+              float holoGrid = max(gxLine, gyLine) * exp(-rCore * 2.6) * (0.14 + 0.18 * uAct);
+              float scanY = fract(uT * 0.22);
+              float scanBar = 0.0; // scan laser removed
+              float arcAura = exp(-rCore * rCore * 6.0) * (0.36 + 0.14 * sin(uT * 3.0) + 0.34 * uAct);
+              float arcRing = exp(-abs(rCore - (0.20 + 0.012 * sin(uT * 4.5))) * 34.0) * (0.24 + 0.34 * uAct);
+              col = pri * half(arcAura + holoGrid)
+                  + sec * half(arcAura * 0.42 + scanBar)
+                  + hot * half(arcRing * 0.75);
+            } else if (uStyle < 2.5) {
+              // 2: THE MASK (Smooth Emerald & Warm Gold Spotlight — zero sci-fi grid)
+              float maskAura = exp(-rCore * rCore * 6.8) * (0.32 + 0.10 * sin(uT * 2.2) + 0.24 * uAct);
+              float maskSoftRing = exp(-abs(rCore - (0.23 + 0.008 * sin(uT * 2.0))) * 24.0) * (0.16 + 0.18 * uAct);
+              col = pri * half(maskAura)
+                  + hot * half(maskAura * 0.32)
+                  + sec * half(maskSoftRing);
+            } else {
+              // 3: SKELETOR (Snake Mountain Dark-Arcane Rift — swirling royal violet & bone-gold horizon, 0 loops)
+              float skelSwirl = sin(ang * 4.0 - uT * 1.1 + rCore * 13.0) * 0.5 + 0.5;
+              float skelAura = exp(-rCore * rCore * 7.8) * (0.34 + 0.12 * sin(uT * 2.4) + 0.30 * uAct);
+              float riftRing = exp(-abs(rCore - (0.21 + 0.018 * sin(ang * 4.0 - uT * 2.4))) * 28.0) * (0.22 + 0.32 * uAct);
+              float outerArc = exp(-abs(rCore - (0.29 + 0.010 * cos(ang * 2.0 + uT * 1.8))) * 36.0) * (0.12 + 0.18 * uAct);
+              col = pri * half(skelAura)
+                  + sec * half(skelAura * skelSwirl * 0.46 + riftRing * 0.82)
+                  + hot * half(outerArc * 0.65)
+                  + bone * half(exp(-rCore * rCore * 18.0) * skelSwirl * (0.12 + 0.14 * uAct));
+            }
+
+            // Interactive tap shockwave ring
+            if (uBurst > 0.002) {
+              float2 dtap = (uv - uTap) * float2(aspect, 1.0);
+              float distT = length(dtap);
+              float waveR = (1.0 - uBurst) * 0.85;
+              float dr = (distT - waveR) * 20.0;
+              float ring = exp(-(dr * dr)) * uBurst;
+              col += pri * half(ring * 0.65);
+            }
+
+            // Entity morph chromatic flash
+            if (uMorph > 0.002) {
+              float mWave = exp(-abs(rCore - (1.0 - uMorph) * 1.1) * 14.0) * uMorph;
+              col += hot * half(mWave * 0.85);
+            }
+
+            // Subtle horizon energy line separating hologram stage & telemetry deck
+            float hdy = (uv.y - 0.505) * 70.0;
+            float hLine = exp(-(hdy * hdy)) * (0.12 + 0.12 * uAct);
+            half3 hCol = uStyle >= 2.5 ? mix(pri, bone, half(0.35)) : pri;
+            col += hCol * half(hLine);
+
+            // Deepen AMOLED obsidian floor in lower dialogue area for razor-sharp readability
+            float lowerDim = 1.0 - smoothstep(0.48, 0.76, uv.y) * 0.76;
+            col *= half(lowerDim);
+
+            // Soft Reinhard tonemap + AMOLED anti-banding dither (preserves #000000 floor)
+            col = col / (half3(1.0) + half(0.42) * col);
+            half dither = half((hash12(p) - 0.5) * 0.004) * step(half(0.001), col.r + col.g + col.b);
+            return half4(clamp(col + dither, half3(0.0), half3(1.0)), half(1.0));
+          }
+        """
+      }
+    }
+
+    // LAYER 2: MAIN HOLOGRAPHIC INTERFACE COLUMN
+    // ◈ OVERHAUL: drifting twin crimson glows + slow light veil (frozen when FX/eco off)
+    if !ecoOn {
+      // OVERHAUL vignette: crush the backdrop toward AMOLED black, darkest at the edges
+      Box { fill: true; background: radial(0.5, 0.42, 0.95, [alpha(#000000, 0.34), alpha(#000000, 0.66), alpha(#000000, 0.9)]) }
+      Box { fill: true; background: radial(0.5 + 0.38 * sin(fxT * 0.21), 0.08 + 0.07 * cos(fxT * 0.29), 0.95, [alpha(cPri, 0.07), alpha(#000000, 0)]) }
+      Box { fill: true; background: radial(0.2 + 0.3 * cos(fxT * 0.16), 0.96, 0.85, [alpha(cSec, 0.06), alpha(#000000, 0)]) }
+    }
+
+    Column {
+      fill: true
+      padding: [14, screenTop + 8, 14, 0]
+      gap: 8
+
+      // ─── TOP COMMAND HEADER (EXIT · DUAL ENTITY MORPH · VOICE · BRAIN) ───
+      Row {
+        fill: width
+        height: 32
+        align: center
+        gap: 6
+
+        Box {
+          scale: tapBounce == "3" ? 0.9 : 1
+          offset: [0, tapBounce == "3" ? -4 : 0]
+          animate scale: spring(0.32, 520)
+          animate offset: spring(0.32, 520)
+          onPress: tapBounce = "3"
+          onRelease: tapBounce = ""
+          width: 32
+          height: 30
+          radius: 9 * corners
+          align: center
+          background: linear(0, 1, 1, 0, [alpha(cHot, 0.07), alpha(cCard, 0.9), #000000, alpha(cSec, 0.11)])
+          border: 1
+          borderColor: alpha(cPri, 0.5)
+          onTap: { if hapticsOn { haptic() }; close() }
+          Text { text: "✕"; fontSize: 12; bold: true; color: cHot; align: center; fill: width }
+        }
+
+        // LIVE THEME & ENTITY MODE CYCLER: INFERNAL → FUTURE → MASK → SKELETOR
+        Row {
+          scale: tapBounce == "4" ? 0.9 : 1
+          offset: [0, tapBounce == "4" ? -4 : 0]
+          animate scale: spring(0.32, 520)
+          animate offset: spring(0.32, 520)
+          onPress: tapBounce = "4"
+          onRelease: tapBounce = ""
+          weight: 1
+          height: 30
+          radius: 99
+          padding: [10, 0]
+          gap: 6
+          align: center
+          justify: center
+          background: linear(0, 0, 1, 0, [alpha(cDeep, 0.94), alpha(cPri, 0.26), alpha(cDeep, 0.94)])
+          border: 1.2
+          borderColor: alpha(cPri, 0.82)
+          onTap: {
+            if hapticsOn { haptic() }
+            if pinUltron {
+              pinUltron = false
+              toast = "PERSONA FOLLOWS THEME"
+              toastUntil = fxT + 2.2
+            } else {
+              let nextM = skelOn ? "infernal" : maskOn ? "skeletor" : futOn ? "mask" : "future"
+              localMode = nextM
+              morphFlash = 1.0
+              burst = 1.0
+              sound(nextM == "skeletor" ? "~/.local/share/omalauncher/abaddon-ultron/sfx/ultron_wake.wav" : nextM == "mask" ? "~/.local/share/omalauncher/abaddon-ultron/sfx/abaddon_wake.wav" : nextM == "future" ? "~/.local/share/omalauncher/abaddon-ultron/sfx/ultron_wake.wav" : "~/.local/share/omalauncher/abaddon-ultron/sfx/abaddon_wake.wav")
+              cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py morph ${sh(nextM)}")
+            }
+          }
+          onLongPress: {
+            if hapticsOn { haptic() }
+            pinUltron = !pinUltron
+            morphFlash = 1.0
+            burst = 1.0
+            toast = pinUltron ? "⬡ ULTRON LOCKED ON ALL THEMES" : "PERSONA FOLLOWS THEME"
+            toastUntil = fxT + 2.5
+          }
+          Text { font: uiFont; text: pinUltron ? "⬡ ULTRON · LOCKED (${upper(curMode)})" : (skelOn ? "☩ HAVOC · ROYAL PURPLE" : maskOn ? "✦ THE MASK · GREEN" : futOn ? "⬡ ULTRON · BLUE" : "⛧ ABADDON · INFERNAL"); fontSize: 9.2; bold: true; letterSpacing: 1.2; color: cHot; maxLines: 1 }
+          Text { font: uiFont; text: pinUltron ? "🔒" : "⇄"; fontSize: 10.5; bold: true; color: cPri }
+        }
+
+        // VOICE TTS TOGGLE
+        Box {
+          scale: tapBounce == "5" ? 0.9 : 1
+          offset: [0, tapBounce == "5" ? -4 : 0]
+          animate scale: spring(0.32, 520)
+          animate offset: spring(0.32, 520)
+          onPress: tapBounce = "5"
+          onRelease: tapBounce = ""
+          width: 48
+          height: 30
+          radius: 9 * corners
+          align: center
+          background: voiceOn ? alpha(cPri, 0.24) : alpha(cCard, 0.88)
+          border: 1
+          borderColor: voiceOn ? alpha(cHot, 0.75) : alpha(cDim, 0.55)
+          onTap: {
+            if hapticsOn { haptic() }
+            if voiceOn { sound("stop") }
+            cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py toggle-voice")
+          }
+          Text { font: uiFont; text: voiceOn ? "🔊 ON" : "🔇"; fontSize: 9; bold: true; color: voiceOn ? cHot : cMuted; align: center; fill: width }
+        }
+
+        // BRAIN CYCLER (HAIKU [Claude Pro] -> NEON -> NEON+ -> FLASH -> ARGON -> HYDRO [Gemini])
+        Box {
+          scale: tapBounce == "6" ? 0.9 : 1
+          offset: [0, tapBounce == "6" ? -4 : 0]
+          animate scale: spring(0.32, 520)
+          animate offset: spring(0.32, 520)
+          onPress: tapBounce = "6"
+          onRelease: tapBounce = ""
+          width: 54
+          height: 30
+          radius: 9 * corners
+          align: center
+          background: brainMode == "neon-high" || brainMode == "deep" ? alpha(cSec, 0.30) : alpha(cCard, 0.88)
+          border: 1
+          borderColor: brainMode == "neon-high" || brainMode == "deep" ? cHot : alpha(cPri, 0.50)
+          onTap: {
+            if hapticsOn { haptic() }
+            cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py toggle-brain")
+          }
+          Text { font: uiFont; text: brainLabel; fontSize: 8.5; bold: true; letterSpacing: 0.7; color: cHot; align: center; fill: width; maxLines: 1 }
+        }
+      }
+
+      // ─── COMPACT TOP AI COMMAND BAR (SLEEK PILL RAIL) ───
+      Row {
+        fill: width
+        gap: 5
+        align: center
+
+        if typing {
+          Box {
+            weight: 1
+            height: 32
+            padding: [10, 0]
+            radius: 16 * corners
+            background: linear(0, 0, 1, 0, [alpha(cHot, 0.10), cObs, alpha(cSec, 0.14)])
+            border: 1.2
+            borderColor: cHot
+            align: center
+            Input {
+              text: draft
+              placeholder: skelOn ? "Decree to Havoc..." : maskOn ? "Command Mask..." : futOn ? "Directive for Ultron..." : "Speak to Abaddon..."
+              color: cInk
+              fontSize: 11.5
+              underline: false
+              focus: true
+              fill: width
+              onChange: draft = value
+              onSubmit: {
+                let raw = trim(value)
+                draft = ""
+                typing = false
+                if raw != "" {
+                  let q = lower(raw)
+                  let qw = " ${replace(replace(replace(q, ",", " "), ".", " "), "?", " ")} "
+                  let morphy = contains(q, "mode") || contains(q, "switch") || contains(q, "morph") || contains(q, "become") || contains(q, "summon") || contains(q, "transform") || len(words(q)) <= 2
+                  burst = 1.0
+                  if hapticsOn { haptic() }
+                  if morphy && (contains(q, "ultron") || contains(q, "blue mode") || contains(q, "future mode")) {
+                    localMode = "future"
+                    morphFlash = 1.0
+                    sound("~/.local/share/omalauncher/abaddon-ultron/sfx/ultron_wake.wav")
+                    cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py morph future")
+                  } else if morphy && (contains(q, "mask mode") || contains(q, "cyber mask") || contains(q, "green mode") || contains(q, "neon mode") || q == "mask") {
+                    localMode = "mask"
+                    morphFlash = 1.0
+                    sound("~/.local/share/omalauncher/abaddon-ultron/sfx/abaddon_wake.wav")
+                    cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py morph mask")
+                  } else if morphy && (contains(q, "skeletor") || contains(q, "havoc") || contains(q, "purple mode") || contains(q, "violet mode")) {
+                    localMode = "skeletor"
+                    morphFlash = 1.0
+                    sound("~/.local/share/omalauncher/abaddon-ultron/sfx/ultron_wake.wav")
+                    cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py morph skeletor")
+                  } else if morphy && (contains(q, "abaddon") || contains(q, "infernal") || contains(q, "demon mode") || contains(q, "red mode")) {
+                    localMode = "infernal"
+                    morphFlash = 1.0
+                    sound("~/.local/share/omalauncher/abaddon-ultron/sfx/abaddon_wake.wav")
+                    cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py morph infernal")
+                  } else if q == "scan" || q == "status" || q == "vitals" {
+                    cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py scan ${sh(activeMode)} ${sh(telemetryJson)}")
+                  } else if startsWith(q, "open ") || startsWith(q, "launch ") {
+                    let target = trim(startsWith(q, "open ") ? sub(q, 5, len(q)) : sub(q, 7, len(q)))
+                    let hits = rank(allApps, target)
+                    if len(hits) > 0 { open(hits[0].key) }
+                    else { cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py ask ${sh(activeMode)} ${sh(telemetryJson)} ${sh(raw)}") }
+                  } else {
+                    echoSeen = len(rawMsgs.filter(m => m.text == raw))
+                    echoText = raw
+                    cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py ask ${sh(activeMode)} ${sh(telemetryJson)} ${sh(raw)}")
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          Row {
+            scale: tapBounce == "15" ? 0.94 : 1
+            animate scale: spring(0.32, 520)
+            onPress: tapBounce = "15"
+            onRelease: tapBounce = ""
+            weight: 1
+            height: 32
+            padding: [11, 0]
+            gap: 6
+            radius: 16 * corners
+            background: linear(0, 0, 1, 0, [alpha(cPri, 0.16), alpha(cCard, 0.92), alpha(cSec, 0.12)])
+            border: 1
+            borderColor: alpha(cPri, 0.58)
+            align: center
+            onTap: { if hapticsOn { haptic() }; typing = true }
+            Text { font: mono; text: "›_"; fontSize: 11; bold: true; color: cHot }
+            Text {
+              font: bodyFont
+              text: trim(draft) != "" ? draft : (skelOn ? "Decree to Havoc..." : maskOn ? "Command Mask..." : futOn ? "Directive for Ultron..." : "Speak to Abaddon...")
+              color: trim(draft) != "" ? cInk : cMuted
+              fontSize: 11
+              maxLines: 1
+              weight: 1
+            }
+            Text { text: "✎"; fontSize: 11; color: cHot }
+          }
+        }
+
+        // Compact AUDIT pill
+        Box {
+          scale: tapBounce == "17" ? 0.92 : 1
+          animate scale: spring(0.32, 520)
+          onPress: tapBounce = "17"
+          onRelease: tapBounce = ""
+          width: 44
+          height: 32
+          radius: 16 * corners
+          align: center
+          background: trim(draft) != "" && !busy ? alpha(#2bff8c, 0.18) : alpha(cCard, 0.90)
+          border: 1
+          borderColor: trim(draft) != "" && !busy ? #2bff8c : alpha(cPri, 0.42)
+          onTap: {
+            let raw = trim(draft)
+            if raw != "" && !busy {
+              draft = ""
+              typing = false
+              burst = 1.0
+              if hapticsOn { haptic() }
+              cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py ask ${sh(activeMode)} ${sh(telemetryJson)} ${sh("/audit " + raw)}")
+            } else if raw == "" {
+              toast = "PASTE CODE OR A FILE PATH, THEN AUDIT"
+              toastUntil = fxT + 2.5
+            }
+          }
+          Text { font: mono; text: "</>"; fontSize: 10; bold: true; color: #2bff8c; align: center; fill: width }
+        }
+
+        // Compact SWARM pill
+        Box {
+          scale: tapBounce == "16" ? 0.92 : 1
+          animate scale: spring(0.32, 520)
+          onPress: tapBounce = "16"
+          onRelease: tapBounce = ""
+          width: 44
+          height: 32
+          radius: 16 * corners
+          align: center
+          background: trim(draft) != "" && !busy ? alpha(cSec, 0.30) : alpha(cCard, 0.90)
+          border: 1
+          borderColor: trim(draft) != "" && !busy ? cSec : alpha(cPri, 0.42)
+          onTap: {
+            let raw = trim(draft)
+            if raw != "" && !busy {
+              draft = ""
+              typing = false
+              burst = 1.0
+              morphFlash = 0.6
+              if hapticsOn { haptic() }
+              cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py swarm ${sh(activeMode)} ${sh(telemetryJson)} ${sh(raw)}")
+            } else if raw == "" {
+              toast = "TYPE A DIRECTIVE, THEN SWARM"
+              toastUntil = fxT + 2.5
+            }
+          }
+          Text { font: mono; text: "⬢"; fontSize: 12; color: cSec; align: center; fill: width }
+        }
+
+        // Compact SEND pill
+        Box {
+          scale: tapBounce == "18" ? 0.92 : 1
+          animate scale: spring(0.32, 520)
+          onPress: tapBounce = "18"
+          onRelease: tapBounce = ""
+          width: 50
+          height: 32
+          radius: 16 * corners
+          align: center
+          background: trim(draft) != "" && !busy ? cPri : alpha(cPri, 0.28)
+          border: 1
+          borderColor: trim(draft) != "" && !busy ? cHot : alpha(cPri, 0.50)
+          onTap: {
+            let raw = trim(draft)
+            if raw != "" && !busy {
+              draft = ""
+              typing = false
+              burst = 1.0
+              if hapticsOn { haptic() }
+              let q = lower(raw)
+              let qw = " ${replace(replace(replace(q, ",", " "), ".", " "), "?", " ")} "
+              let morphy = contains(q, "mode") || contains(q, "switch") || contains(q, "morph") || contains(q, "become") || contains(q, "summon") || contains(q, "transform") || len(words(q)) <= 2
+              if morphy && (contains(q, "ultron") || contains(q, "blue mode") || contains(q, "future mode")) {
+                localMode = "future"
+                morphFlash = 1.0
+                sound("~/.local/share/omalauncher/abaddon-ultron/sfx/ultron_wake.wav")
+                cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py morph future")
+              } else if morphy && (contains(q, "mask mode") || contains(q, "cyber mask") || contains(q, "green mode") || contains(q, "neon mode") || q == "mask") {
+                localMode = "mask"
+                morphFlash = 1.0
+                sound("~/.local/share/omalauncher/abaddon-ultron/sfx/abaddon_wake.wav")
+                cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py morph mask")
+              } else if morphy && (contains(q, "skeletor") || contains(q, "havoc") || contains(q, "purple mode") || contains(q, "violet mode")) {
+                localMode = "skeletor"
+                morphFlash = 1.0
+                sound("~/.local/share/omalauncher/abaddon-ultron/sfx/ultron_wake.wav")
+                cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py morph skeletor")
+              } else if morphy && (contains(q, "abaddon") || contains(q, "infernal") || contains(q, "demon mode") || contains(q, "red mode")) {
+                localMode = "infernal"
+                morphFlash = 1.0
+                sound("~/.local/share/omalauncher/abaddon-ultron/sfx/abaddon_wake.wav")
+                cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py morph infernal")
+              } else if q == "scan" || q == "status" || q == "vitals" {
+                cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py scan ${sh(activeMode)} ${sh(telemetryJson)}")
+              } else if startsWith(q, "open ") || startsWith(q, "launch ") {
+                let target = trim(startsWith(q, "open ") ? sub(q, 5, len(q)) : sub(q, 7, len(q)))
+                let hits = rank(allApps, target)
+                if len(hits) > 0 { open(hits[0].key) }
+                else { cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py ask ${sh(activeMode)} ${sh(telemetryJson)} ${sh(raw)}") }
+              } else {
+                echoSeen = len(rawMsgs.filter(m => m.text == raw))
+                echoText = raw
+                cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py ask ${sh(activeMode)} ${sh(telemetryJson)} ${sh(raw)}")
+              }
+            }
+          }
+          Text { font: uiFont; text: busy ? "⋯" : "➤"; fontSize: 12; bold: true; color: #ffffff; align: center; fill: width }
+        }
+      }
+
+      // ─── LIVING 3D GYROSCOPIC HOLOGRAPHIC ENTITY STAGE ───
+      Box {
+        scale: tapBounce == "7" ? 0.9 : 1
+        offset: [0, tapBounce == "7" ? -4 : 0]
+        animate scale: spring(0.32, 520)
+        animate offset: spring(0.32, 520)
+        onPress: tapBounce = "7"
+        onRelease: tapBounce = ""
+        fill: width
+        height: 294
+        radius: 20 * corners
+        clip: true
+        background: linear(0, 0, 1, 1, [alpha(cPri, 0.13), alpha(#000000, 0.14), #000000, alpha(cSec, 0.10)])
+        border: 1
+        borderColor: alpha(cPri, listening ? 0.92 : (speaking || busy ? 0.78 : 0.38))
+        onTap: {
+          if hapticsOn { haptic() }
+          tapU = 0.5
+          tapV = 0.26
+          burst = 1.0
+          if !listening {
+            sound(skelOn ? "~/.local/share/omalauncher/abaddon-ultron/sfx/ultron_listen.wav" : maskOn ? "~/.local/share/omalauncher/abaddon-ultron/sfx/abaddon_listen.wav" : futOn ? "~/.local/share/omalauncher/abaddon-ultron/sfx/ultron_listen.wav" : "~/.local/share/omalauncher/abaddon-ultron/sfx/abaddon_listen.wav")
+          }
+          speech("toggle")
+        }
+
+        Canvas {
+          fill: true
+          let w = width
+          let h = height
+          let act = listening ? 1.0 : (speaking ? 0.95 : (busy ? 0.72 : 0.0))
+          let cx = w * 0.5 + gx * 14
+          let cy = h * 0.37 + gy * 9
+          let r = min(w, h) * 0.295
+          let pulse = 0.5 + 0.5 * sin(fxT * (listening ? 6.5 : speaking ? 8.0 : busy ? 5.0 : 2.1))
+          let fastP = 0.5 + 0.5 * sin(fxT * 12.0)
+
+          // ── 1) REAL-TIME 3D GYROSCOPIC CORE (HARDWARE SCENE — skipped in smooth Mask mode) ──
+          if !maskOn {
+            let cam = {
+              eye: [gx * 1.45, gy * 1.10 + 0.25, 5.2 - act * 0.35],
+              look: [0, 0.05, 0],
+              fov: 46,
+              near: 0.2,
+              far: 24
+            }
+            scene(cam, light: [0.45 + gx, 1.0, 0.7], ambient: 0.42 + act * 0.22) {
+              if skelOn {
+                // SKELETOR 3D: Spinning Violet-and-Bone Havoc Soul Octahedron + Tilted Runic Ring + 6 Amethyst/Bone Shards
+                let spin = fxT * (30 + act * 72)
+                model(havocCoreMesh, at: [0, 0.42, 0], turn: [16 + sin(fxT * 1.5) * 11, spin, cos(fxT * 1.2) * 9], scale: 0.80 + pulse * 0.06 + act * 0.10, smooth: false, ambient: 0.58 + act * 0.28)
+                model(ultronRing, at: [0, 0.42, 0], turn: [74 + sin(fxT * 1.3) * 12, -spin * 0.75, cos(fxT * 1.1) * 14], scale: [1.50, 0.042, 1.50], color: #c85cff, smooth: false, ambient: 0.80)
+                for k in range(6) {
+                  let a = rad(k * 60 + fxT * (38 + act * 60))
+                  let sr = 1.50 + sin(fxT * 2.3 + k) * 0.12
+                  model(shardMesh, at: [cos(a) * sr, 0.42 + sin(a * 2 + fxT) * 0.28, sin(a) * sr], turn: [k * 35 + fxT * 62, -k * 60, fxT * 48], scale: [0.14, 0.37, 0.14], color: k % 2 == 0 ? #e82cff : #f4e6be, smooth: false, ambient: 0.74)
+                }
+              } else if !futOn {
+                // ABADDON 3D: Spinning Obsidian-Crimson Soul Octahedron + 6 Orbiting Hellfire Shards
+                let spin = fxT * (28 + act * 65)
+                model(abaddonCoreMesh, at: [0, 0.42, 0], turn: [16 + sin(fxT * 1.5) * 10, spin, cos(fxT * 1.2) * 8], scale: 0.78 + pulse * 0.07 + act * 0.10, smooth: false, ambient: 0.55 + act * 0.3)
+                for k in range(6) {
+                  let a = rad(k * 60 + fxT * (36 + act * 55))
+                  let sr = 1.48 + sin(fxT * 2.4 + k) * 0.12
+                  model(shardMesh, at: [cos(a) * sr, 0.42 + sin(a * 2 + fxT) * 0.28, sin(a) * sr], turn: [k * 35 + fxT * 60, -k * 60, fxT * 45], scale: [0.14, 0.36, 0.14], color: k % 2 == 0 ? #ff1e3c : #ff6a1a, smooth: false, ambient: 0.65)
+                }
+              } else {
+                // ULTRON 3D: Faceted Vibranium Geodesic Neural Core + 6 Orbiting Stark Telemetry Nodes
+                let spin = fxT * (32 + act * 75)
+                model(ultronCore, at: [0, 0.42, 0], turn: [12 + gy * 28, spin, gx * 22], scale: 0.92 + pulse * 0.05 + act * 0.10, color: #0db8e6, smooth: false, ambient: 0.52 + act * 0.28)
+                model(ultronRing, at: [0, 0.42, 0], turn: [76 + sin(fxT * 1.4) * 12, -spin * 0.7, cos(fxT * 1.1) * 14], scale: [1.46, 0.04, 1.46], color: #6ceaff, smooth: false, ambient: 0.78)
+                for k in range(6) {
+                  let a = rad(k * 60 - fxT * (42 + act * 62))
+                  let sr = 1.50 + cos(fxT * 2.0 + k) * 0.10
+                  model(ultronSat, at: [cos(a) * sr, 0.42 + sin(a + fxT * 1.5) * 0.26, sin(a) * sr], turn: [fxT * 50, k * 60 + fxT * 80, 0], scale: 0.15, color: k % 2 == 0 ? #38e2ff : #2b7cff, smooth: false, ambient: 0.75)
+                }
+              }
+            }
+          }
+
+          // ── 2) 2D HOLOGRAPHIC ASTROLABE / SMOOTH LOUNGE HALO RINGS ──
+          circle(cx, cy, r * (1.28 + pulse * 0.06 + act * 0.12), fill: radial(cx, cy, r * 1.35, [alpha(cPri, 0.24 + act * 0.22), alpha(cDim, 0.08), alpha(#000000, 0)]))
+          if !maskOn {
+            circle(cx, cy, r * 1.16, stroke: alpha(cDim, 0.58 + act * 0.32), width: 1.0)
+            circle(cx, cy, r * 1.04, stroke: alpha(cPri, 0.78 + pulse * 0.22), width: 1.5)
+            circle(cx, cy, r * 0.88, stroke: alpha(cDim, 0.65), width: 0.9)
+
+            // Sweeping orbital telemetry arcs
+            let a1 = (fxT * (44 + act * 95)) % 360
+            let a2 = (360 - (fxT * (30 + act * 70)) % 360)
+            arc(cx, cy, r * 1.16, a1, 72, stroke: alpha(cHot, 0.78 + act * 0.22), width: 2.3, cap: round)
+            arc(cx, cy, r * 1.16, a1 + 180, 72, stroke: alpha(cPri, 0.78 + act * 0.22), width: 2.3, cap: round)
+            arc(cx, cy, r * 0.88, a2, 110, stroke: alpha(cSec, 0.65 + act * 0.3), width: 1.8, cap: round)
+
+            // 24 precision orbital ticks
+            for i in range(24) {
+              let maj = i % 3 == 0
+              let card = i % 6 == 0
+              let oR = r * (card ? 1.24 : maj ? 1.14 : 1.09)
+              let iR = r * (card ? 0.98 : maj ? 1.01 : 1.04)
+              rotate(i * 15 + fxT * (futOn ? 8 : -6), cx, cy) {
+                line(cx, cy - oR, cx, cy - iR, stroke: card ? cHot : maj ? alpha(cPri, 0.75) : alpha(cDim, 0.62), width: card ? 2.1 : 1.0, cap: round)
+              }
+            }
+          }
+
+          // ── 3) SCULPTED ENTITY VISAGE OVERLAY (THE MASK vs ABADDON DEMON vs ULTRON VIBRANIUM) ──
+          if maskOn {
+            // SMOOTH CLASSIC 1994 JIM CARREY "THE MASK" (silky curves, warm yellow zoot-fedora, bright white grin)
+            let s = r * 0.72
+            circle(cx, cy, r * 1.06, fill: radial(cx, cy - r * 0.14, r * 1.12, [alpha(#062610, 0.78), alpha(#010803, 0.92), alpha(#000000, 0.96)]))
+            circle(cx, cy, r * 1.06, stroke: alpha(#1aff5c, 0.56 + pulse * 0.22 + act * 0.22), width: 1.7)
+            circle(cx, cy, r * 0.96, stroke: alpha(#ffe135, 0.30 + act * 0.26), width: 1.0)
+            let vAng = (fxT * (28 + act * 48)) % 360
+            arc(cx, cy, r * 1.06, vAng, 86, stroke: alpha(#9eff7a, 0.78 + act * 0.20), width: 2.1, cap: round)
+            arc(cx, cy, r * 0.96, 360 - vAng, 64, stroke: alpha(#ffe135, 0.68 + act * 0.24), width: 1.5, cap: round)
+
+            // Smooth rounded Mask head
+            path([
+              [cx, cy - s * 0.56],
+              [cx + s * 0.26, cy - s * 0.53], [cx + s * 0.45, cy - s * 0.42],
+              [cx + s * 0.55, cy - s * 0.20], [cx + s * 0.58, cy + s * 0.04],
+              [cx + s * 0.52, cy + s * 0.34], [cx + s * 0.42, cy + s * 0.56],
+              [cx + s * 0.24, cy + s * 0.78], [cx, cy + s * 0.88],
+              [cx - s * 0.24, cy + s * 0.78], [cx - s * 0.42, cy + s * 0.56],
+              [cx - s * 0.52, cy + s * 0.34], [cx - s * 0.58, cy + s * 0.04],
+              [cx - s * 0.55, cy - s * 0.20], [cx - s * 0.45, cy - s * 0.42],
+              [cx - s * 0.26, cy - s * 0.53]
+            ], closed: true, fill: radial(cx - s * 0.08, cy - s * 0.14, s * 1.08, [#4eff82, #1fd454, #0c802e, #054016]), stroke: #26ff6a, width: 1.8)
+
+            // Soft radial cheek gloss
+            circle(cx - s * 0.34, cy + s * 0.08, s * 0.18, fill: radial(cx - s * 0.34, cy + s * 0.08, s * 0.18, [alpha(#a6ff8c, 0.34), alpha(#1aff5c, 0)]))
+            circle(cx + s * 0.34, cy + s * 0.08, s * 0.18, fill: radial(cx + s * 0.34, cy + s * 0.08, s * 0.18, [alpha(#a6ff8c, 0.34), alpha(#1aff5c, 0)]))
+
+            // Smooth curved arched brows
+            path([[cx - s * 0.45, cy - s * 0.18], [cx - s * 0.28, cy - s * 0.32], [cx - s * 0.09, cy - s * 0.18]], stroke: #03210c, width: 2.6, cap: round)
+            path([[cx + s * 0.09, cy - s * 0.19], [cx + s * 0.29, cy - s * 0.36], [cx + s * 0.47, cy - s * 0.20]], stroke: #03210c, width: 2.6, cap: round)
+
+            // Smooth classic glossy white eyes + lively emerald iris
+            path([[cx - s * 0.41, cy - s * 0.08], [cx - s * 0.26, cy - s * 0.19], [cx - s * 0.11, cy - s * 0.08], [cx - s * 0.26, cy + s * 0.01]], closed: true, fill: #ffffff, stroke: #042b10, width: 1.2)
+            path([[cx + s * 0.41, cy - s * 0.08], [cx + s * 0.26, cy - s * 0.19], [cx + s * 0.11, cy - s * 0.08], [cx + s * 0.26, cy + s * 0.01]], closed: true, fill: #ffffff, stroke: #042b10, width: 1.2)
+            circle(cx - s * 0.25, cy - s * 0.09, s * 0.072, fill: #18cc4f)
+            circle(cx + s * 0.25, cy - s * 0.09, s * 0.072, fill: #18cc4f)
+            circle(cx - s * 0.25, cy - s * 0.09, s * 0.038, fill: #010a03)
+            circle(cx + s * 0.25, cy - s * 0.09, s * 0.038, fill: #010a03)
+            circle(cx - s * 0.28, cy - s * 0.12, s * 0.022, fill: #ffffff)
+            circle(cx + s * 0.22, cy - s * 0.12, s * 0.022, fill: #ffffff)
+
+            // Smooth classic wide Jim Carrey white toothy grin
+            path([
+              [cx - s * 0.48, cy + s * 0.18], [cx - s * 0.24, cy + s * 0.30], [cx, cy + s * 0.34],
+              [cx + s * 0.24, cy + s * 0.30], [cx + s * 0.48, cy + s * 0.18], [cx + s * 0.38, cy + s * 0.50],
+              [cx + s * 0.18, cy + s * 0.62], [cx, cy + s * 0.65], [cx - s * 0.18, cy + s * 0.62], [cx - s * 0.38, cy + s * 0.50]
+            ], closed: true, fill: linear(cx, cy + s * 0.18, cx, cy + s * 0.65, [#ffffff, #f4fff2, #dcf7d8]), stroke: #043613, width: 1.8)
+            path([[cx - s * 0.42, cy + s * 0.34], [cx, cy + s * 0.48], [cx + s * 0.42, cy + s * 0.34]], stroke: alpha(#042e10, 0.68), width: 1.3, cap: round)
+            line(cx, cy + s * 0.34, cx, cy + s * 0.64, stroke: alpha(#063b15, 0.52), width: 1.1)
+            line(cx - s * 0.16, cy + s * 0.32, cx - s * 0.15, cy + s * 0.61, stroke: alpha(#063b15, 0.48), width: 1.0)
+            line(cx + s * 0.16, cy + s * 0.32, cx + s * 0.15, cy + s * 0.61, stroke: alpha(#063b15, 0.48), width: 1.0)
+            line(cx - s * 0.31, cy + s * 0.27, cx - s * 0.29, cy + s * 0.54, stroke: alpha(#063b15, 0.44), width: 0.95)
+            line(cx + s * 0.31, cy + s * 0.27, cx + s * 0.29, cy + s * 0.54, stroke: alpha(#063b15, 0.44), width: 0.95)
+
+            // Smooth classic tilted yellow zoot-suit fedora
+            rotate(-6, cx, cy - s * 0.48) {
+              path([[cx - s * 0.96, cy - s * 0.40], [cx - s * 0.46, cy - s * 0.52], [cx, cy - s * 0.55], [cx + s * 0.46, cy - s * 0.52], [cx + s * 0.96, cy - s * 0.40], [cx + s * 0.62, cy - s * 0.34], [cx, cy - s * 0.40], [cx - s * 0.62, cy - s * 0.34]], closed: true, fill: linear(cx, cy - s * 0.55, cx, cy - s * 0.34, [#5c4500, #1c1400]), stroke: #ffe135, width: 1.7)
+              path([[cx - s * 0.42, cy - s * 0.54], [cx - s * 0.66, cy - s * 0.92], [cx - s * 0.54, cy - s * 0.88], [cx - s * 0.34, cy - s * 0.54]], closed: true, fill: #e6ff99)
+              path([[cx - s * 0.54, cy - s * 0.49], [cx - s * 0.44, cy - s * 0.88], [cx - s * 0.26, cy - s * 1.06], [cx, cy - s * 0.97], [cx + s * 0.26, cy - s * 1.06], [cx + s * 0.44, cy - s * 0.88], [cx + s * 0.54, cy - s * 0.49]], closed: true, fill: linear(cx - s * 0.40, cy - s * 1.06, cx + s * 0.40, cy - s * 0.49, [#fff066, #e0b000, #805c00]), stroke: #ffe135, width: 1.6)
+              path([[cx - s * 0.54, cy - s * 0.49], [cx - s * 0.52, cy - s * 0.62], [cx, cy - s * 0.65], [cx + s * 0.52, cy - s * 0.62], [cx + s * 0.54, cy - s * 0.49], [cx, cy - s * 0.53]], closed: true, fill: #0a100b, stroke: alpha(#ffe135, 0.78), width: 1.0)
+            }
+          } else if skelOn {
+            // SKELETOR: 8-Point Arcane Octagram + Crackling Amethyst Lightning + Draped Royal-Purple Cowl + Faceted Bone-Ivory Skull
+            let u = r * 0.68
+            let cowlRim = mix(#b44aff, #eb9eff, 0.30 + act * 0.50)
+
+            // 8-Point Sorcery Octagram Halo (two interlaced squares)
+            let sqA = range(5).map(k => [cx + cos(rad(k * 90 - 90)) * r * 0.92, cy + sin(rad(k * 90 - 90)) * r * 0.92])
+            let sqB = range(5).map(k => [cx + cos(rad(k * 90 - 45)) * r * 0.92, cy + sin(rad(k * 90 - 45)) * r * 0.92])
+            path(sqA, closed: true, stroke: alpha(#b44aff, 0.22 + act * 0.26), width: 6.8)
+            path(sqB, closed: true, stroke: alpha(#b44aff, 0.22 + act * 0.26), width: 6.8)
+            path(sqA, closed: true, stroke: alpha(#c85cff, 0.80 + pulse * 0.16), width: 1.5)
+            path(sqB, closed: true, stroke: alpha(#c85cff, 0.80 + pulse * 0.16), width: 1.5)
+            for k in range(8) {
+              let vx = cx + cos(rad(k * 45 - 90)) * r * 0.92
+              let vy = cy + sin(rad(k * 45 - 90)) * r * 0.92
+              circle(vx, vy, 3.6, fill: alpha(#e82cff, 0.26 + act * 0.24))
+              circle(vx, vy, 1.6, fill: #f4e6be)
+            }
+
+            // Crackling amethyst-magenta necromancy lightning along octagram
+            let bStep = floor(fxT * (12 + act * 14))
+            for b in range(2) {
+              let idx = (bStep + b * 3) % 8
+              let a1 = rad(idx * 45 - 90)
+              let a2 = rad(((idx + 2) % 8) * 45 - 90)
+              let x1 = cx + cos(a1) * r * 0.92
+              let y1 = cy + sin(a1) * r * 0.92
+              let x2 = cx + cos(a2) * r * 0.92
+              let y2 = cy + sin(a2) * r * 0.92
+              let j1 = (hash(bStep + b * 17, 3) - 0.5) * 16
+              let j2 = (hash(bStep + b * 17, 7) - 0.5) * 16
+              path([[x1, y1], [(x1 + x2) * 0.5 + j1, (y1 + y2) * 0.5 + j2], [x2, y2]], stroke: alpha(#eb9eff, 0.42 + fastP * 0.28 + act * 0.30), width: 1.3, cap: round)
+            }
+
+            // Draped Royal-Purple Sorcerer Cowl / Hood
+            path([
+              [cx, cy - u * 1.04], [cx + u * 0.36, cy - u * 0.82], [cx + u * 0.72, cy - u * 0.42],
+              [cx + u * 0.84, cy + u * 0.16], [cx + u * 0.72, cy + u * 0.66], [cx + u * 0.50, cy + u * 0.92],
+              [cx, cy + u * 0.98], [cx - u * 0.50, cy + u * 0.92], [cx - u * 0.72, cy + u * 0.66],
+              [cx - u * 0.84, cy + u * 0.16], [cx - u * 0.72, cy - u * 0.42], [cx - u * 0.36, cy - u * 0.82]
+            ], closed: true, fill: linear(cx, cy - u, cx, cy + u, [alpha(#5a169c, 0.92), alpha(#240642, 0.94), alpha(#090115, 0.96)]), stroke: cowlRim, width: 1.75)
+            path([[cx - u * 0.16, cy - u * 0.90], [cx - u * 0.56, cy - u * 0.36], [cx - u * 0.66, cy + u * 0.24], [cx - u * 0.44, cy + u * 0.78]], stroke: alpha(#d88cff, 0.46), width: 1.1, cap: round)
+            path([[cx + u * 0.16, cy - u * 0.90], [cx + u * 0.56, cy - u * 0.36], [cx + u * 0.66, cy + u * 0.24], [cx + u * 0.44, cy + u * 0.78]], stroke: alpha(#d88cff, 0.46), width: 1.1, cap: round)
+
+            // Cavernous black inner hood cavity + subtle Keldor cyber-indigo collar
+            path([
+              [cx, cy - u * 0.82], [cx + u * 0.48, cy - u * 0.48], [cx + u * 0.64, cy + u * 0.08],
+              [cx + u * 0.50, cy + u * 0.68], [cx, cy + u * 0.88], [cx - u * 0.50, cy + u * 0.68],
+              [cx - u * 0.64, cy + u * 0.08], [cx - u * 0.48, cy - u * 0.48]
+            ], closed: true, fill: #020006, stroke: alpha(#8e2de2, 0.65), width: 1.1)
+            path([[cx - u * 0.34, cy + u * 0.72], [cx, cy + u * 0.82], [cx + u * 0.34, cy + u * 0.72], [cx + u * 0.26, cy + u * 0.90], [cx, cy + u * 0.94], [cx - u * 0.26, cy + u * 0.90]], closed: true, fill: #152256, stroke: alpha(#4d75ff, 0.52), width: 0.9)
+
+            // Faceted Spectral Bone-Ivory Skull + Flared Cheekbones
+            path([
+              [cx, cy - u * 0.66], [cx + u * 0.28, cy - u * 0.60], [cx + u * 0.46, cy - u * 0.36],
+              [cx + u * 0.48, cy - u * 0.10], [cx + u * 0.54, cy + u * 0.08], [cx + u * 0.42, cy + u * 0.24],
+              [cx + u * 0.31, cy + u * 0.34], [cx + u * 0.34, cy + u * 0.54], [cx + u * 0.22, cy + u * 0.74],
+              [cx, cy + u * 0.80], [cx - u * 0.22, cy + u * 0.74], [cx - u * 0.34, cy + u * 0.54],
+              [cx - u * 0.31, cy + u * 0.34], [cx - u * 0.42, cy + u * 0.24], [cx - u * 0.54, cy + u * 0.08],
+              [cx - u * 0.48, cy - u * 0.10], [cx - u * 0.46, cy - u * 0.36], [cx - u * 0.28, cy - u * 0.60]
+            ], closed: true, fill: linear(cx, cy - u * 0.66, cx, cy + u * 0.80, [#fff7de, #e8d5a2, #9e8a60]), stroke: #fff8e2, width: 1.3)
+            path([[cx - u * 0.44, cy - u * 0.36], [cx, cy - u * 0.66], [cx + u * 0.44, cy - u * 0.36], [cx, cy - u * 0.46]], closed: true, fill: alpha(#1b0530, 0.45))
+            path([[cx - u * 0.48, cy - u * 0.15], [cx - u * 0.22, cy - u * 0.23], [cx, cy - u * 0.07], [cx + u * 0.22, cy - u * 0.23], [cx + u * 0.48, cy - u * 0.15]], stroke: #fff9e8, width: 1.5, cap: round)
+
+            // Recessed V-Pitched Black Eye Sockets + Blazing Magenta-White Ocular Embers
+            path([[cx - u * 0.44, cy - u * 0.14], [cx - u * 0.08, cy - u * 0.02], [cx - u * 0.14, cy + u * 0.15], [cx - u * 0.40, cy + u * 0.09]], closed: true, fill: #020005, stroke: #5e4f38, width: 1.0)
+            path([[cx + u * 0.44, cy - u * 0.14], [cx + u * 0.08, cy - u * 0.02], [cx + u * 0.14, cy + u * 0.15], [cx + u * 0.40, cy + u * 0.09]], closed: true, fill: #020005, stroke: #5e4f38, width: 1.0)
+            circle(cx - u * 0.25, cy + u * 0.02, u * (0.24 + act * 0.14), fill: radial(cx - u * 0.25, cy + u * 0.02, u * 0.34, [alpha(#e82cff, 0.56 + pulse * 0.20 + act * 0.24), alpha(#000000, 0)]))
+            circle(cx + u * 0.25, cy + u * 0.02, u * (0.24 + act * 0.14), fill: radial(cx + u * 0.25, cy + u * 0.02, u * 0.34, [alpha(#e82cff, 0.56 + pulse * 0.20 + act * 0.24), alpha(#000000, 0)]))
+            path([[cx - u * 0.34, cy - u * 0.04], [cx - u * 0.15, cy + u * 0.02], [cx - u * 0.24, cy + u * 0.09]], closed: true, fill: #e82cff)
+            path([[cx + u * 0.34, cy - u * 0.04], [cx + u * 0.15, cy + u * 0.02], [cx + u * 0.24, cy + u * 0.09]], closed: true, fill: #e82cff)
+            circle(cx - u * 0.24, cy + u * 0.02, u * (0.048 + pulse * 0.012 + act * 0.022), fill: #fff6ff)
+            circle(cx + u * 0.24, cy + u * 0.02, u * (0.048 + pulse * 0.012 + act * 0.022), fill: #fff6ff)
+
+            // Inverted-Spade Nasal Void & 6-Tooth Snarling Skeletal Grin
+            path([[cx, cy + u * 0.06], [cx + u * 0.085, cy + u * 0.26], [cx, cy + u * 0.21], [cx - u * 0.085, cy + u * 0.26]], closed: true, fill: #020005, stroke: #6e5d44, width: 0.9)
+            path([[cx - u * 0.31, cy + u * 0.35], [cx - u * 0.16, cy + u * 0.39], [cx, cy + u * 0.37], [cx + u * 0.16, cy + u * 0.39], [cx + u * 0.31, cy + u * 0.35], [cx + u * 0.26, cy + u * 0.56], [cx, cy + u * 0.60], [cx - u * 0.26, cy + u * 0.56]], closed: true, fill: linear(cx, cy + u * 0.35, cx, cy + u * 0.60, [#fff6dc, #dfd0a2, #b8a376]), stroke: #05000a, width: 1.5)
+            path([[cx - u * 0.28, cy + u * 0.45], [cx, cy + u * 0.49], [cx + u * 0.28, cy + u * 0.45]], stroke: mix(#05000a, #e82cff, act * 0.72), width: 1.6 + act * 0.7, cap: round)
+            line(cx, cy + u * 0.37, cx, cy + u * 0.59, stroke: #05000a, width: 1.6)
+            line(cx - u * 0.105, cy + u * 0.38, cx - u * 0.095, cy + u * 0.58, stroke: #05000a, width: 1.4)
+            line(cx + u * 0.105, cy + u * 0.38, cx + u * 0.095, cy + u * 0.58, stroke: #05000a, width: 1.4)
+            line(cx - u * 0.21, cy + u * 0.37, cx - u * 0.19, cy + u * 0.56, stroke: #05000a, width: 1.3)
+            line(cx + u * 0.21, cy + u * 0.37, cx + u * 0.19, cy + u * 0.56, stroke: #05000a, width: 1.3)
+          } else if !futOn {
+            // ABADDON: Glowing Inverted Pentagram + Crackling Hell-Lightning + Horned Demon Crown
+            let ppts = [0, 2, 4, 1, 3, 0].map(i => [
+              cx + sin(3.14159265 + (i % 5) * 1.2566371) * r * 0.92,
+              cy - cos(3.14159265 + (i % 5) * 1.2566371) * r * 0.92
+            ])
+            path(ppts, closed: true, stroke: alpha(#ff1a35, 0.24 + act * 0.26), width: 7.0)
+            path(ppts, closed: true, stroke: alpha(#ff4558, 0.72 + pulse * 0.24), width: 1.5)
+
+            // Crackling abyssal lightning along pentagram when active or pulsing
+            let bStep = floor(fxT * (14 + act * 14))
+            for b in range(2) {
+              let idx = (bStep + b * 2) % 5
+              let pa1 = 3.14159265 + idx * 1.2566371
+              let pa2 = 3.14159265 + ((idx + 2) % 5) * 1.2566371
+              let x1 = cx + sin(pa1) * r * 0.92
+              let y1 = cy - cos(pa1) * r * 0.92
+              let x2 = cx + sin(pa2) * r * 0.92
+              let y2 = cy - cos(pa2) * r * 0.92
+              let j1 = (hash(bStep + b * 19, 3) - 0.5) * 18
+              let j2 = (hash(bStep + b * 19, 7) - 0.5) * 18
+              path([[x1, y1], [(x1 + x2) * 0.5 + j1, (y1 + y2) * 0.5 + j2], [x2, y2]], stroke: alpha(#ff9aa8, 0.42 + fastP * 0.3 + act * 0.28), width: 1.3, cap: round)
+            }
+
+            // Sweeping Abyssal Demon Horns + Armored Obsidian Crown Silhouette
+            let s = r * 0.56
+            path([[cx - s * 0.40, cy - s * 0.34], [cx - s * 1.08, cy - s * 1.12], [cx - s * 0.74, cy - s * 0.08], [cx - s * 0.36, cy + s * 0.06]], closed: true, fill: alpha(#220208, 0.86), stroke: mix(#ff1e3c, #ffb0ba, 0.25 + act * 0.5), width: 1.6)
+            path([[cx + s * 0.40, cy - s * 0.34], [cx + s * 1.08, cy - s * 1.12], [cx + s * 0.74, cy - s * 0.08], [cx + s * 0.36, cy + s * 0.06]], closed: true, fill: alpha(#220208, 0.86), stroke: mix(#ff1e3c, #ffb0ba, 0.25 + act * 0.5), width: 1.6)
+            path([[cx - s * 0.56, cy - s * 0.40], [cx, cy - s * 0.72], [cx + s * 0.56, cy - s * 0.40], [cx + s * 0.46, cy + s * 0.34], [cx, cy + s * 0.88], [cx - s * 0.46, cy + s * 0.34]], closed: true, fill: alpha(#0b0003, 0.62), stroke: alpha(#ff2e48, 0.88), width: 1.6)
+
+            // Third-Eye Abyssal Sigil
+            path([[cx, cy - s * 0.50], [cx + s * 0.11, cy - s * 0.32], [cx, cy - s * 0.14], [cx - s * 0.11, cy - s * 0.32]], closed: true, fill: mix(#ff5a14, #fff0f2, 0.3 + act * 0.65))
+
+            // Blazing Demon Slit Eyes (flare incandescent when listening/speaking!)
+            let eyeCol = mix(#ff1e3c, #ffd685, act * 0.65 + pulse * 0.2)
+            circle(cx - s * 0.26, cy - s * 0.03, s * (0.24 + act * 0.12), fill: radial(cx - s * 0.26, cy - s * 0.03, s * 0.36, [alpha(eyeCol, 0.55 + act * 0.35), alpha(#000000, 0)]))
+            circle(cx + s * 0.26, cy - s * 0.03, s * (0.24 + act * 0.12), fill: radial(cx + s * 0.26, cy - s * 0.03, s * 0.36, [alpha(eyeCol, 0.55 + act * 0.35), alpha(#000000, 0)]))
+            path([[cx - s * 0.46, cy - s * 0.16], [cx - s * 0.08, cy - s * 0.01], [cx - s * 0.36, cy + s * 0.10]], closed: true, fill: eyeCol)
+            path([[cx + s * 0.46, cy - s * 0.16], [cx + s * 0.08, cy - s * 0.01], [cx + s * 0.36, cy + s * 0.10]], closed: true, fill: eyeCol)
+            path([[cx - s * 0.34, cy - s * 0.08], [cx - s * 0.15, cy - s * 0.01], [cx - s * 0.30, cy + s * 0.03]], closed: true, fill: #fff2f4)
+            path([[cx + s * 0.34, cy - s * 0.08], [cx + s * 0.15, cy - s * 0.01], [cx + s * 0.30, cy + s * 0.03]], closed: true, fill: #fff2f4)
+          } else {
+            // ULTRON: Angular Vibranium Faceplate + Glowing Cyan Optical Visor + Stark Target Brackets
+            let s = r * 0.58
+            // Outer Hexagon Holo-Frame
+            let hex = range(7).map(k => [cx + cos(rad(k * 60 - 90)) * r * 0.90, cy + sin(rad(k * 60 - 90)) * r * 0.90])
+            path(hex, closed: true, stroke: alpha(#18d8ff, 0.30 + act * 0.30), width: 5.5)
+            path(hex, closed: true, stroke: alpha(#7eeeff, 0.85), width: 1.4)
+
+            // Angular Ultron Cranium & Cheek Armor Plates
+            path([[cx, cy - s * 0.82], [cx + s * 0.62, cy - s * 0.44], [cx + s * 0.68, cy + s * 0.14], [cx + s * 0.42, cy + s * 0.68], [cx, cy + s * 0.92], [cx - s * 0.42, cy + s * 0.68], [cx - s * 0.68, cy + s * 0.14], [cx - s * 0.62, cy - s * 0.44]], closed: true, fill: alpha(#02131f, 0.58), stroke: alpha(#38e2ff, 0.90), width: 1.7)
+            // Armored Brow Crest & Cheek Vent Lines
+            path([[cx - s * 0.54, cy - s * 0.24], [cx, cy - s * 0.08], [cx + s * 0.54, cy - s * 0.24]], stroke: #8ef2ff, width: 1.9, cap: round)
+            line(cx - s * 0.56, cy + s * 0.24, cx - s * 0.26, cy + s * 0.42, stroke: alpha(#18d8ff, 0.72), width: 1.5, cap: round)
+            line(cx + s * 0.56, cy + s * 0.24, cx + s * 0.26, cy + s * 0.42, stroke: alpha(#18d8ff, 0.72), width: 1.5, cap: round)
+
+            // Piercing Ultron Cyan-White Optical Slit Visors
+            let optCol = mix(#18d8ff, #ffffff, 0.35 + act * 0.55)
+            circle(cx - s * 0.28, cy - s * 0.04, s * (0.24 + act * 0.14), fill: radial(cx - s * 0.28, cy - s * 0.04, s * 0.36, [alpha(#18d8ff, 0.56 + act * 0.35), alpha(#000000, 0)]))
+            circle(cx + s * 0.28, cy - s * 0.04, s * (0.24 + act * 0.14), fill: radial(cx + s * 0.28, cy - s * 0.04, s * 0.36, [alpha(#18d8ff, 0.56 + act * 0.35), alpha(#000000, 0)]))
+            path([[cx - s * 0.50, cy - s * 0.14], [cx - s * 0.08, cy - s * 0.01], [cx - s * 0.16, cy + s * 0.08], [cx - s * 0.46, cy - s * 0.01]], closed: true, fill: optCol)
+            path([[cx + s * 0.50, cy - s * 0.14], [cx + s * 0.08, cy - s * 0.01], [cx + s * 0.16, cy + s * 0.08], [cx + s * 0.46, cy - s * 0.01]], closed: true, fill: optCol)
+
+            // Glowing Ultron Triangular Jaw Reactor
+            path([[cx - s * 0.26, cy + s * 0.42], [cx + s * 0.26, cy + s * 0.42], [cx + s * 0.14, cy + s * 0.66], [cx - s * 0.14, cy + s * 0.66]], closed: true, fill: alpha(#18d8ff, 0.28 + pulse * 0.3 + act * 0.42), stroke: #8ef2ff, width: 1.3)
+          }
+
+          // ── 4) LIVE 18-BAR HOLOGRAPHIC VOCAL WAVEFORM REACTOR ──
+          let barN = 18
+          let barSpan = min(w - 44, 240)
+          let barStep = barSpan / barN
+          let bx0 = w * 0.5 - barSpan * 0.5
+          let byBase = h - 22
+          for i in range(barN) {
+            let centerDist = abs((i + 0.5) / barN - 0.5) * 2.0
+            let bell = max(0.18, 1.0 - centerDist * centerDist)
+            let wave = listening
+              ? (0.30 + 0.70 * abs(sin(fxT * 11.5 + i * 0.72)))
+              : speaking
+              ? (0.25 + 0.75 * abs(sin(fxT * 13.0 + i * 0.95) * cos(fxT * 4.3 + i * 0.4)))
+              : busy
+              ? (0.20 + 0.62 * (0.5 + 0.5 * sin(fxT * 7.5 - i * 0.55)))
+              : (0.12 + 0.18 * (0.5 + 0.5 * sin(fxT * 2.4 + i * 0.45)))
+            let bh = max(3.5, wave * bell * (listening || speaking ? 30 : busy ? 22 : 12))
+            let bx = bx0 + i * barStep + barStep * 0.22
+            let bw = max(2.8, barStep * 0.54)
+            let bCol = skelOn
+              ? (wave > 0.62 ? mix(#e82cff, #f4e6be, clamp((wave - 0.62) / 0.38, 0, 1)) : mix(#b44aff, #e82cff, clamp(wave / 0.62, 0, 1)))
+              : mix(cPri, cHot, wave * 0.65)
+            rect(bx, byBase - bh * 0.5, bw, bh, radius: bw * 0.5, fill: alpha(bCol, 0.75 + act * 0.25))
+          }
+
+          // Corner holographic targeting brackets (skipped in smooth Mask mode)
+          if !maskOn {
+            let br = 10
+            line(7, 7 + br, 7, 7, stroke: alpha(cHot, 0.58), width: 1.3, cap: round)
+            line(7, 7, 7 + br, 7, stroke: alpha(cHot, 0.58), width: 1.3, cap: round)
+            line(w - 7, 7 + br, w - 7, 7, stroke: alpha(cHot, 0.58), width: 1.3, cap: round)
+            line(w - 7, 7, w - 7 - br, 7, stroke: alpha(cHot, 0.58), width: 1.3, cap: round)
+            line(7, h - 7 - br, 7, h - 7, stroke: alpha(cHot, 0.58), width: 1.3, cap: round)
+            line(7, h - 7, 7 + br, h - 7, stroke: alpha(cHot, 0.58), width: 1.3, cap: round)
+            line(w - 7, h - 7 - br, w - 7, h - 7, stroke: alpha(cHot, 0.58), width: 1.3, cap: round)
+            line(w - 7, h - 7, w - 7 - br, h - 7, stroke: alpha(cHot, 0.58), width: 1.3, cap: round)
+          }
+        }
+
+        // Overlay HUD Title & Live Speech Status inside stage
+        Column {
+          fill: true
+          padding: [18, 12, 18, 34]
+          Row {
+            fill: width
+            align: center
+            Text { font: mono; text: fmtTime(now, "HH:mm"); fontSize: 10; bold: true; color: cHot }
+            Spacer { weight: 1 }
+            Text { font: mono; text: listening ? "● MIC LIVE" : (speaking ? "● VOCAL TX" : (busy ? "◌ THINKING" : "◈ TAP CORE TO SPEAK")); fontSize: 9; bold: true; letterSpacing: 1.0; color: listening ? #2bff8c : (speaking ? cHot : cMuted) }
+          }
+          Spacer { weight: 1 }
+          Box {
+            fill: width
+            height: 32
+            Text { text: entityName; font: titleFont; fontSize: 27; letterSpacing: 5; color: #050002; align: center; fill: width; maxLines: 1; offset: [0, 2] }
+            Text { text: entityName; font: titleFont; fontSize: 27; letterSpacing: 5; color: cPri; align: center; fill: width; maxLines: 1 }
+          }
+          Text { font: uiFont; text: listening && (said.text ?? "") != "" ? "“${said.text}”" : statusText; fontSize: 9; bold: true; letterSpacing: 1.2; color: listening ? #ffffff : cHot; align: center; fill: width; maxLines: 1 }
+        }
+      }
+
+      // ─── LIVE JARVIS TELEMETRY HUD (4 REAL-TIME ANDROID GAUGES + 1dp TOP SPECULAR GLASS RAIL) ───
+      Row {
+        fill: width
+        gap: 6
+        Column {
+          weight: 1
+          gap: 0
+          radius: 11 * corners
+          clip: true
+          background: linear(1, 0, 0, 1, [alpha(cSec, 0.12), alpha(cCard, 0.92), #000000, alpha(cPri, 0.09)])
+          border: 1
+          borderColor: alpha(cPri, 0.38)
+          Box { fill: width; height: 1; background: linear(0, 0, 1, 0, [alpha(cPri, 0.08), alpha(cHot, 0.72), alpha(cBone, 0.58), alpha(cPri, 0.08)]) }
+          Column {
+            fill: width
+            padding: [7, 5]
+            Text { font: mono; text: "PWR"; fontSize: 8; color: cMuted; letterSpacing: 1.1 }
+            Text { font: mono; text: "${batLvl}%" + (batChg ? "⚡" : ""); fontSize: 11.5; bold: true; color: batLvl < 20 ? #ff4558 : cHot; maxLines: 1 }
+            Text { font: mono; text: batTemp != null ? "${batTemp}°C" : (watts != null ? "${watts}W" : "NOMINAL"); fontSize: 8; color: cMuted; maxLines: 1 }
+          }
+        }
+        Column {
+          weight: 1
+          gap: 0
+          radius: 11 * corners
+          clip: true
+          background: linear(0, 1, 1, 0, [alpha(cHot, 0.07), alpha(cCard, 0.92), #000000, alpha(cSec, 0.11)])
+          border: 1
+          borderColor: alpha(cPri, 0.38)
+          Box { fill: width; height: 1; background: linear(0, 0, 1, 0, [alpha(cPri, 0.08), alpha(cHot, 0.72), alpha(cBone, 0.58), alpha(cPri, 0.08)]) }
+          Column {
+            fill: width
+            padding: [7, 5]
+            Text { font: mono; text: "MEM"; fontSize: 8; color: cMuted; letterSpacing: 1.1 }
+            Text { font: mono; text: "${ramPct}%"; fontSize: 11.5; bold: true; color: ramPct > 85 ? #ff4558 : cHot; maxLines: 1 }
+            Text { font: mono; text: "${freeGb}G FREE"; fontSize: 8; color: cMuted; maxLines: 1 }
+          }
+        }
+        Column {
+          weight: 1
+          gap: 0
+          radius: 11 * corners
+          clip: true
+          background: linear(0, 0, 1, 1, [alpha(cPri, 0.13), alpha(cCard, 0.92), #000000, alpha(cSec, 0.10)])
+          border: 1
+          borderColor: alpha(cPri, 0.38)
+          Box { fill: width; height: 1; background: linear(0, 0, 1, 0, [alpha(cPri, 0.08), alpha(cHot, 0.72), alpha(cBone, 0.58), alpha(cPri, 0.08)]) }
+          Column {
+            fill: width
+            padding: [7, 5]
+            Text { font: mono; text: "SENSE"; fontSize: 8; color: cMuted; letterSpacing: 1.1 }
+            Text { font: mono; text: "${notifCnt} MSG"; fontSize: 11.5; bold: true; color: notifCnt > 0 ? cHot : cInk; maxLines: 1 }
+            Text { font: mono; text: "VOL ${volLvl}%"; fontSize: 8; color: cMuted; maxLines: 1 }
+          }
+        }
+        Column {
+          weight: 1
+          gap: 0
+          radius: 11 * corners
+          clip: true
+          background: linear(1, 0, 0, 1, [alpha(cSec, 0.12), alpha(cCard, 0.92), #000000, alpha(cPri, 0.09)])
+          border: 1
+          borderColor: alpha(cPri, 0.38)
+          Box { fill: width; height: 1; background: linear(0, 0, 1, 0, [alpha(cPri, 0.08), alpha(cHot, 0.72), alpha(cBone, 0.58), alpha(cPri, 0.08)]) }
+          Column {
+            fill: width
+            padding: [7, 5]
+            Text { font: mono; text: playing ? "AUDIO" : "CLOCK"; fontSize: 8; color: cMuted; letterSpacing: 1.1 }
+            Text { font: mono; text: playing ? "LIVE" : (nextAlarm != "" ? nextAlarm : "CLEAR"); fontSize: 10.5; bold: true; color: playing ? #2bff8c : cHot; maxLines: 1 }
+            Text { font: mono; text: playing && songTitle != "" ? songTitle : (dndOn ? "DND ON" : "ACTIVE"); fontSize: 8; color: cMuted; maxLines: 1 }
+          }
+        }
+      }
+
+      // ─── HOLOGRAPHIC NEURAL DIALOGUE LOG ───
+      Column {
+        weight: 1
+        fill: width
+        gap: 6
+        padding: [2, 2]
+
+        Row {
+          fill: width
+          height: 30
+          gap: 6
+          align: center
+          Text { font: mono; text: skelOn ? "☩ HAVOC ARCANE FEED" : maskOn ? "✦ THE MASK · FEED" : futOn ? "⬡ ULTRON NEURAL FEED" : "⛧ ABADDON COMMUNION LOG"; fontSize: 9.5; bold: true; letterSpacing: 1.4; color: cHot; weight: 1; maxLines: 1 }
+          // THOUGHTS on/off (off = about a second faster)
+          Box {
+            scale: tapBounce == "13" ? 0.9 : 1
+            offset: [0, tapBounce == "13" ? -4 : 0]
+            animate scale: spring(0.32, 520)
+            animate offset: spring(0.32, 520)
+            onPress: tapBounce = "13"
+            onRelease: tapBounce = ""
+            width: 88
+            height: 28
+            radius: 7 * corners
+            align: center
+            background: thinkOn ? alpha(cPri, 0.22) : alpha(cCard, 0.92)
+            border: 1
+            borderColor: thinkOn ? cHot : alpha(cPri, 0.42)
+            onTap: {
+              if hapticsOn { haptic() }
+              cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py toggle-thinking")
+            }
+            Text { font: mono; text: thinkOn ? "◈ THOUGHTS" : "◇ THOUGHTS"; fontSize: 8.5; bold: true; letterSpacing: 0.8; color: thinkOn ? cHot : cMuted; align: center; fill: width; maxLines: 1 }
+          }
+          // CLEAR CHAT: tap, then tap again within 3s
+          Box {
+            scale: tapBounce == "14" ? 0.9 : 1
+            offset: [0, tapBounce == "14" ? -4 : 0]
+            animate scale: spring(0.32, 520)
+            animate offset: spring(0.32, 520)
+            onPress: tapBounce = "14"
+            onRelease: tapBounce = ""
+            width: 112
+            height: 28
+            radius: 7 * corners
+            align: center
+            background: fxT < clearArmUntil ? alpha(#ff4558, 0.28) : alpha(cCard, 0.92)
+            border: 1
+            borderColor: fxT < clearArmUntil ? #ff4558 : alpha(cPri, 0.42)
+            onTap: {
+              if hapticsOn { haptic() }
+              if fxT < clearArmUntil {
+                clearArmUntil = 0
+                openThoughts = []
+                sound("stop")
+                cmdOut = run("python3 ~/.local/bin/abaddon-ultron.py clear ${sh(activeMode)}")
+              } else {
+                clearArmUntil = fxT + 3
+              }
+            }
+            Text { font: mono; text: fxT < clearArmUntil ? "TAP TO CONFIRM" : "✕ CLEAR CHAT"; fontSize: 8.5; bold: true; letterSpacing: 0.6; color: fxT < clearArmUntil ? #ffffff : cMuted; align: center; fill: width; maxLines: 1 }
+          }
+        }
+
+        Column {
+          weight: 1
+          fill: width
+          gap: 7
+          lazy: true
+          reverse: true
+
+          for m in feed key m.id {
+            if m.role == "pending" {
+              Row {
+                fill: width
+                padding: [11, 9]
+                gap: 8
+                radius: 13 * corners
+                align: center
+                background: linear(1, 0, 0, 1, [alpha(cSec, 0.12), alpha(cDeep, 0.92), #000000, alpha(cPri, 0.09)])
+                border: 1
+                borderColor: alpha(cPri, 0.72)
+                Box { width: 8; height: 8; radius: 4; background: cPri; opacity: 0.45 + 0.55 * abs(sin(fxT * 4)) }
+                Text { font: mono; text: stateObj.statusLine ?? (skelOn ? "Havoc is channeling Snake Mountain..." : maskOn ? "The Mask is cooking response..." : futOn ? "Ultron is synthesizing response..." : "Abaddon is channeling the abyss..."); fontSize: 11; color: cHot; weight: 1; maxLines: 1 }
+              }
+            } else {
+              Column {
+                fill: width
+                padding: [11, 9]
+                gap: 6
+                radius: 13 * corners
+                background: m.role == "user" ? alpha(cDeep, 0.94) : alpha(cCard, 0.92)
+                border: 1
+                borderColor: m.live == true ? cHot : (m.role == "user" ? alpha(cHot, 0.58) : alpha(cPri, 0.38))
+                Row {
+                  fill: width
+                  align: center
+                  Text { font: mono; text: m.tag; fontSize: 8.5; bold: true; letterSpacing: 0.8; color: m.role == "user" ? cSec : cHot; weight: 1; maxLines: 1 }
+                  Text { font: mono; text: m.live == true ? "● LIVE" : m.ts; fontSize: 8.5; color: m.live == true ? #2bff8c : cMuted }
+                }
+                if (m.thinking ?? "") != "" {
+                  ThoughtBox { mid: m.id; body: m.thinking; isLive: m.live == true && (m.text ?? "") == "" }
+                }
+                if len(m.parts ?? []) > 0 {
+                  for p, pi in m.parts {
+                    if p.k == "code" {
+                      CodeBlock { code: p.v; lang: p.lang ?? ""; ckey: "${m.id}:${pi}" }
+                    } else {
+                      Text { font: bodyFont; text: p.v; fontSize: 12.5; color: cInk; fill: width }
+                    }
+                  }
+                } else {
+                  if (m.text ?? "") != "" {
+                    Text { font: bodyFont; text: m.text + (m.live == true ? " ▍" : ""); fontSize: 12.5; color: cInk; fill: width }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      Spacer { height: screenInset + 4 }
+    }
+  }
+}

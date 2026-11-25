@@ -1,0 +1,39 @@
+#!/bin/bash
+# SITH // SHROUD — privacy kit: Tor routing + layered file encryption.
+# Tool class: DEFENSIVE (privacy / data protection).
+#   shroud up | down | status       start/stop Tor (SOCKS 127.0.0.1:9050), check exit
+#   shroud run <cmd...>             run a command through Tor (torsocks)
+#   shroud seal <file>              encrypt: age(scrypt) inner  ->  gpg AES-256 outer  => file.shroud
+#   shroud unseal <file.shroud>     reverse both layers
+set -euo pipefail
+R=$'\e[38;2;230;20;45m'; GD=$'\e[38;2;255;184;64m'; M=$'\e[38;2;160;110;115m'; G=$'\e[38;2;60;255;150m'; X=$'\e[0m'
+ST=~/.local/state/shroud; mkdir -p "$ST"; chmod 700 "$ST"
+torpid() { [ -f "$ST/tor.pid" ] && kill -0 "$(cat "$ST/tor.pid")" 2>/dev/null; }
+
+case "${1:-}" in
+  up)
+    torpid && { echo "${G}♛ Tor already up${X}"; exit 0; }
+    tor --SocksPort 9050 --DataDirectory "$ST/tor" --RunAsDaemon 0 --Log "notice file $ST/tor.log" >/dev/null 2>&1 &
+    echo $! > "$ST/tor.pid"
+    echo -n "${M}bootstrapping${X}"
+    for _ in $(seq 60); do grep -q 'Bootstrapped 100%' "$ST/tor.log" 2>/dev/null && { echo " ${G}✓ Tor up${X}"; exec "$0" status; }; echo -n "."; sleep 1; done
+    echo " ${R}✗ timed out — see $ST/tor.log${X}"; exit 1 ;;
+  down)
+    torpid && kill "$(cat "$ST/tor.pid")" && rm -f "$ST/tor.pid" && echo "${GD}♛ Tor down${X}" || echo "${M}not running${X}" ;;
+  status)
+    torpid || { echo "${R}○ Tor down${X}"; exit 0; }
+    echo "${G}● Tor up${X} ${M}socks5h://127.0.0.1:9050${X}"
+    curl -s --max-time 20 --socks5-hostname 127.0.0.1:9050 https://check.torproject.org/api/ip || echo "${R}check failed${X}"; echo ;;
+  run)
+    shift; torpid || { echo "${R}Tor is down — run: shroud up${X}"; exit 1; }; exec torsocks "$@" ;;
+  seal)
+    f="${2:?file}"; echo "${GD}inner layer: age (scrypt)${X}"
+    age -p -o "$f.age" "$f"
+    echo "${GD}outer layer: gpg AES-256 (use a DIFFERENT passphrase)${X}"
+    gpg --batch --yes -q --symmetric --cipher-algo AES256 --s2k-digest-algo SHA512 --s2k-count 65011712 -o "$f.shroud" "$f.age"
+    shred -u "$f.age"; echo "${G}✓ sealed → $f.shroud${X}  ${M}(original kept; shred -u \"$f\" to destroy it)${X}" ;;
+  unseal)
+    f="${2:?file.shroud}"; o="${f%.shroud}"; [ -e "$o" ] && o="$o.unsealed"
+    gpg -q -d -o "$o.age" "$f" && age -d -o "$o" "$o.age"; shred -u "$o.age"; echo "${G}✓ unsealed → $o${X}" ;;
+  *) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//' ;;
+esac

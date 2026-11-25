@@ -6,10 +6,6 @@ panel "sith music" {
   opacity: 0.96
   fps: fxOn ? (playing ? 24 : 10) : 1
 
-  // Shared theme switch (set from the infernal face pill): "infernal" or "future"
-  source uiCfg = file("~/.config/omalauncher/ui-mode.json") json optional
-  let futOn = (uiCfg.mode ?? "infernal") == "future"
-  let uiFont = futOn ? "~/.local/share/fonts/RussoOne-Regular.ttf" : "~/.local/share/fonts/GrenzeGotisch.ttf"
   source m = android.media
   source v = android.volume
   source lib = cmd("python3 ~/.local/bin/chaos-media.py status") every 6s json
@@ -51,26 +47,26 @@ panel "sith music" {
         }
       }
       if kind == "toggle" {
-        Box { size: d + 28; offset: [-14, -14]; radius: 999; background: radial(0.5, 0.5, 0.5, [alpha((futOn ? #1ed1ff : #ff1e3c), playing ? 0.45 : 0.25), alpha((futOn ? #1ed1ff : #ff1e3c), 0)]) }
+        Box { size: d + 28; offset: [-14, -14]; radius: 999; background: radial(0.5, 0.5, 0.5, [alpha(#ff1e3c, playing ? 0.45 : 0.25), alpha(#ff1e3c, 0)]) }
       }
       Canvas {
         let cx = width / 2
         let cy = height / 2
         let s = min(width, height)
         if kind == "toggle" {
-          circle(cx, cy, s / 2, fill: radial(cx - s * 0.15, cy - s * 0.15, s * 0.7, [(futOn ? #5ad1ff : #ff5a6e), (futOn ? #10a4c8 : #c8102e)]))
-          circle(cx, cy, s / 2 - 4, stroke: alpha((futOn ? #00080a : #0a0002), 0.35), width: 1)
-          circle(cx, cy, s / 2 - 1, color: alpha((futOn ? #e8e8ff : #ffe8ec), 0.25), stroke: 1)
+          circle(cx, cy, s / 2, fill: radial(cx - s * 0.15, cy - s * 0.15, s * 0.7, [#ff5a6e, #c8102e]))
+          circle(cx, cy, s / 2 - 4, stroke: alpha(#0a0002, 0.35), width: 1)
+          circle(cx, cy, s / 2 - 1, color: alpha(#ffe8ec, 0.25), stroke: 1)
           if playing {
-            rect(cx - s * 0.14, cy - s * 0.17, s * 0.1, s * 0.34, radius: s * 0.03, fill: (futOn ? #00080a : #0a0002))
-            rect(cx + s * 0.04, cy - s * 0.17, s * 0.1, s * 0.34, radius: s * 0.03, fill: (futOn ? #00080a : #0a0002))
+            rect(cx - s * 0.14, cy - s * 0.17, s * 0.1, s * 0.34, radius: s * 0.03, fill: #0a0002)
+            rect(cx + s * 0.04, cy - s * 0.17, s * 0.1, s * 0.34, radius: s * 0.03, fill: #0a0002)
           } else {
-            path([[cx - s * 0.11, cy - s * 0.19], [cx + s * 0.2, cy], [cx - s * 0.11, cy + s * 0.19]], closed: true, fill: (futOn ? #00080a : #0a0002))
+            path([[cx - s * 0.11, cy - s * 0.19], [cx + s * 0.2, cy], [cx - s * 0.11, cy + s * 0.19]], closed: true, fill: #0a0002)
           }
         } else {
           let dir = kind == "next" ? 1 : -1
-          path([[cx - s * 0.17 * dir, cy - s * 0.18], [cx + s * 0.09 * dir, cy], [cx - s * 0.17 * dir, cy + s * 0.18]], closed: true, fill: (futOn ? #e8e8ff : #ffe8ec))
-          rect(dir > 0 ? cx + s * 0.09 : cx - s * 0.16, cy - s * 0.18, s * 0.07, s * 0.36, radius: s * 0.02, fill: (futOn ? #e8e8ff : #ffe8ec))
+          path([[cx - s * 0.17 * dir, cy - s * 0.18], [cx + s * 0.09 * dir, cy], [cx - s * 0.17 * dir, cy + s * 0.18]], closed: true, fill: #ffe8ec)
+          rect(dir > 0 ? cx + s * 0.09 : cx - s * 0.16, cy - s * 0.18, s * 0.07, s * 0.36, radius: s * 0.02, fill: #ffe8ec)
         }
       }
     }
@@ -81,14 +77,14 @@ panel "sith music" {
       weight: 1
       gap: 6
       align: center
-      Text { text: "${val > 0 ? "+" : ""}${int(val)} dB"; align: center; font: mono; fontSize: 12; color: val == 0 ? alpha((futOn ? #8fd1ff : #ff8fa3), 0.6) : (futOn ? #e8e8ff : #ffe8ec) }
+      Text { text: "${val > 0 ? "+" : ""}${int(val)} dB"; align: center; font: mono; fontSize: 12; color: val == 0 ? alpha(#ff8fa3, 0.6) : #ffe8ec }
       Box {
         height: 120
         width: 44
         radius: 14 * corners
-        background: alpha((futOn ? #021014 : #140205), 0.9)
+        background: alpha(#140205, 0.9)
         border: 1
-        borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.4)
+        borderColor: alpha(#ff2244, 0.4)
         onDrag: {
           let nv = clamp(round(val - dy * 0.12), -12, 12)
           if band == "b" { eqB = nv } else if band == "m" { eqM = nv } else { eqT = nv }
@@ -99,14 +95,14 @@ panel "sith music" {
           fill: true
           let cy = height / 2
           let y = cy - val / 12 * (height / 2 - 10)
-          line(width / 2, 10, width / 2, height - 10, color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.18), width: 2)
-          line(10, cy, width - 10, cy, color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.3), width: 1)
-          line(width / 2, cy, width / 2, y, color: (futOn ? #2ad1ff : #ff2a44), width: 4)
-          circle(width / 2, y, 9, fill: (futOn ? #2ad1ff : #ff2a44))
-          circle(width / 2, y, 4, fill: (futOn ? #e8e8ff : #ffe8ec))
+          line(width / 2, 10, width / 2, height - 10, color: alpha(#ff8fa3, 0.18), width: 2)
+          line(10, cy, width - 10, cy, color: alpha(#ff8fa3, 0.3), width: 1)
+          line(width / 2, cy, width / 2, y, color: #ff2a44, width: 4)
+          circle(width / 2, y, 9, fill: #ff2a44)
+          circle(width / 2, y, 4, fill: #ffe8ec)
         }
       }
-      Text { font: uiFont; text: label; align: center; fontSize: 11; color: (futOn ? #6fd1ff : #ff6f85); letterSpacing: 2 }
+      Text { text: label; align: center; fontSize: 11; color: #ff6f85; letterSpacing: 2 }
     }
   }
 
@@ -122,16 +118,15 @@ panel "sith music" {
       radius: 20 * corners
       clip: true
       border: 1
-      borderColor: alpha((futOn ? #22d1ff : #ff2244), playing ? 0.7 : 0.4)
-      background: (futOn ? #000405 : #050001)
+      borderColor: alpha(#ff2244, playing ? 0.7 : 0.4)
+      background: #050001
       onTap: { haptic(); media("open") }
 
       Shader {
         fill: true
-        fallback: (futOn ? #000405 : #050001)
-        uniforms: { uFut: futOn ? 1.0 : 0.0, anim: fxOn ? 1 : 0, energy: playing ? 1 : 0.5 }
+        fallback: #050001
+        uniforms: { anim: fxOn ? 1 : 0, energy: playing ? 1 : 0.5 }
         code: """
-          uniform float uFut;
           uniform float anim;
           uniform float energy;
           float h(float2 q) { return fract(sin(dot(q, float2(127.1, 311.7))) * 43758.5453); }
@@ -139,7 +134,7 @@ panel "sith music" {
             float2 i = floor(q); float2 f = fract(q); f = f * f * (3.0 - 2.0 * f);
             return mix(mix(h(i), h(i + float2(1, 0)), f.x), mix(h(i + float2(0, 1)), h(i + float2(1, 1)), f.x), f.y);
           }
-          half4 mainOrig(float2 p) {
+          half4 main(float2 p) {
             float2 uv = p / size.y;
             float t = time * anim;
             float2 q = uv * 3.0 + float2(t * 0.06, -t * 0.09);
@@ -154,7 +149,6 @@ panel "sith music" {
             col = (col * vig + grain) * scan;
             return half4(half3(max(col, 0.0)), 1.0);
           }
-          half4 main(float2 fc) { half4 c = mainOrig(fc); half3 m = half3(min(c.g, c.b), max(c.g, c.r * 0.82), c.r); return half4(mix(c.rgb, m, half(uFut)), c.a); }
         """
       }
 
@@ -167,63 +161,63 @@ panel "sith music" {
         let cy = 92
         let pulse = fxOn && playing ? (mode369 ? 0.6 + 0.4 * max(0, sin(t * 3)) * (0.5 + 0.5 * sin(t * 6)) * (0.6 + 0.4 * sin(t * 9)) + 0.15 : 0.75 + 0.25 * sin(t * 4)) : 0.7
         // record with a crimson rim light
-        circle(cx, cy, R + 6, stroke: alpha((futOn ? #1ed1ff : #ff1e3c), 0.18 * energy * pulse), width: 10)
-        circle(cx, cy, R + 1, stroke: alpha((futOn ? #2ad1ff : #ff2a44), 0.55 * energy), width: 1.5)
-        circle(cx, cy, R, fill: radial(cx - 20, cy - 20, R * 1.3, [(futOn ? #14151a : #1a1418), (futOn ? #050506 : #060507)]))
+        circle(cx, cy, R + 6, stroke: alpha(#ff1e3c, 0.18 * energy * pulse), width: 10)
+        circle(cx, cy, R + 1, stroke: alpha(#ff2a44, 0.55 * energy), width: 1.5)
+        circle(cx, cy, R, fill: radial(cx - 20, cy - 20, R * 1.3, [#1a1418, #060507]))
         for g in range(7) {
           circle(cx, cy, R - 6 - g * 6.5, stroke: alpha(#ffffff, 0.05 + (g % 2) * 0.04), width: 1)
         }
         // light sheen that rotates with the disc
         rotate(playing ? t * 200 : 0, cx, cy) {
-          arc(cx, cy, R - 10, -30, 40, stroke: alpha((futOn ? #e8e8ff : #ffe8ec), 0.14), width: 5)
-          arc(cx, cy, R - 10, 150, 40, stroke: alpha((futOn ? #e8e8ff : #ffe8ec), 0.08), width: 5)
-          circle(cx, cy, 40, fill: radial(cx, cy, 40, [alpha((futOn ? #1ed1ff : #ff1e3c), 0.45 * pulse), alpha((futOn ? #1ed1ff : #ff1e3c), 0)]))
-          circle(cx, cy, 24, fill: radial(cx - 6, cy - 6, 26, [(futOn ? #5ad1ff : #ff5a6e), (futOn ? #1089a8 : #a8102a)]))
-          circle(cx, cy, 24, stroke: alpha((futOn ? #e8e8ff : #ffe8ec), 0.25), width: 1)
+          arc(cx, cy, R - 10, -30, 40, stroke: alpha(#ffe8ec, 0.14), width: 5)
+          arc(cx, cy, R - 10, 150, 40, stroke: alpha(#ffe8ec, 0.08), width: 5)
+          circle(cx, cy, 40, fill: radial(cx, cy, 40, [alpha(#ff1e3c, 0.45 * pulse), alpha(#ff1e3c, 0)]))
+          circle(cx, cy, 24, fill: radial(cx - 6, cy - 6, 26, [#ff5a6e, #a8102a]))
+          circle(cx, cy, 24, stroke: alpha(#ffe8ec, 0.25), width: 1)
           if mode369 {
             // 3-6-9 vortex: 9 points, the 1-2-4-8-7-5 loop, and the 3-6-9 triangle
             for k in [[1, 2], [2, 4], [4, 8], [8, 7], [7, 5], [5, 1]] {
               let a1 = rad(k[0] * 40 - 90)
               let a2 = rad(k[1] * 40 - 90)
-              line(cx + cos(a1) * 18, cy + sin(a1) * 18, cx + cos(a2) * 18, cy + sin(a2) * 18, stroke: alpha((futOn ? #00222a : #2a0008), 0.6), width: 1)
+              line(cx + cos(a1) * 18, cy + sin(a1) * 18, cx + cos(a2) * 18, cy + sin(a2) * 18, stroke: alpha(#2a0008, 0.6), width: 1)
             }
             for k in [[3, 6], [6, 9], [9, 3]] {
               let a1 = rad(k[0] * 40 - 90)
               let a2 = rad(k[1] * 40 - 90)
-              line(cx + cos(a1) * 18, cy + sin(a1) * 18, cx + cos(a2) * 18, cy + sin(a2) * 18, stroke: alpha((futOn ? #f1f1ff : #fff1f3), 0.85), width: 1.3)
+              line(cx + cos(a1) * 18, cy + sin(a1) * 18, cx + cos(a2) * 18, cy + sin(a2) * 18, stroke: alpha(#fff1f3, 0.85), width: 1.3)
             }
             for k in range(9) {
-              circle(cx + cos(rad(k * 40 - 50)) * 18, cy + sin(rad(k * 40 - 50)) * 18, (k + 1) % 3 == 0 ? 2 : 1.2, fill: (k + 1) % 3 == 0 ? (futOn ? #f1f1ff : #fff1f3) : (futOn ? #00222a : #2a0008))
+              circle(cx + cos(rad(k * 40 - 50)) * 18, cy + sin(rad(k * 40 - 50)) * 18, (k + 1) % 3 == 0 ? 2 : 1.2, fill: (k + 1) % 3 == 0 ? #fff1f3 : #2a0008)
             }
           } else {
             for k in range(5) {
               let a1 = rad(k * 144 - 90)
               let a2 = rad((k + 1) * 144 - 90)
-              line(cx + cos(a1) * 17, cy + sin(a1) * 17, cx + cos(a2) * 17, cy + sin(a2) * 17, stroke: alpha((futOn ? #00222a : #2a0008), 0.55), width: 1)
+              line(cx + cos(a1) * 17, cy + sin(a1) * 17, cx + cos(a2) * 17, cy + sin(a2) * 17, stroke: alpha(#2a0008, 0.55), width: 1)
             }
           }
-          circle(cx, cy, 19, stroke: alpha((futOn ? #00222a : #2a0008), 0.5), width: 0.8)
-          circle(cx, cy, 3, fill: (futOn ? #000405 : #050001))
+          circle(cx, cy, 19, stroke: alpha(#2a0008, 0.5), width: 0.8)
+          circle(cx, cy, 3, fill: #050001)
         }
         // tonearm: rests off the disc when paused, swings in when playing
         let px = width - 14
         let py = 16
         rotate(playing ? 24 : 6, px, py) {
-          line(px, py, px - 8, py + 96, color: (futOn ? #8a8a8a : #8a8a92), width: 3, cap: round)
-          rect(px - 15, py + 92, 14, 9, radius: 2, fill: (futOn ? #c9c9c9 : #c9c9cf))
-          circle(px, py, 7, fill: (futOn ? #262626 : #26262b), stroke: (futOn ? #8a8a8a : #8a8a92), width: 1)
+          line(px, py, px - 8, py + 96, color: #8a8a92, width: 3, cap: round)
+          rect(px - 15, py + 92, 14, 9, radius: 2, fill: #c9c9cf)
+          circle(px, py, 7, fill: #26262b, stroke: #8a8a92, width: 1)
         }
         // spectrum along the bottom
         let n = mode369 ? 18 : 30
         let bw = width / n
         for i in range(n) {
           if mode369 && (i == 3 || i == 9) {
-            line(i * bw, height - 44, i * bw, height, stroke: alpha((futOn ? #e8e8ff : #ffe8ec), 0.18), width: 1)
+            line(i * bw, height - 44, i * bw, height, stroke: alpha(#ffe8ec, 0.18), width: 1)
           }
           let lvl = playing && fxOn ? (sin(t * (2 + hash(i) * 3) + i * 0.7) * 0.5 + 0.5) * (0.5 + hash(i, 1) * 0.5) : 0.08
           let h = 4 + lvl * 34
-          rect(i * bw - 1, height - h - 3, bw + 2, h + 3, radius: 3, fill: alpha((futOn ? #1ed1ff : #ff1e3c), 0.08 + lvl * 0.12))
-          rect(i * bw + 1, height - h, bw - 2, h, radius: 1.5, fill: linear(0, height - h, 0, height, [alpha((futOn ? #b3d1ff : #ffb3c0), 0.35 + lvl * 0.5), alpha((futOn ? #1ed1ff : #ff1e3c), 0.3 + lvl * 0.5)]))
+          rect(i * bw - 1, height - h - 3, bw + 2, h + 3, radius: 3, fill: alpha(#ff1e3c, 0.08 + lvl * 0.12))
+          rect(i * bw + 1, height - h, bw - 2, h, radius: 1.5, fill: linear(0, height - h, 0, height, [alpha(#ffb3c0, 0.35 + lvl * 0.5), alpha(#ff1e3c, 0.3 + lvl * 0.5)]))
         }
       }
 
@@ -232,13 +226,13 @@ panel "sith music" {
         padding: [16, 16, 14, 16]
         gap: 4
         align: start
-        Text { font: uiFont; text: "◈ MUSIC"; fontSize: 11; color: (futOn ? #6fd1ff : #ff6f85); letterSpacing: 2 }
+        Text { text: "◈ MUSIC"; fontSize: 11; color: #ff6f85; letterSpacing: 2 }
         Box {
-          Text { font: uiFont; text: playing ? "Now playing" : (phoneOn || localOn ? "Paused" : "Idle"); fontSize: 26; bold: true; color: alpha((futOn ? #1ed1ff : #ff1e3c), 0.55); offset: [0, 1]; scale: 1.04; maxLines: 1; width: tileWidth - 220 }
-          Text { font: uiFont; text: playing ? "Now playing" : (phoneOn || localOn ? "Paused" : "Idle"); fontSize: 26; bold: true; color: (futOn ? #e8e8ff : #ffe8ec); maxLines: 1; width: tileWidth - 220 }
+          Text { text: playing ? "Now playing" : (phoneOn || localOn ? "Paused" : "Idle"); fontSize: 26; bold: true; color: alpha(#ff1e3c, 0.55); offset: [0, 1]; scale: 1.04; maxLines: 1; width: tileWidth - 220 }
+          Text { text: playing ? "Now playing" : (phoneOn || localOn ? "Paused" : "Idle"); fontSize: 26; bold: true; color: #ffe8ec; maxLines: 1; width: tileWidth - 220 }
         }
-        Text { font: uiFont; text: useLocal ? "source · local vault" : (phoneOn ? "source · ${m.app ?? "phone"}" : "source · none"); fontSize: 11; color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.7); maxLines: 1; width: tileWidth - 220 }
-        Text { font: uiFont; text: v.output != null ? "out · ${v.output.name ?? v.output.type}" : ""; fontSize: 11; color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.7); maxLines: 1; width: tileWidth - 220 }
+        Text { text: useLocal ? "source · local vault" : (phoneOn ? "source · ${m.app ?? "phone"}" : "source · none"); fontSize: 11; color: alpha(#ff8fa3, 0.7); maxLines: 1; width: tileWidth - 220 }
+        Text { text: v.output != null ? "out · ${v.output.name ?? v.output.type}" : ""; fontSize: 11; color: alpha(#ff8fa3, 0.7); maxLines: 1; width: tileWidth - 220 }
         Spacer { weight: 1 }
         Row {
           gap: 8
@@ -246,22 +240,22 @@ panel "sith music" {
             width: 74
             padding: [4, 10]
             radius: 10 * corners
-            background: alpha((futOn ? #000405 : #050001), 0.85)
+            background: alpha(#050001, 0.85)
             border: 1
-            borderColor: alpha((futOn ? #22d1ff : #ff2244), fxOn ? 0.7 : 0.25)
+            borderColor: alpha(#ff2244, fxOn ? 0.7 : 0.25)
             onTap: fxOn = !fxOn
-            Text { font: uiFont; text: fxOn ? "FX ON" : "FX OFF"; align: center; fontSize: 10; letterSpacing: 1.5; color: fxOn ? (futOn ? #b3d1ff : #ffb3c0) : alpha((futOn ? #8fd1ff : #ff8fa3), 0.5) }
+            Text { text: fxOn ? "FX ON" : "FX OFF"; align: center; fontSize: 10; letterSpacing: 1.5; color: fxOn ? #ffb3c0 : alpha(#ff8fa3, 0.5) }
           }
           Box {
             width: 56
             padding: [4, 8]
             radius: 10 * corners
-            background: mode369 ? alpha((futOn ? #2ad1ff : #ff2a44), 0.85) : alpha((futOn ? #000405 : #050001), 0.85)
+            background: mode369 ? alpha(#ff2a44, 0.85) : alpha(#050001, 0.85)
             border: 1
-            borderColor: alpha((futOn ? #22d1ff : #ff2244), mode369 ? 0.9 : 0.25)
+            borderColor: alpha(#ff2244, mode369 ? 0.9 : 0.25)
             animate background: tween(250ms, "ease")
             onTap: { haptic(); mode369 = !mode369 }
-            Text { font: uiFont; text: "369"; align: center; fontSize: 10; letterSpacing: 1.5; color: mode369 ? (futOn ? #00080a : #0a0002) : alpha((futOn ? #8fd1ff : #ff8fa3), 0.6) }
+            Text { text: "369"; align: center; fontSize: 10; letterSpacing: 1.5; color: mode369 ? #0a0002 : alpha(#ff8fa3, 0.6) }
           }
         }
         Spacer { height: 34 }
@@ -273,9 +267,9 @@ panel "sith music" {
       padding: 16
       gap: 14
       radius: 20 * corners
-      background: radial(0.15, 0.0, 1.2, [alpha((futOn ? #062d38 : #38060f), 0.94), alpha((futOn ? #000507 : #070002), 0.92)])
+      background: radial(0.15, 0.0, 1.2, [alpha(#38060f, 0.94), alpha(#070002, 0.92)])
       border: 1
-      borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.38)
+      borderColor: alpha(#ff2244, 0.38)
       Row {
         gap: 14
         align: center
@@ -283,26 +277,26 @@ panel "sith music" {
           size: 92
           radius: 14 * corners
           clip: true
-          background: radial(0.5, 0.5, 0.8, [alpha((futOn ? #1ed1ff : #ff1e3c), 0.35), (futOn ? #00080a : #0a0002)])
+          background: radial(0.5, 0.5, 0.8, [alpha(#ff1e3c, 0.35), #0a0002])
           onTap: media("open")
           if !useLocal && phoneOn && m.art != null {
             Image { src: m.art; fit: cover; fill: true }
           } else {
-            Column { fill: true; justify: center; Text { text: "♪"; align: center; fontSize: 40; color: (futOn ? #2ed1ff : #ff2e4d) } }
+            Column { fill: true; justify: center; Text { text: "♪"; align: center; fontSize: 40; color: #ff2e4d } }
           }
         }
         Column {
           weight: 1
           gap: 4
-          Text { font: uiFont; text: title; fontSize: 18; bold: true; color: (futOn ? #e8e8ff : #ffe8ec); maxLines: 2 }
-          Text { font: uiFont; text: artist; fontSize: 13; color: (futOn ? #b3d1ff : #ffb3c0); maxLines: 1 }
+          Text { text: title; fontSize: 18; bold: true; color: #ffe8ec; maxLines: 2 }
+          Text { text: artist; fontSize: 13; color: #ffb3c0; maxLines: 1 }
           if fxOn && playing {
             Canvas {
               height: 22
               fill: width
               for i in range(18) {
                 let h = 3 + (sin(time * (2.2 + hash(i) * 2.5) + i * 0.9) * 0.5 + 0.5) * (height - 3) * (0.55 + (i < 6 ? eqB : (i < 12 ? eqM : eqT)) / 30)
-                rect(i * (width / 18), height - h, width / 18 - 3, h, radius: 1.5, fill: alpha((futOn ? #2ad1ff : #ff2a44), 0.55 + hash(i) * 0.4))
+                rect(i * (width / 18), height - h, width / 18 - 3, h, radius: 1.5, fill: alpha(#ff2a44, 0.55 + hash(i) * 0.4))
               }
             }
           }
@@ -310,10 +304,10 @@ panel "sith music" {
       }
       Column {
         gap: 4
-        Progress { value: pct; color: (futOn ? #2ad1ff : #ff2a44); animate value: tween(900ms, "linear") }
+        Progress { value: pct; color: #ff2a44; animate value: tween(900ms, "linear") }
         Row {
-          Text { text: dur > 0 ? "${int(pos / 60)}:${pad(int(pos % 60), 2)}" : ""; font: mono; fontSize: 10; color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.6); weight: 1 }
-          Text { text: dur > 0 ? "${int(dur / 60)}:${pad(int(dur % 60), 2)}" : ""; font: mono; fontSize: 10; color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.6) }
+          Text { text: dur > 0 ? "${int(pos / 60)}:${pad(int(pos % 60), 2)}" : ""; font: mono; fontSize: 10; color: alpha(#ff8fa3, 0.6); weight: 1 }
+          Text { text: dur > 0 ? "${int(dur / 60)}:${pad(int(dur % 60), 2)}" : ""; font: mono; fontSize: 10; color: alpha(#ff8fa3, 0.6) }
         }
       }
       Row {
@@ -333,10 +327,10 @@ panel "sith music" {
       padding: 16
       gap: 10
       radius: 18 * corners
-      background: radial(0.0, 0.0, 1.3, [alpha((futOn ? #05222a : #2a050d), 0.92), alpha((futOn ? #000507 : #070002), 0.9)])
+      background: radial(0.0, 0.0, 1.3, [alpha(#2a050d, 0.92), alpha(#070002, 0.9)])
       border: 1
-      borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.4)
-      Text { font: uiFont; text: "◈ TRACK DETAILS"; fontSize: 11; color: (futOn ? #6fd1ff : #ff6f85); letterSpacing: 2 }
+      borderColor: alpha(#ff2244, 0.4)
+      Text { text: "◈ TRACK DETAILS"; fontSize: 11; color: #ff6f85; letterSpacing: 2 }
       for row in [
           ["ALBUM", !useLocal && phoneOn ? (m.album ?? "—") : "—"],
           ["APP", useLocal ? "mpv · vault" : (phoneOn ? (m.app ?? m.package ?? "—") : "—")],
@@ -348,8 +342,8 @@ panel "sith music" {
         ] {
         Row {
           align: center
-          Text { font: uiFont; text: row[0]; fontSize: 10; letterSpacing: 1.5; color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.6); width: 96 }
-          Text { font: uiFont; text: row[1]; fontSize: 13; color: (futOn ? #e8e8ff : #ffe8ec); maxLines: 1; weight: 1 }
+          Text { text: row[0]; fontSize: 10; letterSpacing: 1.5; color: alpha(#ff8fa3, 0.6); width: 96 }
+          Text { text: row[1]; fontSize: 13; color: #ffe8ec; maxLines: 1; weight: 1 }
         }
       }
     }
@@ -359,14 +353,14 @@ panel "sith music" {
       padding: [12, 16]
       gap: 6
       radius: 18 * corners
-      background: radial(0.0, 0.0, 1.3, [alpha((futOn ? #05222a : #2a050d), 0.92), alpha((futOn ? #000507 : #070002), 0.9)])
+      background: radial(0.0, 0.0, 1.3, [alpha(#2a050d, 0.92), alpha(#070002, 0.9)])
       border: 1
-      borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.4)
+      borderColor: alpha(#ff2244, 0.4)
       Row {
-        Text { font: uiFont; text: "◈ VOLUME"; fontSize: 11; color: (futOn ? #6fd1ff : #ff6f85); letterSpacing: 2; weight: 1 }
-        Text { text: v.muted ? "muted" : "${v.level}%"; font: mono; fontSize: 11; color: (futOn ? #b3d1ff : #ffb3c0) }
+        Text { text: "◈ VOLUME"; fontSize: 11; color: #ff6f85; letterSpacing: 2; weight: 1 }
+        Text { text: v.muted ? "muted" : "${v.level}%"; font: mono; fontSize: 11; color: #ffb3c0 }
       }
-      Slider { value: v.level ?? 0; color: (futOn ? #2ad1ff : #ff2a44); track: alpha((futOn ? #8fd1ff : #ff8fa3), 0.15); live: true; onChange: volume(value) }
+      Slider { value: v.level ?? 0; color: #ff2a44; track: alpha(#ff8fa3, 0.15); live: true; onChange: volume(value) }
     }
 
     // EQ
@@ -374,12 +368,12 @@ panel "sith music" {
       padding: 16
       gap: 12
       radius: 18 * corners
-      background: radial(0.0, 0.0, 1.3, [alpha((futOn ? #05222a : #2a050d), 0.92), alpha((futOn ? #000507 : #070002), 0.9)])
+      background: radial(0.0, 0.0, 1.3, [alpha(#2a050d, 0.92), alpha(#070002, 0.9)])
       border: 1
-      borderColor: alpha((futOn ? #22d1ff : #ff2244), 0.4)
+      borderColor: alpha(#ff2244, 0.4)
       Row {
-        Text { font: uiFont; text: "◈ EQUALIZER"; fontSize: 11; color: (futOn ? #6fd1ff : #ff6f85); letterSpacing: 2; weight: 1 }
-        Text { font: uiFont; text: localOn ? "live · mpv" : "applies to vault"; fontSize: 10; color: alpha((futOn ? #8fd1ff : #ff8fa3), 0.6) }
+        Text { text: "◈ EQUALIZER"; fontSize: 11; color: #ff6f85; letterSpacing: 2; weight: 1 }
+        Text { text: localOn ? "live · mpv" : "applies to vault"; fontSize: 10; color: alpha(#ff8fa3, 0.6) }
       }
       Row {
         gap: 8
@@ -394,9 +388,9 @@ panel "sith music" {
           Box {
             padding: [6, 12]
             radius: 12 * corners
-            background: preset == p.n ? alpha((futOn ? #2ad1ff : #ff2a44), 0.85) : alpha((futOn ? #03151a : #1a0307), 0.9)
+            background: preset == p.n ? alpha(#ff2a44, 0.85) : alpha(#1a0307, 0.9)
             border: 1
-            borderColor: alpha((futOn ? #22d1ff : #ff2244), preset == p.n ? 0.9 : 0.3)
+            borderColor: alpha(#ff2244, preset == p.n ? 0.9 : 0.3)
             animate background: tween(250ms, "ease")
             onTap: {
               haptic()
@@ -406,7 +400,7 @@ panel "sith music" {
               preset = p.n
               run("python3 ~/.local/bin/chaos-media.py eq-preset ${p.n}")
             }
-            Text { font: uiFont; text: upper(p.n); align: center; fontSize: 10; letterSpacing: 1.5; color: preset == p.n ? (futOn ? #00080a : #0a0002) : (futOn ? #b3d1ff : #ffb3c0) }
+            Text { text: upper(p.n); align: center; fontSize: 10; letterSpacing: 1.5; color: preset == p.n ? #0a0002 : #ffb3c0 }
           }
         }
       }

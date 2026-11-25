@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <clipPath id="tile">
+      <rect x="3" y="3" width="250" height="250" rx="54"/>
+    </clipPath>
+    <clipPath id="visorClip">
+      <path d="M81 105 L106 102 L128 105 L150 102 L175 105 L169 124 C164 130 153 131 141 127 L131 120 L125 120 L115 127 C103 131 92 130 87 124 Z"/>
+    </clipPath>
+    <mask id="sunMask">
+      <rect width="256" height="256" fill="#ffffff"/>
+      <rect x="40" y="123" width="176" height="3.5" fill="#000000"/>
+      <rect x="40" y="132" width="176" height="5" fill="#000000"/>
+      <rect x="40" y="143" width="176" height="7" fill="#000000"/>
+      <rect x="40" y="156" width="176" height="9" fill="#000000"/>
+      <rect x="40" y="170" width="176" height="24" fill="#000000"/>
+    </mask>
+    <radialGradient id="skyGlow" cx="50%" cy="43%" r="50%">
+      <stop offset="0%" stop-color="#ff2ae6" stop-opacity="0.38"/>
+      <stop offset="54%" stop-color="#5c1076" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#05000e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff099"/>
+      <stop offset="18%" stop-color="#ffaa00"/>
+      <stop offset="58%" stop-color="#ff2ae6"/>
+      <stop offset="100%" stop-color="#5c1076"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e053b" stop-opacity="0.82"/>
+      <stop offset="100%" stop-color="#05000e" stop-opacity="0.98"/>
+    </linearGradient>
+    <linearGradient id="jacket" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1d0638"/>
+      <stop offset="60%" stop-color="#0c021b"/>
+      <stop offset="100%" stop-color="#05000e"/>
+    </linearGradient>
+    <linearGradient id="face" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2a0b4a"/>
+      <stop offset="52%" stop-color="#120426"/>
+      <stop offset="100%" stop-color="#090218"/>
+    </linearGradient>
+    <linearGradient id="hair" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2c074a"/>
+      <stop offset="55%" stop-color="#120324"/>
+      <stop offset="100%" stop-color="#070012"/>
+    </linearGradient>
+    <linearGradient id="visor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#06254a"/>
+      <stop offset="45%" stop-color="#1a0742"/>
+      <stop offset="62%" stop-color="#ff2ae6"/>
+      <stop offset="88%" stop-color="#ffaa00"/>
+      <stop offset="100%" stop-color="#4d096b"/>
+    </linearGradient>
+    <linearGradient id="rimOuter" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff2ae6"/>
+      <stop offset="50%" stop-color="#ff66ef"/>
+      <stop offset="100%" stop-color="#ff2ae6"/>
+    </linearGradient>
+    <linearGradient id="rimInner" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00f0ff"/>
+      <stop offset="55%" stop-color="#70f8ff"/>
+      <stop offset="100%" stop-color="#00f0ff"/>
+    </linearGradient>
+    <linearGradient id="streakCyan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e8ffff" stop-opacity="0.96"/>
+      <stop offset="48%" stop-color="#00f0ff" stop-opacity="0.88"/>
+      <stop offset="100%" stop-color="#ffaa00" stop-opacity="0.86"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="254" height="254" rx="56" fill="#05000e"/>
+  <g clip-path="url(#tile)">
+    <rect width="256" height="256" fill="#05000e"/>
+    <rect width="256" height="256" fill="url(#skyGlow)"/>
+    <g fill="#f7e8ff">
+      <circle cx="38" cy="46" r="1.5" opacity="0.8"/>
+      <circle cx="58" cy="32" r="1.1" opacity="0.55"/>
+      <circle cx="216" cy="44" r="1.6" opacity="0.85"/>
+      <circle cx="198" cy="28" r="1.0" opacity="0.5"/>
+      <circle cx="32" cy="96" r="1.1" opacity="0.55"/>
+      <circle cx="226" cy="92" r="1.2" opacity="0.6"/>
+    </g>
+    <path d="M42 64 L44 70 L50 72 L44 74 L42 80 L40 74 L34 72 L40 70 Z" fill="#00f0ff" opacity="0.88"/>
+    <path d="M214 68 L215.5 72 L219.5 73.5 L215.5 75 L214 79 L212.5 75 L208.5 73.5 L212.5 72 Z" fill="#ffaa00" opacity="0.88"/>
+    <circle cx="128" cy="110" r="76" fill="url(#sun)" mask="url(#sunMask)"/>
+    <rect x="0" y="175" width="256" height="81" fill="url(#floor)"/>
+    <g stroke="#00f0ff" fill="none">
+      <line x1="0" y1="175" x2="256" y2="175" stroke="#ff2ae6" stroke-width="4.5" opacity="0.44"/>
+      <line x1="0" y1="175" x2="256" y2="175" stroke="#00f0ff" stroke-width="2" opacity="0.95"/>
+      <line x1="0" y1="184" x2="256" y2="184" stroke-width="1.1" opacity="0.48"/>
+      <line x1="0" y1="195" x2="256" y2="195" stroke-width="1.25" opacity="0.58"/>
+      <line x1="0" y1="209" x2="256" y2="209" stroke-width="1.45" opacity="0.68"/>
+      <line x1="0" y1="226" x2="256" y2="226" stroke-width="1.7" opacity="0.78"/>
+      <line x1="0" y1="246" x2="256" y2="246" stroke-width="1.9" opacity="0.85"/>
+      <line x1="128" y1="175" x2="128" y2="256" stroke-width="1.3" opacity="0.55"/>
+      <line x1="106" y1="175" x2="72" y2="256" stroke-width="1.3" opacity="0.55"/>
+      <line x1="150" y1="175" x2="184" y2="256" stroke-width="1.3" opacity="0.55"/>
+      <line x1="84" y1="175" x2="16" y2="256" stroke-width="1.4" opacity="0.62"/>
+      <line x1="172" y1="175" x2="240" y2="256" stroke-width="1.4" opacity="0.62"/>
+      <line x1="62" y1="175" x2="-44" y2="256" stroke-width="1.4" opacity="0.62"/>
+      <line x1="194" y1="175" x2="300" y2="256" stroke-width="1.4" opacity="0.62"/>
+    </g>
+    <path d="M34 256 L48 214 L78 195 L82 162 L106 182 L150 182 L174 162 L178 195 L208 214 L222 256 Z" fill="url(#jacket)"/>
+    <path d="M36 256 L49 214 L78 195 L82 162" fill="none" stroke="#ff2ae6" stroke-width="2.7" stroke-linejoin="round"/>
+    <path d="M220 256 L207 214 L178 195 L174 162" fill="none" stroke="#00f0ff" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M82 162 L107 185 L124 238 L108 242 L74 198 Z" fill="#0d0422" stroke="#00f0ff" stroke-width="2.3" stroke-linejoin="round"/>
+    <path d="M174 162 L149 185 L132 238 L148 242 L182 198 Z" fill="#0d0422" stroke="#00f0ff" stroke-width="2.3" stroke-linejoin="round"/>
+    <path d="M108 186 L128 246 L148 186 Z" fill="#060012"/>
+    <line x1="117" y1="212" x2="139" y2="212" stroke="#ff2ae6" stroke-width="2" stroke-linecap="round" opacity="0.88"/>
+    <line x1="121" y1="222" x2="135" y2="222" stroke="#ffaa00" stroke-width="2" stroke-linecap="round" opacity="0.88"/>
+    <path d="M110 162 L146 162 L149 194 L128 214 L107 194 Z" fill="#140529"/>
+    <path d="M110 166 L146 166 L128 190 Z" fill="#05000e" opacity="0.84"/>
+    <path d="M88 94 L87 125 L94 150 L114 173 L128 179 L142 173 L162 150 L169 125 L168 94 L152 72 L104 72 Z" fill="url(#face)"/>
+    <path d="M88 124 L95 150 L114 173 L127 178" fill="none" stroke="#ff2ae6" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M168 124 L161 150 L142 173 L129 178" fill="none" stroke="#00f0ff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M94 134 L106 144 L100 156" fill="none" stroke="#ff2ae6" stroke-width="1.3" opacity="0.52"/>
+    <path d="M162 134 L150 144 L156 156" fill="none" stroke="#00f0ff" stroke-width="1.3" opacity="0.52"/>
+    <path d="M128 124 L124 140 L133 141" fill="none" stroke="#ff5cee" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" opacity="0.75"/>
+    <path d="M83 108 C79 84 85 56 112 43 C136 33 164 38 183 56 L171 66 L186 76 L173 91 L172 110 L165 95 L146 80 L124 87 L106 79 L90 96 Z" fill="url(#hair)"/>
+    <path d="M83 104 C80 80 87 55 113 43 C137 33 163 38 182 55" fill="none" stroke="#ff2ae6" stroke-width="2.9" stroke-linecap="round"/>
+    <path d="M95 66 C115 51 144 48 170 62" fill="none" stroke="#ff9af5" stroke-width="2.1" stroke-linecap="round" opacity="0.9"/>
+    <path d="M104 75 C124 64 149 64 174 78" fill="none" stroke="#ff2ae6" stroke-width="1.7" stroke-linecap="round" opacity="0.82"/>
+    <path d="M80 105 L106 102 L128 105 L150 102 L176 105 L170 125 C165 132 153 133 141 129 L131 121 L125 121 L115 129 C103 133 91 132 86 125 Z" fill="url(#visor)" stroke="#f7e8ff" stroke-width="1.9" stroke-linejoin="round"/>
+    <g clip-path="url(#visorClip)">
+      <rect x="78" y="115" width="100" height="2.5" fill="#ffaa00" opacity="0.9"/>
+      <polygon points="88,100 102,100 90,134 78,134" fill="url(#streakCyan)" opacity="0.86"/>
+      <polygon points="108,100 115,100 103,134 97,134" fill="#ffdd55" opacity="0.82"/>
+      <polygon points="136,100 150,100 138,134 126,134" fill="url(#streakCyan)" opacity="0.84"/>
+      <polygon points="156,100 163,100 151,134 145,134" fill="#ff2ae6" opacity="0.8"/>
+    </g>
+    <path d="M80 105 L106 102 L128 105 L150 102 L176 105" fill="none" stroke="#00f0ff" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M117 156 L130 156 Q138 155 143 150" fill="none" stroke="#ffaa00" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M125 161 Q130 162 135 160" fill="none" stroke="#ff2ae6" stroke-width="1.3" stroke-linecap="round" opacity="0.75"/>
+  </g>
+  <rect x="2.5" y="2.5" width="251" height="251" rx="54.5" fill="none" stroke="url(#rimOuter)" stroke-width="3"/>
+  <rect x="7.5" y="7.5" width="241" height="241" rx="49.5" fill="none" stroke="url(#rimInner)" stroke-width="1.4" opacity="0.88"/>
+</svg>

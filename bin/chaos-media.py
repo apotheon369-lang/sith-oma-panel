@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-LIB_DIR = Path.home() / "Music/ChaosLibrary"
+LIB_DIR = Path.home() / "Music" / "ChaosLibrary"
 SCAN_DIRS = [
     LIB_DIR,
     Path.home() / "Music",
@@ -17,6 +17,7 @@ SCAN_DIRS = [
     Path("/sdcard/Music"),
     Path("/sdcard/Download"),
     Path("/sdcard/Movies"),
+    Path("/sdcard/Void Music"),
 ]
 AUDIO_EXTS = {".mp3", ".m4a", ".wav", ".flac", ".ogg", ".opus", ".aac"}
 VIDEO_EXTS = {".mp4", ".webm", ".mkv", ".mov"}
@@ -28,8 +29,8 @@ STATE_FILE = Path("/tmp/chaos-player-state.json")
 CACHE_FILE = Path("/tmp/chaos-library-cache.json")
 GDRIVE_STATE = Path("/tmp/chaos-gdrive.json")
 GDRIVE_REMOTE = "gdrive:ChaosMusicVault"
-GDRIVE_ACCOUNT = ""  # optional: your own Google account
-RCLONE_CONF = Path.home() / ".config/rclone/rclone.conf"
+GDRIVE_ACCOUNT = os.environ.get("GDRIVE_ACCOUNT", "")
+RCLONE_CONF = Path.home() / ".config" / "rclone" / "rclone.conf"
 UPLOAD_PID = "/tmp/chaos-upload.pid"
 UPLOAD_PORT = 8765
 

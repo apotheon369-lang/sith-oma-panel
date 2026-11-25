@@ -1,6 +1,6 @@
 [panel]
 name = "Sith OMA"
 type = "panel"
-version = "1.0.0"
-description = "Red/black AMOLED Sith theme: calendar, Obsidian command deck, Infernal face, Lord Maul music panel, drawer, keybar, controls."
+version = "2.0.0"
+description = "Red/black AMOLED Sith theme & workspace: 00-infernal face, cardboard standalone app, calendar, command deck, music panel, fleet graph, nexus, cyber-range, drawer, keybar, themes, and full backend scripts."
 requires = { pacman = ["python", "mpv", "btop"] }

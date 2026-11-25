@@ -4,10 +4,6 @@ panel "controls" {
   // Like the drawer it's yours to change: ask your agent to edit it.
   meta { description: "Swipe down for the phone's switches, volume, media, the next alarm and your notifications"; version: "1.1"; license: "MIT"; category: "system"; owl: 19 }
   fps: (md.playing == true || dragging != "") ? 24 : 4
-  // Shared theme switch (set from the infernal face pill): "infernal" or "future"
-  source uiCfg = file("~/.config/omalauncher/ui-mode.json") json optional
-  let futOn = (uiCfg.mode ?? "infernal") == "future"
-  let uiFont = futOn ? "~/.local/share/fonts/RussoOne-Regular.ttf" : "~/.local/share/fonts/GrenzeGotisch.ttf"
   asset gear = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTkuMTQsMTIuOTRjMC4wNCwtMC4zIDAuMDYsLTAuNjEgMC4wNiwtMC45NGMwLC0wLjMyIC0wLjAyLC0wLjY0IC0wLjA3LC0wLjk0bDIuMDMsLTEuNThjMC4xOCwtMC4xNCAwLjIzLC0wLjQxIDAuMTIsLTAuNjFsLTEuOTIsLTMuMzJjLTAuMTIsLTAuMjIgLTAuMzcsLTAuMjkgLTAuNTksLTAuMjJsLTIuMzksMC45NmMtMC41LC0wLjM4IC0xLjAzLC0wLjcgLTEuNjIsLTAuOTRMMTQuNCwyLjgxYy0wLjA0LC0wLjI0IC0wLjI0LC0wLjQxIC0wLjQ4LC0wLjQxaC0zLjg0Yy0wLjI0LDAgLTAuNDMsMC4xNyAtMC40NywwLjQxTDkuMjUsNS4zNUM4LjY2LDUuNTkgOC4xMiw1LjkyIDcuNjMsNi4yOUw1LjI0LDUuMzNjLTAuMjIsLTAuMDggLTAuNDcsMCAtMC41OSwwLjIyTDIuNzQsOC44N0MyLjYyLDkuMDggMi42Niw5LjM0IDIuODYsOS40OGwyLjAzLDEuNThDNC44NCwxMS4zNiA0LjgsMTEuNjkgNC44LDEyczAuMDIsMC42NCAwLjA3LDAuOTRsLTIuMDMsMS41OGMtMC4xOCwwLjE0IC0wLjIzLDAuNDEgLTAuMTIsMC42MWwxLjkyLDMuMzJjMC4xMiwwLjIyIDAuMzcsMC4yOSAwLjU5LDAuMjJsMi4zOSwtMC45NmMwLjUsMC4zOCAxLjAzLDAuNyAxLjYyLDAuOTRsMC4zNiwyLjU0YzAuMDUsMC4yNCAwLjI0LDAuNDEgMC40OCwwLjQxaDMuODRjMC4yNCwwIDAuNDQsLTAuMTcgMC40NywtMC40MWwwLjM2LC0yLjU0YzAuNTksLTAuMjQgMS4xMywtMC41NiAxLjYyLC0wLjk0bDIuMzksMC45NmMwLjIyLDAuMDggMC40NywwIDAuNTksLTAuMjJsMS45MiwtMy4zMmMwLjEyLC0wLjIyIDAuMDcsLTAuNDcgLTAuMTIsLTAuNjFMMTkuMTQsMTIuOTR6TTEyLDE1LjZjLTEuOTgsMCAtMy42LC0xLjYyIC0zLjYsLTMuNnMxLjYyLC0zLjYgMy42LC0zLjZzMy42LDEuNjIgMy42LDMuNlMxMy45OCwxNS42IDEyLDE1LjZ6Ii8+PC9zdmc+"
   source m = android.modes
   source v = android.volume
@@ -18,7 +14,7 @@ panel "controls" {
   source n = android.notifications
   source now = clock every 30s
 
-  // How much the panel covers home: 1 solid, 0 clear. Its sections have a (futOn ? #02080b : background) of their own, so they stay readable.
+  // How much the panel covers home: 1 solid, 0 clear. Its sections have a background of their own, so they stay readable.
   opacity: 0.97
 
   // The notification being answered, by key: its reply field shows under it.
@@ -53,7 +49,7 @@ panel "controls" {
   let clearable = count(n.items ?? [], i => i.clearable)
   // What's playing, as the now playing widget shows it: art, the app with a live equalizer and drawn buttons.
   // Drawn, not glyphs: the launcher's icon font only carries weather symbols. Play/pause is a solid disc with the
-  // glyph in the (futOn ? #02080b : background) color.
+  // glyph in the background color.
   component Control(kind, big = false) {
     Box {
       size: big ? 44 : 36
@@ -63,18 +59,18 @@ panel "controls" {
         let cy = height / 2
         let d = min(width, height)
         if kind == "toggle" {
-          circle(cx, cy, d / 2, fill: (futOn ? #e6f8ff : foreground))
+          circle(cx, cy, d / 2, fill: foreground)
           if md.playing == true {
-            rect(cx - d * 0.15, cy - d * 0.18, d * 0.11, d * 0.36, radius: d * 0.03, fill: (futOn ? #02080b : background))
-            rect(cx + d * 0.04, cy - d * 0.18, d * 0.11, d * 0.36, radius: d * 0.03, fill: (futOn ? #02080b : background))
+            rect(cx - d * 0.15, cy - d * 0.18, d * 0.11, d * 0.36, radius: d * 0.03, fill: background)
+            rect(cx + d * 0.04, cy - d * 0.18, d * 0.11, d * 0.36, radius: d * 0.03, fill: background)
           } else {
             // The triangle's centroid sits right of its box: nudge it so it looks centered.
-            path([[cx - d * 0.12, cy - d * 0.2], [cx + d * 0.21, cy], [cx - d * 0.12, cy + d * 0.2]], closed: true, fill: (futOn ? #02080b : background))
+            path([[cx - d * 0.12, cy - d * 0.2], [cx + d * 0.21, cy], [cx - d * 0.12, cy + d * 0.2]], closed: true, fill: background)
           }
         } else {
           let dir = kind == "next" ? 1 : -1
-          path([[cx - d * 0.19 * dir, cy - d * 0.2], [cx + d * 0.1 * dir, cy], [cx - d * 0.19 * dir, cy + d * 0.2]], closed: true, fill: (futOn ? #e6f8ff : foreground))
-          rect(dir > 0 ? cx + d * 0.1 : cx - d * 0.18, cy - d * 0.2, d * 0.08, d * 0.4, radius: d * 0.03, fill: (futOn ? #e6f8ff : foreground))
+          path([[cx - d * 0.19 * dir, cy - d * 0.2], [cx + d * 0.1 * dir, cy], [cx - d * 0.19 * dir, cy + d * 0.2]], closed: true, fill: foreground)
+          rect(dir > 0 ? cx + d * 0.1 : cx - d * 0.18, cy - d * 0.2, d * 0.08, d * 0.4, radius: d * 0.03, fill: foreground)
         }
       }
     }
@@ -87,7 +83,7 @@ panel "controls" {
       height: 12
       for i in range(3) {
         let h = 3 + (sin(time * (5 + i * 1.7) + i * 2) * 0.5 + 0.5) * (height - 3)
-        rect(i * 5, height - h, 3, h, radius: 1, color: (futOn ? #38d6ff : accent))
+        rect(i * 5, height - h, 3, h, radius: 1, color: accent)
       }
     }
   }
@@ -102,10 +98,10 @@ panel "controls" {
       if src != null {
         Image { src: src; fit: cover; fill: true }
       } else {
-        // Gradients only fill inside a Canvas, not as a (futOn ? #02080b : background).
+        // Gradients only fill inside a Canvas, not as a background.
         Canvas {
-          rect(0, 0, width, height, fill: linear(0, 0, width, height, [alpha((futOn ? #38d6ff : accent), 0.55), alpha((futOn ? #004b5c : #5c0011), 0.55)]))
-          text("♪", width / 2, height / 2, size: d * 0.45, align: center, color: alpha((futOn ? #e6f8ff : foreground), 0.85))
+          rect(0, 0, width, height, fill: linear(0, 0, width, height, [alpha(accent, 0.55), alpha(#5c0011, 0.55)]))
+          text("♪", width / 2, height / 2, size: d * 0.45, align: center, color: alpha(foreground, 0.85))
         }
       }
     }
@@ -120,16 +116,16 @@ panel "controls" {
     Row {
       fill: width
       align: center
-      Text { font: uiFont; text: "control"; fontSize: 28; color: (futOn ? #38d6ff : accent); weight: 1 }
+      Text { text: "control"; fontSize: 28; color: accent; weight: 1 }
       // The drawer's settings button: settings › system updates lists what the dot counts.
       Box {
         size: 44
         radius: 22 * corners
-        background: (futOn ? #08161c : surface)
+        background: surface
         align: center
         onTap: launcher("settings")
-        Image { src: gear; size: 22; tint: (futOn ? #38d6ff : accent); label: "settings" }
-        Box { visible: d.updates > 0; align: topEnd; size: 44; padding: 8; Box { size: 8; radius: 4; background: (futOn ? #38d6ff : red) } }
+        Image { src: gear; size: 22; tint: accent; label: "settings" }
+        Box { visible: d.updates > 0; align: topEnd; size: 44; padding: 8; Box { size: 8; radius: 4; background: red } }
       }
     }
 
@@ -137,9 +133,9 @@ panel "controls" {
       fill: width
       gap: 8
       padding: [14, 12]
-      background: (futOn ? #08161c : surface)
+      background: surface
       radius: 8 * corners
-      Text { font: uiFont; text: "toggles"; style: label; color: futOn ? #2a7f99 : null }
+      Text { text: "toggles"; style: label }
       // Under the toggles, as wide as the card's content.
       Popup {
         visible: menu == "torch"
@@ -147,21 +143,21 @@ panel "controls" {
         width: wide - 56
         gap: 8
         padding: [12, 10]
-        Text { font: uiFont; text: "torch brightness"; style: label; color: futOn ? #2a7f99 : null }
+        Text { text: "torch brightness"; style: label }
         if m.torchLevel != null {
           // Dragging turns it on at that brightness; a tap on torch then switches it on and off at it.
           Row {
             fill: width
             align: center
             gap: 4
-            Text { font: uiFont; text: "["; color: (futOn ? #38d6ff : accent) }
-            Slider { value: m.torchLevel; min: 5; max: 100; step: 5; live: true; color: (futOn ? #38d6ff : accent); track: (futOn ? #02080b : background); weight: 1; onChange: torch(value) }
-            Text { font: uiFont; text: "]"; color: (futOn ? #38d6ff : accent) }
-            Text { font: uiFont; text: "${m.torchLevel}%"; color: (futOn ? #44d1ff : #ff4455); width: 48; align: end }
+            Text { text: "["; color: accent }
+            Slider { value: m.torchLevel; min: 5; max: 100; step: 5; live: true; color: accent; track: background; weight: 1; onChange: torch(value) }
+            Text { text: "]"; color: accent }
+            Text { text: "${m.torchLevel}%"; color: #ff4455; width: 48; align: end }
           }
-          Text { font: uiFont; text: "tap torch to switch it on and off at this brightness"; style: small; color: (futOn ? #5f8a99 : muted) }
+          Text { text: "tap torch to switch it on and off at this brightness"; style: small; color: muted }
         } else {
-          Text { font: uiFont; text: "this phone's torch has one brightness"; style: small; color: (futOn ? #5f8a99 : muted) }
+          Text { text: "this phone's torch has one brightness"; style: small; color: muted }
         }
       }
       Popup {
@@ -170,7 +166,7 @@ panel "controls" {
         width: wide - 56
         gap: 0
         padding: [0, 2]
-        Text { font: uiFont; text: "do not disturb"; style: label; color: futOn ? #2a7f99 : null; padding: [12, 8, 12, 4] }
+        Text { text: "do not disturb"; style: label; padding: [12, 8, 12, 4] }
         for l in dndLevels {
           Row {
             fill: width
@@ -178,12 +174,12 @@ panel "controls" {
             align: top
             padding: [12, 8]
             onTap: { haptic(); menu = ""; dnd(l.level) }
-            Text { font: uiFont; text: m.dndAllows == l.level ? "●" : "○"; color: m.dndAllows == l.level ? (futOn ? #1ed1ff : #ff1e38) : (futOn ? #5f8a99 : muted) }
+            Text { text: m.dndAllows == l.level ? "●" : "○"; color: m.dndAllows == l.level ? #ff1e38 : muted }
             Column {
               gap: 2
               weight: 1
-              Text { font: uiFont; text: l.name; color: m.dndAllows == l.level ? (futOn ? #44d1ff : #ff4455) : (futOn ? #e6f8ff : foreground) }
-              Text { font: uiFont; text: l.about; style: small; color: (futOn ? #5f8a99 : muted) }
+              Text { text: l.name; color: m.dndAllows == l.level ? #ff4455 : foreground }
+              Text { text: l.about; style: small; color: muted }
             }
           }
         }
@@ -213,12 +209,12 @@ panel "controls" {
                 menu = t.act
               }
             }
-            Text { font: uiFont; text: t.on ? "●" : "○"; color: t.on ? (futOn ? #1ed1ff : #ff1e38) : (futOn ? #5f8a99 : muted) }
+            Text { text: t.on ? "●" : "○"; color: t.on ? #ff1e38 : muted }
             Column {
               gap: 0
               weight: 1
-              Text { font: uiFont; text: t.name; color: t.on ? (futOn ? #44d1ff : #ff4455) : (futOn ? #e6f8ff : foreground); maxLines: 1 }
-              Text { font: uiFont; text: t.sub; style: small; color: (futOn ? #5f8a99 : muted); maxLines: 1 }
+              Text { text: t.name; color: t.on ? #ff4455 : foreground; maxLines: 1 }
+              Text { text: t.sub; style: small; color: muted; maxLines: 1 }
             }
           }
         }
@@ -229,18 +225,18 @@ panel "controls" {
       fill: width
       gap: 8
       padding: [14, 12]
-      background: (futOn ? #08161c : surface)
+      background: surface
       radius: 8 * corners
-      Text { font: uiFont; text: "levels"; style: label; color: futOn ? #2a7f99 : null }
+      Text { text: "levels"; style: label }
       Row {
         fill: width
         align: center
         gap: 4
-        Text { font: uiFont; text: "volume"; width: 72; color: futOn ? #9eeaff : null }
-        Text { font: uiFont; text: "["; color: (futOn ? #38d6ff : accent) }
-        Slider { value: v.muted ? 0 : v.level; step: 100 / (v.steps ?? 15); live: true; color: (futOn ? #38d6ff : accent); track: (futOn ? #02080b : background); weight: 1; onChange: volume(value) }
-        Text { font: uiFont; text: "]"; color: (futOn ? #38d6ff : accent) }
-        Text { font: uiFont; text: v.muted ? "♪ off" : "♪ on"; color: v.muted ? muted : (futOn ? #44d1ff : #ff4455); width: 56; align: end; onTap: volume("toggle") }
+        Text { text: "volume"; width: 72 }
+        Text { text: "["; color: accent }
+        Slider { value: v.muted ? 0 : v.level; step: 100 / (v.steps ?? 15); live: true; color: accent; track: background; weight: 1; onChange: volume(value) }
+        Text { text: "]"; color: accent }
+        Text { text: v.muted ? "♪ off" : "♪ on"; color: v.muted ? muted : #ff4455; width: 56; align: end; onTap: volume("toggle") }
       }
     }
 
@@ -250,9 +246,9 @@ panel "controls" {
       fill: width
       gap: 8
       padding: [14, 12]
-      background: (futOn ? #08161c : surface)
+      background: surface
       radius: 8 * corners
-      Text { font: uiFont; text: "media"; style: label; color: futOn ? #2a7f99 : null }
+      Text { text: "media"; style: label }
       Row {
         fill: width
         align: center
@@ -268,10 +264,10 @@ panel "controls" {
             if md.playing == true {
               Bars { }
             }
-            Text { font: uiFont; text: lower(md.app ?? ""); style: label; color: md.playing == true ? accent : (futOn ? #5f8a99 : muted); maxLines: 1; weight: 1 }
+            Text { text: lower(md.app ?? ""); style: label; color: md.playing == true ? accent : muted; maxLines: 1; weight: 1 }
           }
-          Text { font: uiFont; text: md.title; bold: true; maxLines: 1; color: futOn ? #9eeaff : null }
-          Text { font: uiFont; text: md.artist ?? ""; style: small; color: (futOn ? #5f8a99 : muted); maxLines: 1 }
+          Text { text: md.title; bold: true; maxLines: 1 }
+          Text { text: md.artist ?? ""; style: small; color: muted; maxLines: 1 }
         }
         Control { kind: "previous" }
         Control { kind: "toggle"; big: true }
@@ -284,36 +280,35 @@ panel "controls" {
       fill: width
       gap: 8
       padding: [14, 12]
-      background: (futOn ? #08161c : surface)
+      background: surface
       radius: 8 * corners
-      Text { font: uiFont; text: "next alarm"; style: label; color: futOn ? #2a7f99 : null }
+      Text { text: "next alarm"; style: label }
       Row {
         fill: width
         onTap: { if al.app != null { androidApp(al.app) } }
-        Text { font: uiFont; text: fmtTime(al.time, "EEE HH:mm"); weight: 1; color: futOn ? #9eeaff : null }
-        Text { font: uiFont; text: "in " + fmtDuration(al.time - now); color: (futOn ? #5f8a99 : muted) }
+        Text { text: fmtTime(al.time, "EEE HH:mm"); weight: 1 }
+        Text { text: "in " + fmtDuration(al.time - now); color: muted }
       }
     }
 
     if !n.available {
-      Spacer { height: 1; fill: width; background: futOn ? #0d3a47 : border }
+      Spacer { height: 1; fill: width; background: border }
       // Without access, notification(...) opens the setting that grants it.
-      Text { font: uiFont; text: "[ allow notification access ]"; color: (futOn ? #38d6ff : accent); onTap: notification("open", "") }
+      Text { text: "[ allow notification access ]"; color: accent; onTap: notification("open", "") }
     } else if (n.count ?? 0) > 0 || snoozedUntil > now {
-      Spacer { height: 1; fill: width; background: futOn ? #0d3a47 : border }
+      Spacer { height: 1; fill: width; background: border }
       Row {
         fill: width
         align: center
-        Text { font: uiFont; text: "notifications"; fontSize: 22; color: (futOn ? #38d6ff : accent); weight: 1 }
+        Text { text: "notifications"; fontSize: 22; color: accent; weight: 1 }
         // Hidden for an hour, then back: Android shows each again when its time is up. One that comes in meanwhile shows.
         if snoozedUntil > now {
-          Text { font: uiFont; text: "back in " + (snoozeLeft >= 60 ? "1h" : "${snoozeLeft}m") + " "; color: (futOn ? #5f8a99 : muted) }
-          Text { font: uiFont; text: "[ unsnooze ]"; color: (futOn ? #38d6ff : accent); onTap: { haptic(); notification("unsnoozeAll"); snoozedUntil = 0 } }
+          Text { text: "back in " + (snoozeLeft >= 60 ? "1h" : "${snoozeLeft}m") + " "; color: muted }
+          Text { text: "[ unsnooze ]"; color: accent; onTap: { haptic(); notification("unsnoozeAll"); snoozedUntil = 0 } }
         } else {
           Text {
-            font: uiFont
             text: "[ snooze 1h ]"
-            color: clearable > 0 ? (futOn ? #38d6ff : accent) : (futOn ? #5f8a99 : muted)
+            color: clearable > 0 ? accent : muted
             onTap: {
               if clearable > 0 {
                 notification("snoozeAll", 3600)
@@ -362,14 +357,13 @@ panel "controls" {
               notification("dismiss", item.key)
             }
           }
-          Text { font: uiFont; text: lower(item.app); color: (futOn ? #5f8a99 : muted); width: 84; maxLines: 1 }
+          Text { text: lower(item.app); color: muted; width: 84; maxLines: 1 }
           Text {
-            font: uiFont
-            spans: [{text: item.title, color: (futOn ? #e6f8ff : foreground)}, item.text != "" ? "  " : "", {text: item.text, color: (futOn ? #5f8a99 : muted)}]
+            spans: [{text: item.title, color: foreground}, item.text != "" ? "  " : "", {text: item.text, color: muted}]
             maxLines: 2
             weight: 1
           }
-          Text { font: uiFont; text: fmtAgo(item.time, now); style: small; color: (futOn ? #5f8a99 : muted); width: 36; align: end }
+          Text { text: fmtAgo(item.time, now); style: small; color: muted; width: 36; align: end }
         }
         // Its buttons, as the shade shows them: one that takes text opens a field for the answer.
         if len(item.actions) > 0 {
@@ -379,10 +373,9 @@ panel "controls" {
             padding: [94, 0, 0, 0]
             for a, i in item.actions {
               Text {
-                font: uiFont
                 text: "[ ${lower(a.title)} ]"
                 style: small
-                color: (futOn ? #38d6ff : accent)
+                color: accent
                 maxLines: 1
                 onTap: {
                   if a.reply {
@@ -415,9 +408,8 @@ panel "controls" {
       Row {
         fill: width
         Spacer { weight: 1 }
-        Text { font: uiFont; text: "[ clear ]"; color: (futOn ? #38d6ff : accent); onTap: notification("clear") }
+        Text { text: "[ clear ]"; color: accent; onTap: notification("clear") }
       }
     }
   }
 }
-

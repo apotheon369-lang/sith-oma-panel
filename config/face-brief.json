@@ -1,0 +1,13 @@
+{
+  "seq": 0,
+  "ts": "00:00",
+  "mode": "infernal",
+  "busy": false,
+  "verdict": "NOMINAL",
+  "headline": "SYSTEM STANDBY",
+  "diag": "BAT 100% · RAM OK · LOAD NOMINAL · NET OK",
+  "mail": "INBOX STANDBY",
+  "unread": 0,
+  "mailItems": [],
+  "summary": "System initialized and awaiting command."
+}

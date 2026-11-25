@@ -1,0 +1,92 @@
+#!/usr/bin/python
+# Send the saved dictation and publish progress for both widget views.
+import fcntl
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+import uuid
+
+home = Path.home()
+sys.path.insert(0, str(home / '.local/share/oma-voice'))
+from language import local
+
+cache = home / '.cache/oma-speak'
+status_file = cache / 'send-status.json'
+NO_TEXT = '請先開始語音輸入，停止後保存。'
+FAILED = '送出失敗'
+JSON_ONLY = '--json' in sys.argv[1:]
+
+
+def publish(value):
+    cache.mkdir(parents=True, exist_ok=True, mode=0o700)
+    temporary = status_file.with_name(status_file.name + '.' + uuid.uuid4().hex + '.tmp')
+    temporary.write_text(json.dumps(value, ensure_ascii=False))
+    temporary.chmod(0o600)
+    temporary.replace(status_file)
+    if not JSON_ONLY or value.get('phase') != 'sending':
+        print(json.dumps(value, ensure_ascii=False), flush=True)
+
+
+def failure(message, detail=''):
+    return {'phase': 'failed', 'ok': False, 'error': detail or message,
+            'error_ui': local(message), 'request_id': uuid.uuid4().hex}
+
+
+def main():
+    flags = sys.argv[1:]
+    if any(flag not in ('--refined', '--json') for flag in flags) or len(flags) != len(set(flags)):
+        sys.exit('Usage: oma-send-dictation [--refined] [--json]')
+    refined = '--refined' in flags
+    try:
+        cache.mkdir(parents=True, exist_ok=True, mode=0o700)
+        with (cache / 'send.lock').open('w') as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                # The first click is still running. Keep its progress visible.
+                print(json.dumps({'ok': False, 'phase': 'busy', 'error_ui': local('送出進行中'),
+                                  'request_id': uuid.uuid4().hex}, ensure_ascii=False), flush=True)
+                return
+            try:
+                original = (cache / 'latest.txt').read_text().strip()
+                text = original
+                if refined:
+                    state = json.loads((cache / 'refine-status.json').read_text())
+                    if (state.get('phase') != 'ready' or
+                            state.get('source_hash') != hashlib.sha256(original.encode()).hexdigest()):
+                        publish(failure('請先整理目前文字'))
+                        return
+                    text = (cache / 'refined.txt').read_text().strip()
+                if not text:
+                    publish(failure(NO_TEXT))
+                    return
+                request_id = uuid.uuid4().hex
+                publish({'phase': 'sending', 'ok': None, 'request_id': request_id,
+                         'version': 'refined' if refined else 'original'})
+                result = subprocess.run([str(home / '.local/bin/oma-voice'), 'send', '--json', '--text', text],
+                                        capture_output=True, text=True, timeout=24)
+                try:
+                    response = json.loads(result.stdout)
+                except (ValueError, TypeError):
+                    response = failure(FAILED, result.stderr[-300:] or 'No JSON response')
+                if not isinstance(response, dict):
+                    response = failure(FAILED, 'Invalid JSON response')
+                if result.returncode or response.get('ok') is not True:
+                    response = failure(FAILED, response.get('error', '') or result.stderr[-300:]) | {
+                        'error_ui': response.get('error_ui') or local(FAILED)}
+                else:
+                    response['phase'] = 'sent'
+                    response['request_id'] = request_id
+                    response['version'] = 'refined' if refined else 'original'
+                publish(response)
+            except (OSError, subprocess.TimeoutExpired, ValueError) as error:
+                publish(failure(FAILED, type(error).__name__))
+    except OSError as error:
+        # A broken cache must still give run() a visible answer.
+        print(json.dumps(failure(FAILED, type(error).__name__), ensure_ascii=False), flush=True)
+
+
+if __name__ == '__main__':
+    main()

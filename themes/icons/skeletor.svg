@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <clipPath id="tile">
+      <rect x="2" y="2" width="252" height="252" rx="56"/>
+    </clipPath>
+    <radialGradient id="havocGlow" cx="50%" cy="42%" r="54%">
+      <stop offset="0%" stop-color="#b44aff" stop-opacity="0.34"/>
+      <stop offset="50%" stop-color="#3e0b66" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#06010d" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cowlGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2c094d"/>
+      <stop offset="55%" stop-color="#130324"/>
+      <stop offset="100%" stop-color="#06010d"/>
+    </linearGradient>
+    <linearGradient id="skullBone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f4e6be"/>
+      <stop offset="58%" stop-color="#b99fc9"/>
+      <stop offset="100%" stop-color="#4e3269"/>
+    </linearGradient>
+    <linearGradient id="hornCoils" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f4e6be"/>
+      <stop offset="48%" stop-color="#b44aff"/>
+      <stop offset="100%" stop-color="#280747"/>
+    </linearGradient>
+    <linearGradient id="gemFacet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="42%" stop-color="#eb9eff"/>
+      <stop offset="100%" stop-color="#b44aff"/>
+    </linearGradient>
+    <linearGradient id="rimOuter" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#b44aff"/>
+      <stop offset="50%" stop-color="#eb9eff"/>
+      <stop offset="100%" stop-color="#b44aff"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="1" y="1" width="254" height="254" rx="56" fill="#06010d"/>
+
+  <g clip-path="url(#tile)">
+    <rect width="256" height="256" fill="#06010d"/>
+    <rect width="256" height="256" fill="url(#havocGlow)"/>
+
+    <!-- Subtle Royal Havoc Halo Rings -->
+    <g fill="none">
+      <circle cx="128" cy="118" r="88" stroke="#b44aff" stroke-width="1.5" stroke-dasharray="14 8" opacity="0.4"/>
+      <circle cx="128" cy="118" r="76" stroke="#eb9eff" stroke-width="1.1" opacity="0.28"/>
+    </g>
+    <path d="M44 54 L46 60 L52 62 L46 64 L44 70 L42 64 L36 62 L42 60 Z" fill="#eb9eff" opacity="0.82"/>
+    <path d="M212 54 L214 60 L220 62 L214 64 L212 70 L210 64 L204 62 L210 60 Z" fill="#f4e6be" opacity="0.82"/>
+
+    <!-- Curled Havoc Ram Horns (Behind Cowl Rim) -->
+    <path d="M84 96 C62 72 34 78 32 108 C30 134 52 148 70 134 C78 128 74 114 62 114 C54 114 52 104 58 98 C66 92 78 100 84 112 Z" fill="url(#hornCoils)" stroke="#eb9eff" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M52 84 L58 94 M38 102 L48 106 M42 126 L54 122" stroke="#f4e6be" stroke-width="1.8" stroke-linecap="round" opacity="0.85"/>
+
+    <path d="M172 96 C194 72 222 78 224 108 C226 134 204 148 186 134 C178 128 182 114 194 114 C202 114 204 104 198 98 C190 92 178 100 172 112 Z" fill="url(#hornCoils)" stroke="#eb9eff" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M204 84 L198 94 M218 102 L208 106 M214 126 L202 122" stroke="#f4e6be" stroke-width="1.8" stroke-linecap="round" opacity="0.85"/>
+
+    <!-- Royal Ultraviolet Cowl & Cloak Shoulders -->
+    <path d="M26 256 L42 204 L76 178 L180 178 L214 204 L230 256 Z" fill="url(#cowlGrad)"/>
+    <path d="M28 256 L42 204 L76 178" fill="none" stroke="#b44aff" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M228 256 L214 204 L180 178" fill="none" stroke="#eb9eff" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M98 184 L128 232 L158 184" fill="none" stroke="#f4e6be" stroke-width="1.8" opacity="0.6" stroke-linejoin="round"/>
+    <polygon points="128,196 138,214 128,236 118,214" fill="#b44aff" stroke="#f4e6be" stroke-width="1.5"/>
+
+    <!-- Hooded Cowl Silhouette -->
+    <path d="M70 184 C64 132 76 70 128 36 C180 70 192 132 186 184 L160 166 C166 128 158 88 128 66 C98 88 90 128 96 166 Z" fill="url(#cowlGrad)" stroke="#eb9eff" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M84 166 C82 126 90 88 128 58 C166 88 174 126 172 166" fill="none" stroke="#b44aff" stroke-width="1.7" opacity="0.72"/>
+
+    <!-- Deep Shadow Cavity Inside Cowl -->
+    <path d="M92 166 C88 128 96 88 128 68 C160 88 168 128 164 166 Z" fill="#06010d"/>
+
+    <!-- Chiseled Bone Skull -->
+    <path d="M96 112 C96 86 110 74 128 74 C146 74 160 86 160 112 L156 136 L146 146 L144 168 L128 175 L112 168 L110 146 L100 136 Z" fill="url(#skullBone)" stroke="#f4e6be" stroke-width="1.9" stroke-linejoin="round"/>
+
+    <!-- Cavernous Eye Sockets & Blazing Magenta Pupils -->
+    <path d="M100 112 L122 118 L119 131 L102 126 Z" fill="#06010d" stroke="#b44aff" stroke-width="1.4" stroke-linejoin="round"/>
+    <circle cx="111" cy="121" r="3.4" fill="#eb9eff"/>
+    <circle cx="111" cy="121" r="1.4" fill="#ffffff"/>
+
+    <path d="M156 112 L134 118 L137 131 L154 126 Z" fill="#06010d" stroke="#b44aff" stroke-width="1.4" stroke-linejoin="round"/>
+    <circle cx="145" cy="121" r="3.4" fill="#eb9eff"/>
+    <circle cx="145" cy="121" r="1.4" fill="#ffffff"/>
+
+    <!-- Skull Nasal Cavity & Cheek Shading -->
+    <polygon points="128,128 133,141 128,139 123,141" fill="#06010d"/>
+    <path d="M102 138 L112 144" stroke="#4e3269" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M154 138 L144 144" stroke="#4e3269" stroke-width="1.8" stroke-linecap="round"/>
+
+    <!-- Clenched Bone Teeth -->
+    <path d="M113 152 L143 152 L141 166 L128 170 L115 166 Z" fill="#06010d"/>
+    <g stroke="#f4e6be" stroke-width="2" stroke-linecap="round">
+      <line x1="118" y1="154" x2="118" y2="165"/>
+      <line x1="124" y1="154" x2="124" y2="167"/>
+      <line x1="132" y1="154" x2="132" y2="167"/>
+      <line x1="138" y1="154" x2="138" y2="165"/>
+    </g>
+
+    <!-- Blazing Magenta Forehead Gem -->
+    <polygon points="128,45 138,58 128,72 118,58" fill="#eb9eff" opacity="0.4"/>
+    <polygon points="128,48 135,58 128,68 121,58" fill="url(#gemFacet)" stroke="#f4e6be" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M128 38 L130 55 L146 58 L130 61 L128 77 L126 61 L110 58 L126 55 Z" fill="#ffffff" opacity="0.88"/>
+  </g>
+
+  <rect x="2.5" y="2.5" width="251" height="251" rx="54.5" fill="none" stroke="url(#rimOuter)" stroke-width="3"/>
+  <rect x="7.5" y="7.5" width="241" height="241" rx="49.5" fill="none" stroke="#f4e6be" stroke-width="1.2" opacity="0.58"/>
+</svg>

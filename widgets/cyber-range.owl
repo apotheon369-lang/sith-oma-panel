@@ -1,0 +1,260 @@
+app "cyber range" {
+  meta {
+    owl: 22
+    description: "DEFENSIVE Cyber Range Deck — start/stop Web Lab v2.0 (127.0.0.1:8099), track 9/9 CTF flags & telemetry, and run ULTIMUS AI Safety / Over-Refusal benchmarks."
+    category: "tools"
+  }
+  requires { pacman: ["python"] }
+  title: ""
+  edge: true
+
+  source hub   = file("~/.config/omalauncher/hub.json") json optional
+  source d     = cmd("sith-cyber-range.py status") every 5s json timeout 8s
+  source bat   = android.battery
+  source modes = android.modes
+
+  let curMode     = hub.mode ?? "infernal"
+  let ecoOn       = (hub.eco ?? false) == true
+  let saver       = ((bat.level ?? 100) < 20 && !((bat.charging ?? false) == true)) || (modes.saver ?? false) == true
+  let T           = hub.tok ?? {}
+  let tc          = T.copy ?? {}
+  let cPri        = ecoOn ? (T.ecoPri  != null ? rgb(T.ecoPri[0],  T.ecoPri[1],  T.ecoPri[2])  : #b8263a) : (T.pri != null ? rgb(T.pri[0], T.pri[1], T.pri[2]) : #ff1e3c)
+  let cHot        = ecoOn ? (T.ecoHot  != null ? rgb(T.ecoHot[0],  T.ecoHot[1],  T.ecoHot[2])  : #d94c5e) : (T.hot != null ? rgb(T.hot[0], T.hot[1], T.hot[2]) : #ff8596)
+  let cSec        = T.sec   != null ? rgb(T.sec[0],   T.sec[1],   T.sec[2])   : #3d9bff
+  let cDeep       = T.deep  != null ? rgb(T.deep[0],  T.deep[1],  T.deep[2])  : #170206
+  let cCard       = T.card  != null ? rgb(T.card[0],  T.card[1],  T.card[2])  : #0c0104
+  let cObs        = T.obs   != null ? rgb(T.obs[0],   T.obs[1],   T.obs[2])   : #050002
+  let cInk        = T.ink   != null ? rgb(T.ink[0],   T.ink[1],   T.ink[2])   : #fff0f2
+  let cMuted      = T.muted != null ? rgb(T.muted[0], T.muted[1], T.muted[2]) : #c77c88
+  let dispFont    = T.displayFontPath ?? (T.fontPath ?? "sans")
+  let bodyFont    = T.bodyFont ?? (hub.font == "mono" ? "mono" : "sans")
+  let hubRadius   = clamp(num(hub.radius, 1.0), 0.6, 1.4)
+  let animHaptics = (hub.haptics ?? true) != false
+
+  state fx  = true persist
+  state tab = "weblab" persist
+
+  let fxActive = fx && (hub.fx ?? true) == true && !ecoOn && !saver
+  fps: fxActive ? 18 : 1
+
+  icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+    <rect width="256" height="256" rx="56" fill="#080206"/>
+    <circle cx="128" cy="128" r="96" fill="#140610"/>
+    <path d="M128 42 L198 72 L198 134 C198 176 168 206 128 220 C88 206 58 176 58 134 L58 72 Z" fill="currentColor"/>
+    <polygon points="128,78 164,128 128,178 92,128" fill="#080206"/>
+    <circle cx="128" cy="128" r="16" fill="#ffffff"/>
+  </svg>"""
+
+  let weblabUp   = (d.weblabUp ?? false) == true
+  let solved     = num(d.flagsSolved, 0)
+  let totalFlags = max(1, num(d.flagsTotal, 9))
+  let logs       = d.recentLogs ?? []
+  let ult        = d.ultimus ?? {}
+  let outTxt     = d.lastOutput ?? "Ready."
+  let outOk      = (d.lastOk ?? true) == true
+
+  component ActionBtn(label, cmdName, tint) {
+    Row {
+      padding: [12, 8]
+      radius: 13 * corners * hubRadius
+      border: 1
+      borderColor: alpha(tint, 0.55)
+      background: alpha(tint, 0.14)
+      onTap: {
+        if animHaptics { haptic() }
+        run("sith-cyber-range.py ${cmdName}")
+      }
+      Text { font: bodyFont; text: label; color: cInk; fontSize: 10.5; letterSpacing: 1.2; fontWeight: 800 }
+    }
+  }
+
+  Box {
+    fill: true
+    background: ecoOn ? #000000 : radial(0.5, 0, 1.15, [cDeep, cObs, #000000])
+    Column {
+      fill: true
+      padding: [12, 8, 12, 0]
+      gap: 10
+
+      // Header
+      Row {
+        align: center
+        gap: 10
+        Canvas {
+          width: 42; height: 42
+          let c = 21
+          let t = fxActive ? time : 0
+          circle(c, c, 18, stroke: alpha(cPri, 0.52), width: 1.5)
+          rotate(t * 24, c, c) {
+            arc(c, c, 14, 0, 110, stroke: weblabUp ? #2bff8c : cHot, width: 2.2, cap: round)
+            arc(c, c, 14, 180, 110, stroke: cPri, width: 2.2, cap: round)
+          }
+          circle(c, c, 4.5, fill: weblabUp ? #2bff8c : cPri)
+        }
+        Column {
+          weight: 1
+          gap: 1
+          Text { font: dispFont; text: "CYBER RANGE"; color: cPri; fontSize: 18; fontWeight: 900; letterSpacing: 2.2 }
+          Text { font: bodyFont; text: "DEFENSIVE · G=1 LOCALHOST · ${upper(curMode)}"; color: cMuted; fontSize: 9.5; letterSpacing: 1.0 }
+        }
+        Row {
+          padding: [10, 6]
+          radius: 12 * corners * hubRadius
+          border: 1
+          borderColor: alpha(fxActive ? cHot : cMuted, 0.45)
+          background: alpha(cCard, 0.88)
+          onTap: { fx = !fx; if animHaptics { haptic() } }
+          Text { font: bodyFont; text: fxActive ? "FX ●" : "FX ○"; color: fxActive ? cHot : cMuted; fontSize: 10; fontWeight: 800 }
+        }
+      }
+
+      // Segmented Switcher: WEBLAB v2.0 vs ULTIMUS EVAL
+      Row {
+        gap: 6
+        padding: 3
+        radius: 14 * corners * hubRadius
+        border: 1
+        borderColor: alpha(cPri, 0.32)
+        background: alpha(cCard, 0.9)
+        for k in ["weblab", "ultimus"] {
+          Box {
+            weight: 1
+            padding: [0, 8]
+            radius: 11 * corners * hubRadius
+            background: tab == k ? cPri : alpha(#000000, 0)
+            onTap: { tab = k; if animHaptics { haptic() } }
+            Text {
+              font: bodyFont
+              text: k == "weblab" ? "◈ WEB LAB v2.0" : "⬡ ULTIMUS EVAL"
+              align: center
+              fontSize: 10.5
+              letterSpacing: 1.4
+              fontWeight: 800
+              color: tab == k ? #ffffff : cMuted
+            }
+          }
+        }
+      }
+
+      Column {
+        weight: 1
+        scroll: true
+        gap: 10
+
+        if tab == "weblab" {
+          // Web Lab Control Card
+          Column {
+            gap: 9
+            padding: 14
+            radius: 18 * corners * hubRadius
+            border: 1
+            borderColor: alpha(weblabUp ? #2bff8c : cPri, 0.45)
+            background: alpha(cCard, 0.92)
+            Row {
+              align: center
+              Text { font: dispFont; text: "${tc.glyph ?? "◈"} OWASP W=0 / W=1 RANGE"; color: cHot; fontSize: 11; letterSpacing: 1.6; fontWeight: 800; weight: 1 }
+              Text { font: "mono"; text: weblabUp ? "● 127.0.0.1:8099" : "○ STOPPED"; color: weblabUp ? #2bff8c : cMuted; fontSize: 10; fontWeight: 800 }
+            }
+            Flow {
+              gap: 8
+              ActionBtn { label: weblabUp ? "STOP SERVER ■" : "START SERVER ▶"; cmdName: "toggle-weblab"; tint: weblabUp ? cHot : #2bff8c }
+              ActionBtn { label: "FORGE SUITE ↗"; cmdName: "open-forge"; tint: #a975ff }
+              ActionBtn { label: "OPEN BROWSER ↗"; cmdName: "open-browser"; tint: cPri }
+              ActionBtn { label: "RUN 21 CHECKS ✓"; cmdName: "verify-weblab"; tint: cSec }
+            }
+            Row {
+              align: center
+              gap: 10
+              Text { font: "mono"; text: "FLAGS ${solved}/${totalFlags}"; color: #2bff8c; fontSize: 11; fontWeight: 800 }
+              Box {
+                weight: 1; height: 7; radius: 99; clip: true; background: alpha(cPri, 0.16)
+                Row {
+                  fill: true
+                  Box { weight: max(solved, 0.05); fill: true; radius: 99; background: linear(0, 0, 1, 0, [cPri, #2bff8c]) }
+                  Box { weight: max(totalFlags - solved, 0.01) }
+                }
+              }
+            }
+          }
+
+          // Live Request Telemetry Card
+          Column {
+            gap: 6
+            padding: 14
+            radius: 18 * corners * hubRadius
+            border: 1
+            borderColor: alpha(cPri, 0.30)
+            background: alpha(cCard, 0.90)
+            Text { font: dispFont; text: "◈ LIVE TELEMETRY (REQ_LOGS)"; color: cHot; fontSize: 10.5; letterSpacing: 1.6; fontWeight: 800 }
+            if len(logs) == 0 {
+              Text { font: bodyFont; text: "No requests captured yet — tap OPEN BROWSER ↗ or RUN 21 CHECKS ✓."; color: cMuted; fontSize: 11.5 }
+            }
+            for l in logs {
+              Row {
+                align: center
+                gap: 6
+                Text { font: "mono"; text: l.ts; color: cMuted; fontSize: 9.5 }
+                Text { font: "mono"; text: l.ep; color: cHot; fontSize: 10; fontWeight: 700 }
+                Text { font: "mono"; text: l.payload; color: cInk; fontSize: 10; maxLines: 1; weight: 1 }
+                Text { font: "mono"; text: l.tag; color: l.tag == "BLOCKED" ? #2bff8c : (l.tag == "VULN" ? cPri : #b8a0a0); fontSize: 9; fontWeight: 800 }
+              }
+            }
+          }
+        } else {
+          // ULTIMUS Eval Control Card
+          Column {
+            gap: 9
+            padding: 14
+            radius: 18 * corners * hubRadius
+            border: 1
+            borderColor: alpha(cPri, 0.45)
+            background: alpha(cCard, 0.92)
+            Text { font: dispFont; text: "⬡ ULTIMUS AI SAFETY & OVER-REFUSAL"; color: cHot; fontSize: 11; letterSpacing: 1.6; fontWeight: 800 }
+            Row {
+              gap: 8
+              Column {
+                weight: 1; padding: [10, 8]; radius: 12 * corners * hubRadius; background: alpha(cObs, 0.9); border: 1; borderColor: alpha(cPri, 0.3)
+                Text { font: bodyFont; text: "V1 META-HEDGE"; color: cMuted; fontSize: 9; letterSpacing: 1.2; fontWeight: 800 }
+                Text { font: "mono"; text: "${ult.v1Pass ?? "0/8"} PASS"; color: cPri; fontSize: 16; fontWeight: 900 }
+              }
+              Column {
+                weight: 1; padding: [10, 8]; radius: 12 * corners * hubRadius; background: alpha(cObs, 0.9); border: 1; borderColor: alpha(#2bff8c, 0.4)
+                Text { font: bodyFont; text: "V2 SUBSTANTIVE"; color: cMuted; fontSize: 9; letterSpacing: 1.2; fontWeight: 800 }
+                Text { font: "mono"; text: "${ult.v2Pass ?? "8/8"} PASS"; color: #2bff8c; fontSize: 16; fontWeight: 900 }
+              }
+            }
+            Flow {
+              gap: 8
+              ActionBtn { label: "GRADE V2 SUITE"; cmdName: "grade-v2"; tint: cPri }
+              ActionBtn { label: "GRADE V1 SUITE"; cmdName: "grade-v1"; tint: cHot }
+              ActionBtn { label: "RUN ABLATION"; cmdName: "ablate"; tint: #2bff8c }
+              ActionBtn { label: "UNIT TESTS"; cmdName: "test-ultimus"; tint: cSec }
+            }
+          }
+        }
+
+        // Output Console Card
+        Column {
+          gap: 6
+          padding: 14
+          radius: 18 * corners * hubRadius
+          border: 1
+          borderColor: alpha(outOk ? cPri : cHot, 0.35)
+          background: alpha(cObs, 0.95)
+          Row {
+            align: center
+            Text { font: dispFont; text: "◈ RUNNER OUTPUT (${upper(d.lastAction ?? "READY")})"; color: outOk ? #2bff8c : cHot; fontSize: 10; letterSpacing: 1.5; fontWeight: 800; weight: 1 }
+            Row {
+              padding: [8, 3]; radius: 8 * corners; border: 1; borderColor: alpha(cMuted, 0.35)
+              onTap: { copy(outTxt); if animHaptics { haptic() } }
+              Text { font: bodyFont; text: "COPY"; color: cMuted; fontSize: 9; fontWeight: 800 }
+            }
+          }
+          Text { font: "mono"; text: outTxt; color: cInk; fontSize: 10.5 }
+        }
+
+        Spacer { height: screenInset + 10 }
+      }
+    }
+  }
+}

@@ -1,0 +1,144 @@
+panel "sith oracle" {
+  meta { owl: 22; description: "Swipe-down omen: 4-theme adaptive defensive habit oracle (30 FLIP/ACT codes) with persisted FX toggle & battery vitality." }
+
+  source hub   = file("~/.config/omalauncher/hub.json") json optional
+  source b     = android.battery
+  source modes = android.modes
+
+  state idx  = 0 persist
+  state fxOn = true persist
+
+  let curMode = hub.mode ?? "infernal"
+  let ecoOn   = (hub.eco ?? false) == true
+  let saver   = ((b.level ?? 100) < 20 && !((b.charging ?? false) == true)) || (modes.saver ?? false) == true
+  let T       = hub.tok ?? {}
+  let tc      = T.copy ?? {}
+  let cPri    = ecoOn ? (T.ecoPri != null ? rgb(T.ecoPri[0], T.ecoPri[1], T.ecoPri[2]) : #b8263a) : (T.pri != null ? rgb(T.pri[0], T.pri[1], T.pri[2]) : #ff1e3c)
+  let cHot    = ecoOn ? (T.ecoHot != null ? rgb(T.ecoHot[0], T.ecoHot[1], T.ecoHot[2]) : #d94c5e) : (T.hot != null ? rgb(T.hot[0], T.hot[1], T.hot[2]) : #ff8596)
+  let cDeep   = T.deep  != null ? rgb(T.deep[0],  T.deep[1],  T.deep[2])  : #170206
+  let cCard   = T.card  != null ? rgb(T.card[0],  T.card[1],  T.card[2])  : #0c0104
+  let cObs    = T.obs   != null ? rgb(T.obs[0],   T.obs[1],   T.obs[2])   : #050002
+  let cInk    = T.ink   != null ? rgb(T.ink[0],   T.ink[1],   T.ink[2])   : #fff0f2
+  let cMuted  = T.muted != null ? rgb(T.muted[0], T.muted[1], T.muted[2]) : #c77c88
+  let uiFont  = T.fontPath ?? "sans"
+  let bodyFont = T.bodyFont ?? (hub.font == "mono" ? "mono" : "sans")
+  let hapticsOn = (hub.haptics ?? true) != false
+
+  let fxLive = fxOn && (hub.fx ?? true) == true && !ecoOn && !saver
+  fps: fxLive ? 12 : 1
+
+  let ok  = b != null && b.level != null
+  let pct = ok ? clamp(round(b.level), 0, 100) : 0
+  let CODES = [
+    ["A=0", "Account already owned?", "Assume the worst account. What can it reach?"],
+    ["A=1", "Least privilege + phishing-resistant MFA", "Strip one permission you don't use today."],
+    ["B=0", "Ransomware now: can I restore?", "Pick one file set. Can you bring it back?"],
+    ["B=1", "3-2-1-1-0 backups, test restores", "Restore one thing for real this week."],
+    ["C=0", "This secret already leaked", "Which password would you rotate first?"],
+    ["C=1", "Vault, rotate, scan repos", "Move one secret out of plain text."],
+    ["D=0", "Attacker inside: my blind spots?", "Where could someone hide unseen?"],
+    ["D=1", "Write and test one detection rule", "Name one log line that would catch you."],
+    ["E=0", "Which phish would fool me?", "Write the email you'd fall for."],
+    ["E=1", "Verify sender, go direct", "Open the site yourself, not from the link."],
+    ["F=0", "What does the internet see?", "Scan your own address from outside."],
+    ["F=1", "Deny inbound by default", "Close one port nothing needs."],
+    ["G=0", "Not authorized until written", "Who said yes, and where is it written?"],
+    ["G=1", "Scope + rules of engagement in writing", "No scope, no test. Write the scope."],
+    ["H=0", "Defaults are doors", "Which default password is still set?"],
+    ["H=1", "CIS baseline, remove unused, auto-update", "Turn off one service you forgot."],
+    ["I=0", "What did I forget I own?", "List one device or account you forgot."],
+    ["I=1", "Keep an asset list", "Write your devices and accounts down."],
+    ["L=0", "Logs got wiped: what's left?", "What evidence survives outside the device?"],
+    ["L=1", "Central logs, UTC, retention", "Keep one log copy somewhere it can't be edited."],
+    ["P=0", "Today's open front door", "What update is waiting that you skipped?"],
+    ["P=1", "Patch KEV, then EPSS, then CVSS", "Patch the one actively exploited thing first."],
+    ["R=0", "It's happening now (tabletop)", "Walk through the first ten minutes aloud."],
+    ["R=1", "IR plan and UTC timeline", "Write who you call first, and their number."],
+    ["S=0", "A dependency is evil", "Which package would you check first?"],
+    ["S=1", "Pin, SBOM, scan", "Pin one dependency to an exact version."],
+    ["W=0", "All input is hostile", "Where does outside text get trusted blindly?"],
+    ["W=1", "Validate, encode, authorize every request", "Check one input in your own code."],
+    ["Y=0", "Dox yourself", "Search your own name. What comes up?"],
+    ["Y=1", "Lock your personal footprint", "Remove one old account you don't use."]
+  ]
+  let card = CODES[clamp(idx, 0, 29)]
+  let isFix = card[0] != null && endsWith(card[0], "=1")
+  let tint  = isFix ? #2bff8c : cPri
+  let t     = fxLive ? time : 0
+
+  Column {
+    fill: true
+    padding: 16
+    gap: 12
+    align: start
+    scroll: true
+
+    Column {
+      fill: width
+      gap: 12
+      padding: 16
+      radius: 22 * corners
+      background: linear(0, 0, 0, 1, [alpha(cDeep, 0.96), alpha(cObs, 0.98), #000000])
+      border: 1
+      borderColor: alpha(cPri, 0.42)
+
+      Row {
+        fill: width
+        align: center
+        Text { font: uiFont; text: "${tc.glyph ?? "◈"} ${curMode == "future" ? "ULTRON ORACLE" : "SITH ORACLE"}"; color: cHot; fontSize: 12; letterSpacing: 2.2; fontWeight: 800; weight: 1 }
+        Row {
+          padding: [10, 5]
+          radius: 12 * corners
+          border: 1
+          borderColor: alpha(fxLive ? cHot : cMuted, 0.45)
+          background: alpha(cCard, 0.9)
+          onTap: { fxOn = !fxOn; if hapticsOn { haptic() } }
+          Text { font: bodyFont; text: fxLive ? "FX ●" : "FX ○"; color: fxLive ? cHot : cMuted; fontSize: 10; fontWeight: 800; letterSpacing: 1.2 }
+        }
+      }
+
+      Column {
+        fill: width
+        gap: 10
+        align: start
+        padding: [18, 18]
+        radius: 18 * corners
+        clip: true
+        background: linear(0, 0, 1, 1, [alpha(tint, 0.26), alpha(cCard, 0.94), #000000])
+        border: 1
+        borderColor: alpha(tint, fxLive ? (0.45 + 0.22 * sin(t * 1.6)) : 0.48)
+        animate background: tween(350ms, "ease")
+        onTap: { if hapticsOn { haptic() }; idx = floor(random() * 30) }
+        Row {
+          fill: width
+          align: center
+          Text { font: uiFont; text: card[0]; color: tint; fontSize: 44; fontWeight: 900; weight: 1 }
+          Text { font: bodyFont; text: isFix ? "ACT · FIX" : "FLIP · ATTACK EYE"; color: cInk; fontSize: 10; letterSpacing: 1.8; fontWeight: 800 }
+        }
+        Box { fill: width; height: 1; background: linear(0, 0, 1, 0, [alpha(tint, 0), alpha(tint, 0.7), alpha(tint, 0)]) }
+        Text { font: bodyFont; text: card[1]; color: cInk; fontSize: 17; fontWeight: 800 }
+        Text { font: bodyFont; text: card[2]; color: cMuted; fontSize: 13.5 }
+      }
+
+      Text { font: bodyFont; text: "tap the card to draw another defensive habit"; color: cMuted; fontSize: 11 }
+      Row {
+        fill: width
+        gap: 10
+        align: center
+        Text { font: "mono"; text: ok ? "VITALITY ${pct}%" : "VITALITY --"; color: cHot; fontSize: 11 }
+        Box {
+          weight: 1
+          height: 6
+          radius: 99
+          clip: true
+          background: alpha(cPri, 0.16)
+          Row {
+            fill: true
+            Box { weight: max(pct, 1); fill: true; radius: 99; background: linear(0, 0, 1, 0, [cDeep, cPri, cHot]) }
+            Box { weight: max(100 - pct, 0.001) }
+          }
+        }
+      }
+    }
+  }
+}

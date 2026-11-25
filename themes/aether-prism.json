@@ -1,0 +1,178 @@
+{
+  "id": "aether-prism",
+  "name": "AETHER · PRISM",
+  "tagline": "PRISMATIC QUANTUM OPTICS · MINIMALIST DISPERSION",
+  "accentStyle": "prismatic-flux",
+  "font": "oswald",
+  "styleBorders": [
+    "#00f0ff",
+    "#00f0ff",
+    "#00f0ff"
+  ],
+  "menuItems": [
+    {
+      "id": "prism-terminal",
+      "label": "AETHER SHELL",
+      "subtitle": "QUANTUM ROOT // ZERO LATENCY",
+      "glyph": "◈",
+      "icon": "◈",
+      "accent": "#00f0ff",
+      "action": "terminal"
+    },
+    {
+      "id": "prism-deck",
+      "label": "PRISM CANVAS",
+      "subtitle": "SPATIAL GEOMETRIC DECK",
+      "glyph": "◇",
+      "icon": "◇",
+      "accent": "#38bdf8",
+      "action": "drawer"
+    },
+    {
+      "id": "prism-radar",
+      "label": "OPTIC RADAR",
+      "subtitle": "SPECTRAL & TELEMETRY HORIZON",
+      "glyph": "◉",
+      "icon": "◉",
+      "accent": "#818cf8",
+      "action": "network"
+    },
+    {
+      "id": "prism-vault",
+      "label": "AETHER VAULT",
+      "subtitle": "CRYSTALLINE SECURE ARCHIVE",
+      "glyph": "▣",
+      "icon": "▣",
+      "accent": "#f59e0b",
+      "action": "vault"
+    }
+  ],
+  "iconSvg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' width='256' height='256'>\n  <defs>\n    <clipPath id='prismTile'>\n      <rect x='2' y='2' width='252' height='252' rx='54'/>\n    </clipPath>\n    <radialGradient id='aetherGlow' cx='50%' cy='50%' r='60%'>\n      <stop offset='0%' stop-color='#00f0ff' stop-opacity='0.28'/>\n      <stop offset='38%' stop-color='#818cf8' stop-opacity='0.16'/>\n      <stop offset='72%' stop-color='#f59e0b' stop-opacity='0.06'/>\n      <stop offset='100%' stop-color='#010204' stop-opacity='0'/>\n    </radialGradient>\n    <linearGradient id='prismFaceLeft' x1='0' y1='0' x2='1' y2='1'>\n      <stop offset='0%' stop-color='#00f0ff' stop-opacity='0.85'/>\n      <stop offset='100%' stop-color='#082f49' stop-opacity='0.4'/>\n    </linearGradient>\n    <linearGradient id='prismFaceRight' x1='1' y1='0' x2='0' y2='1'>\n      <stop offset='0%' stop-color='#818cf8' stop-opacity='0.8'/>\n      <stop offset='100%' stop-color='#1e1b4b' stop-opacity='0.45'/>\n    </linearGradient>\n    <linearGradient id='prismFaceTop' x1='0.5' y1='0' x2='0.5' y2='1'>\n      <stop offset='0%' stop-color='#ffffff' stop-opacity='0.95'/>\n      <stop offset='100%' stop-color='#38bdf8' stop-opacity='0.6'/>\n    </linearGradient>\n    <linearGradient id='beamCyan' x1='0' y1='0' x2='1' y2='0'>\n      <stop offset='0%' stop-color='#00f0ff' stop-opacity='0.95'/>\n      <stop offset='100%' stop-color='#00f0ff' stop-opacity='0'/>\n    </linearGradient>\n    <linearGradient id='beamAmber' x1='0' y1='0' x2='1' y2='0'>\n      <stop offset='0%' stop-color='#f59e0b' stop-opacity='0.95'/>\n      <stop offset='100%' stop-color='#f59e0b' stop-opacity='0'/>\n    </linearGradient>\n    <linearGradient id='beamViolet' x1='0' y1='0' x2='1' y2='0'>\n      <stop offset='0%' stop-color='#818cf8' stop-opacity='0.95'/>\n      <stop offset='100%' stop-color='#818cf8' stop-opacity='0'/>\n    </linearGradient>\n    <linearGradient id='rimOuter' x1='0' y1='0' x2='1' y2='1'>\n      <stop offset='0%' stop-color='#00f0ff'/>\n      <stop offset='50%' stop-color='#818cf8'/>\n      <stop offset='100%' stop-color='#f59e0b'/>\n    </linearGradient>\n  </defs>\n\n  <rect x='1' y='1' width='254' height='254' rx='54' fill='#010204'/>\n\n  <g clip-path='url(#prismTile)'>\n    <rect width='256' height='256' fill='#010204'/>\n    <rect width='256' height='256' fill='url(#aetherGlow)'/>\n\n    <!-- Subtle Geometric Coordinate Guides -->\n    <g stroke='#38bdf8' stroke-width='0.75' opacity='0.22' fill='none'>\n      <circle cx='128' cy='128' r='96' stroke-dasharray='3 5'/>\n      <circle cx='128' cy='128' r='64' stroke-dasharray='1 4'/>\n      <line x1='32' y1='128' x2='224' y2='128' stroke-dasharray='2 6'/>\n      <line x1='128' y1='32' x2='128' y2='224' stroke-dasharray='2 6'/>\n    </g>\n\n    <!-- Dispersed Spectral Refraction Rays -->\n    <g stroke-linecap='round'>\n      <!-- Incident Beam (Electric Cyan) from top-left -->\n      <line x1='36' y1='56' x2='110' y2='116' stroke='#00f0ff' stroke-width='2.5' opacity='0.95'/>\n      <line x1='36' y1='56' x2='110' y2='116' stroke='#ffffff' stroke-width='1.0' opacity='0.8'/>\n\n      <!-- Refracted Dispersed Beams toward bottom-right -->\n      <!-- Cyan Upper Beam -->\n      <line x1='146' y1='124' x2='226' y2='98' stroke='url(#beamCyan)' stroke-width='2.4'/>\n      <!-- Amber Mid Beam -->\n      <line x1='146' y1='132' x2='232' y2='142' stroke='url(#beamAmber)' stroke-width='2.6'/>\n      <!-- Violet Lower Beam -->\n      <line x1='142' y1='140' x2='222' y2='186' stroke='url(#beamViolet)' stroke-width='2.4'/>\n    </g>\n\n    <!-- Central Geometric Prism Core (Faceted Diamond/Prism) -->\n    <g stroke='#00f0ff' stroke-width='1.2' stroke-linejoin='round'>\n      <!-- Top Pyramid Facet -->\n      <polygon points='128,68 98,114 158,114' fill='url(#prismFaceTop)' stroke='#f8fafc' stroke-width='1.5'/>\n      <!-- Bottom Left Facet -->\n      <polygon points='98,114 128,188 128,114' fill='url(#prismFaceLeft)'/>\n      <!-- Bottom Right Facet -->\n      <polygon points='158,114 128,188 128,114' fill='url(#prismFaceRight)' stroke='#818cf8'/>\n      <!-- Front Floating Diamond Core -->\n      <polygon points='128,88 146,128 128,168 110,128' fill='#07090e' fill-opacity='0.6' stroke='#00f0ff' stroke-width='1.8'/>\n      <circle cx='128' cy='128' r='4' fill='#f8fafc'/>\n      <circle cx='128' cy='128' r='7' fill='none' stroke='#f59e0b' stroke-width='1.2'/>\n    </g>\n\n    <!-- Hairline Prism Nodes / Spark Points -->\n    <g fill='#f8fafc'>\n      <circle cx='128' cy='68' r='2'/>\n      <circle cx='98' cy='114' r='2'/>\n      <circle cx='158' cy='114' r='2'/>\n      <circle cx='128' cy='188' r='2'/>\n      <circle cx='36' cy='56' r='2.5' fill='#00f0ff'/>\n    </g>\n  </g>\n\n  <!-- Precision Dual Border Frame -->\n  <rect x='2' y='2' width='252' height='252' rx='54' fill='none' stroke='url(#rimOuter)' stroke-width='2.5'/>\n  <rect x='6' y='6' width='244' height='244' rx='50' fill='none' stroke='#00f0ff' stroke-width='0.8' opacity='0.55'/>\n</svg>",
+  "tok": {
+    "modeIdx": 2,
+    "pri": [
+      0,
+      240,
+      255
+    ],
+    "mid": [
+      56,
+      189,
+      248
+    ],
+    "hot": [
+      245,
+      158,
+      11
+    ],
+    "sec": [
+      129,
+      140,
+      248
+    ],
+    "bone": [
+      241,
+      245,
+      249
+    ],
+    "dim": [
+      15,
+      39,
+      68
+    ],
+    "deep": [
+      3,
+      7,
+      18
+    ],
+    "card": [
+      7,
+      9,
+      14
+    ],
+    "obs": [
+      1,
+      2,
+      4
+    ],
+    "ink": [
+      248,
+      250,
+      252
+    ],
+    "muted": [
+      148,
+      163,
+      184
+    ],
+    "ecoPri": [
+      2,
+      132,
+      199
+    ],
+    "ecoHot": [
+      217,
+      119,
+      6
+    ],
+    "ecoDim": [
+      8,
+      47,
+      73
+    ],
+    "ecoBone": [
+      203,
+      213,
+      225
+    ],
+    "hex": {
+      "pri": "#00f0ff",
+      "mid": "#38bdf8",
+      "hot": "#f59e0b",
+      "sec": "#818cf8",
+      "bone": "#f1f5f9",
+      "dim": "#0f2744",
+      "deep": "#030712",
+      "card": "#07090e",
+      "obs": "#010204",
+      "ink": "#f8fafc",
+      "muted": "#94a3b8",
+      "ecoPri": "#0284c7",
+      "ecoHot": "#d97706",
+      "ecoDim": "#082f49",
+      "ecoBone": "#cbd5e1"
+    },
+    "pads": [
+      "#0f2744",
+      "#818cf8",
+      "#00f0ff",
+      "#38bdf8",
+      "#f59e0b"
+    ],
+    "fontPath": "~/.local/share/fonts/Oswald-Var.ttf",
+    "displayFontPath": "~/.local/share/fonts/Oswald-Var.ttf",
+    "bodyFont": "sans",
+    "copy": {
+      "crown": "◈  AETHER · PRISM  ◈",
+      "sub": "COHERENT FLUX · GEOMETRIC MINIMALISM",
+      "ecoSub": "PASSIVE SPECTRA · OPTICAL SLEEP",
+      "motto": "◈ REFRACT · REVOLVE · TRANSCEND ◈",
+      "glyph": "◈",
+      "sigilGlyph": "◇",
+      "fxTag": "AETHER",
+      "fxOver": "PRISM",
+      "aiPill": "◈ AETHER",
+      "quickDeck": "◇ PRISM DECK",
+      "briefTitle": "◈ AETHER TELEMETRY BRIEF",
+      "calTitle": "CHRONO SPECTRA",
+      "calBadge": "PRISM",
+      "calList": "OPTICAL NODES",
+      "calToday": "TODAY'S CYCLE",
+      "calWeek": "7-CYCLE DISPERSION",
+      "vaultTitle": "PRISM VAULT",
+      "vaultMotto": "PURE LIGHT · BALANCED DISPERSION",
+      "keybarTag": "AETHER",
+      "aiMorph": "◈ AETHER · PRISM ⇄"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.bak
+*.swp
+*.lock
+*.log
+*.env
+.check/
+.errors/
+.removed/
+.staging/
+.preview/

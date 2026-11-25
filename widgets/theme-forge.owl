@@ -1,0 +1,642 @@
+app "theme-forge" {
+  meta {
+    owl: 22
+    description: "Theme Forge — Build, randomize, preview, and live-apply custom AMOLED themes, fonts, backdrop shaders, and HUD archetypes."
+    category: "customization"
+  }
+  requires { pacman: ["python"] }
+  title: ""
+  edge: true
+
+  icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+    <rect width="256" height="256" rx="56" fill="#0a0002"/>
+    <circle cx="128" cy="128" r="96" fill="#170208"/>
+    <polygon points="128,28 214,78 214,178 128,228 42,178 42,78" fill="none" stroke="#ff1e3c" stroke-width="6" stroke-opacity="0.38"/>
+    <path d="M74 202 L90 174 H166 L182 202 Z" fill="#8a081f"/>
+    <rect x="102" y="152" width="52" height="24" rx="4" fill="#c4102c"/>
+    <path d="M40 124 L84 124 L94 114 H184 L214 128 L180 154 H78 L58 140 Z" fill="#ff1e3c"/>
+    <polygon points="94,114 184,114 214,128 84,128" fill="#ff667c"/>
+    <circle cx="128" cy="138" r="7" fill="#00f0ff"/>
+    <polygon points="128,38 88,80 128,106" fill="#00f0ff"/>
+    <polygon points="128,38 168,80 128,106" fill="#0099cc"/>
+    <polygon points="128,52 106,80 128,96 150,80" fill="#d4fcff"/>
+    <polygon points="62,68 78,84 66,90" fill="#00f0ff"/>
+    <polygon points="194,68 178,84 190,90" fill="#ff8596"/>
+  </svg>"""
+
+  source hub  = file("~/.config/omalauncher/hub.json") json optional
+  source data = cmd("python3 ~/.local/bin/theme-forge.py list") every 6s json
+
+  // ── Live Hub Theme Adaptation ──
+  let curMode     = hub.mode ?? "infernal"
+  let ecoOn       = (hub.eco ?? false) == true
+  let T           = hub.tok ?? {}
+  let cPri        = ecoOn ? (T.ecoPri  != null ? rgb(T.ecoPri[0],  T.ecoPri[1],  T.ecoPri[2])  : #b8263a) : (T.pri != null ? rgb(T.pri[0], T.pri[1], T.pri[2]) : #ff1e3c)
+  let cMid        = T.mid   != null ? rgb(T.mid[0],   T.mid[1],   T.mid[2])   : #ff3850
+  let cHot        = ecoOn ? (T.ecoHot  != null ? rgb(T.ecoHot[0],  T.ecoHot[1],  T.ecoHot[2])  : #d94c5e) : (T.hot != null ? rgb(T.hot[0], T.hot[1], T.hot[2]) : #ff8596)
+  let cSec        = T.sec   != null ? rgb(T.sec[0],   T.sec[1],   T.sec[2])   : #00f0ff
+  let cBone       = ecoOn ? (T.ecoBone != null ? rgb(T.ecoBone[0], T.ecoBone[1], T.ecoBone[2]) : #c7a3a8) : (T.bone != null ? rgb(T.bone[0], T.bone[1], T.bone[2]) : #fff0f2)
+  let cDim        = ecoOn ? (T.ecoDim  != null ? rgb(T.ecoDim[0],  T.ecoDim[1],  T.ecoDim[2])  : #4d0c18) : (T.dim != null ? rgb(T.dim[0], T.dim[1], T.dim[2]) : #6b0918)
+  let cDeep       = T.deep  != null ? rgb(T.deep[0],  T.deep[1],  T.deep[2])  : #170206
+  let cCard       = T.card  != null ? rgb(T.card[0],  T.card[1],  T.card[2])  : #0c0104
+  let cObs        = T.obs   != null ? rgb(T.obs[0],   T.obs[1],   T.obs[2])   : #050002
+  let cInk        = T.ink   != null ? rgb(T.ink[0],   T.ink[1],   T.ink[2])   : #fff0f2
+  let cMuted      = T.muted != null ? rgb(T.muted[0], T.muted[1], T.muted[2]) : #c77c88
+  let uiFont      = T.fontPath ?? "sans"
+  let dispFont    = T.displayFontPath ?? uiFont
+  let bodyFont    = T.bodyFont ?? (hub.font == "mono" ? "mono" : "sans")
+  let hubRadius   = clamp(num(hub.radius, 1.0), 0.6, 1.4)
+  let animHaptics = (hub.haptics ?? true) != false
+
+  // ── States ──
+  state fxOn   = true persist
+  state tName  = ""
+  state tTag   = ""
+  state tPri   = "#ff1e3c"
+  state tSec   = "#00f0ff"
+  state tBg    = "0"
+  state tFont  = "BLACKOPS"
+  state tArch  = "SHIELD"
+  state armDel = ""
+  state flash  = ""
+
+  let fxActive = fxOn && (hub.fx ?? true) == true && !ecoOn
+  fps: fxActive ? 16 : 1
+
+  // ── Forge Option Tables ──
+  let priSwatches = ["#ff1e3c", "#00e5ff", "#2bff4a", "#ff2ae6", "#b44aff", "#ffaa00", "#00ff88", "#ff511a", "#ff0055", "#ffffff"]
+  let secSwatches = ["#00f0ff", "#ffaa00", "#9b30ff", "#ff2ae6", "#c8ff2e", "#ff1e3c"]
+  let bgModes     = [
+    {id: "0", label: "0: HELL"},
+    {id: "1", label: "1: HOLO"},
+    {id: "2", label: "2: VORTEX"},
+    {id: "3", label: "3: HAVOC"}
+  ]
+  let fontOpts    = ["BLACKOPS", "RUSSO", "MONO", "OSWALD"]
+  let archOpts    = ["SHIELD", "VISOR", "SIGIL", "SKULL", "CORE"]
+  let randNames   = ["CRIMSON REX", "VOID RUNNER", "NEON WRAITH", "CYBER RONIN", "PLASMA PHANTOM", "APEX VALKYRIE", "OBSIDIAN GHOST", "SOLAR VORTEX", "HYPER SHOGUN", "ZERO KELVIN"]
+  let randTags    = ["OBSIDIAN OVERDRIVE", "NEON PROTOCOL · V9", "GHOST IN THE GRID", "SYNTHETIC ECLIPSE", "HYPERDRIVE AMOLED", "ZERO-LATENCY FURY", "CYBERNETIC SANCTUM", "PLASMA-FORGED OS"]
+
+  let activeId     = data.active ?? curMode
+  let coreThemes   = data.core ?? []
+  let customThemes = data.custom ?? []
+  let bgLabel      = tBg == "1" ? "HOLO" : tBg == "2" ? "VORTEX" : tBg == "3" ? "HAVOC" : "HELL"
+
+  // ── Reusable Components (handlers inside, never at call site) ──
+  component SectionHeader(label, hint = "") {
+    Row {
+      fill: width
+      align: center
+      Text { font: bodyFont; text: "◈ ${upper(label)}"; fontSize: 10.5; color: cHot; letterSpacing: 2; fontWeight: 800; weight: 1 }
+      if hint != "" {
+        Text { font: bodyFont; text: upper(hint); fontSize: 9.5; color: cMuted; letterSpacing: 1.2 }
+      }
+    }
+  }
+
+  component ThemeCard(item, isCustom) {
+    let tid   = item.id ?? ""
+    let tname = item.name ?? tid
+    let tsub  = item.sub ?? ""
+    let pCol  = item.pri ?? cPri
+    let sCol  = item.sec ?? cSec
+    let gl    = item.glyph ?? "◈"
+    let isAct = activeId == tid
+    let armed = isCustom && armDel == tid
+
+    Row {
+      fill: width
+      align: center
+      gap: 10
+      padding: [12, 10]
+      radius: 16 * corners * hubRadius
+      border: isAct ? 1.5 : 1
+      borderColor: isAct ? pCol : alpha(cPri, 0.24)
+      background: isAct ? linear(0, 0, 1, 1, [alpha(pCol, 0.20), alpha(cCard, 0.94)]) : alpha(cCard, 0.88)
+      onTap: {
+        armDel = ""
+        run("python3 ~/.local/bin/theme-forge.py apply ${sh(tid)}")
+        flash = "APPLIED: ${tname}"
+        if animHaptics { haptic() }
+      }
+
+      // Dual color dots + glyph badge
+      Box {
+        width: 44
+        height: 44
+        radius: 12 * corners * hubRadius
+        background: alpha(cObs, 0.9)
+        border: 1
+        borderColor: isAct ? pCol : alpha(pCol, 0.42)
+        align: center
+        Column {
+          fill: true
+          justify: center
+          align: center
+          gap: 3
+          Row {
+            align: center
+            gap: 4
+            Box { size: 11; radius: 6; background: pCol; border: 1; borderColor: alpha(#ffffff, 0.4) }
+            Box { size: 11; radius: 6; background: sCol; border: 1; borderColor: alpha(#ffffff, 0.4) }
+          }
+          Text { font: bodyFont; text: gl; align: center; color: pCol; fontSize: 12; fontWeight: 900 }
+        }
+      }
+
+      // Name & tagline
+      Column {
+        weight: 1
+        gap: 2
+        Row {
+          align: center
+          gap: 6
+          Text { font: dispFont; text: upper(tname); color: isAct ? cInk : cBone; fontSize: 13.5; fontWeight: 800; letterSpacing: 1.1; maxLines: 1 }
+          if isAct {
+            Row {
+              padding: [6, 2]
+              radius: 8 * corners * hubRadius
+              background: alpha(pCol, 0.24)
+              border: 1
+              borderColor: pCol
+              Text { font: bodyFont; text: "LIVE"; color: cInk; fontSize: 8.5; fontWeight: 900; letterSpacing: 1 }
+            }
+          }
+        }
+        if tsub != "" {
+          Text { font: bodyFont; text: tsub; color: cMuted; fontSize: 10.5; maxLines: 1 }
+        }
+      }
+
+      // Right-side action rail: Apply pill + safe 2-tap DEL on custom themes
+      Row {
+        align: center
+        gap: 6
+        Row {
+          padding: [9, 6]
+          radius: 10 * corners * hubRadius
+          border: 1
+          borderColor: isAct ? pCol : alpha(pCol, 0.52)
+          background: isAct ? pCol : alpha(pCol, 0.14)
+          onTap: {
+            armDel = ""
+            run("python3 ~/.local/bin/theme-forge.py apply ${sh(tid)}")
+            flash = "APPLIED: ${tname}"
+            if animHaptics { haptic() }
+          }
+          Text { font: bodyFont; text: isAct ? "ACTIVE" : "APPLY"; color: isAct ? #050002 : cInk; fontSize: 9.5; fontWeight: 900; letterSpacing: 1 }
+        }
+
+        if isCustom {
+          Row {
+            padding: [armed ? 9 : 8, 6]
+            radius: 10 * corners * hubRadius
+            border: 1
+            borderColor: armed ? #ff2e4d : alpha(cMuted, 0.34)
+            background: armed ? #ff1e3c : alpha(cObs, 0.9)
+            onTap: {
+              if animHaptics { haptic() }
+              if armed {
+                run("python3 ~/.local/bin/theme-forge.py delete ${sh(tid)}")
+                flash = "DELETED: ${tname}"
+                armDel = ""
+              } else {
+                armDel = tid
+                flash = "TAP DEL? AGAIN TO DELETE ${tname}"
+              }
+            }
+            Text { font: bodyFont; text: armed ? "DEL?" : "DEL"; color: armed ? #ffffff : cMuted; fontSize: 9.5; fontWeight: 800; letterSpacing: 0.8 }
+          }
+        }
+      }
+    }
+  }
+
+  // ── Root AMOLED Canvas ──
+  Box {
+    fill: true
+    background: ecoOn ? #000000 : radial(0.5, 0, 1.15, [cDeep, cObs, #000000])
+
+    Column {
+      fill: true
+      padding: [12, 8, 12, 0]
+      gap: 10
+
+      // ── Clean Header ──
+      Row {
+        fill: width
+        align: center
+        gap: 6
+
+        Column {
+          weight: 1
+          gap: 4
+          Text { font: dispFont; text: "◈ THEME FORGE"; color: cPri; fontSize: 16; letterSpacing: 2; fontWeight: 900; maxLines: 1 }
+          Row {
+            align: center
+            gap: 6
+            Row {
+              padding: [7, 2]
+              radius: 9 * corners * hubRadius
+              border: 1
+              borderColor: alpha(cSec, 0.55)
+              background: alpha(cSec, 0.14)
+              Text { font: bodyFont; text: upper(activeId); color: cInk; fontSize: 9; fontWeight: 900; letterSpacing: 1; maxLines: 1 }
+            }
+            Text { font: bodyFont; text: "${len(coreThemes)} CORE · ${len(customThemes)} FORGED"; color: cMuted; fontSize: 10; letterSpacing: 0.8; maxLines: 1 }
+          }
+        }
+
+        // Persisted FX toggle pill
+        Row {
+          padding: [9, 6]
+          radius: 12 * corners * hubRadius
+          border: 1
+          borderColor: fxOn ? cPri : alpha(cMuted, 0.35)
+          background: fxOn ? alpha(cPri, 0.22) : alpha(cCard, 0.88)
+          onTap: {
+            fxOn = !fxOn
+            flash = fxOn ? "FX ENABLED" : "FX OFF (AMOLED ECO)"
+            if animHaptics { haptic() }
+          }
+          Text { font: bodyFont; text: fxOn ? "FX ON" : "FX OFF"; color: fxOn ? cInk : cMuted; fontSize: 9.5; fontWeight: 900; letterSpacing: 1 }
+        }
+
+        // One-tap randomizer button
+        Row {
+          padding: [10, 6]
+          radius: 12 * corners * hubRadius
+          border: 1
+          borderColor: alpha(cSec, 0.65)
+          background: alpha(cSec, 0.16)
+          onTap: {
+            tName = randNames[random(len(randNames))]
+            tTag  = randTags[random(len(randTags))]
+            tPri  = priSwatches[random(len(priSwatches))]
+            tSec  = secSwatches[random(len(secSwatches))]
+            tBg   = bgModes[random(len(bgModes))].id
+            tFont = fontOpts[random(len(fontOpts))]
+            tArch = archOpts[random(len(archOpts))]
+            armDel = ""
+            flash = "RANDOMIZED: ${tName}"
+            if animHaptics { haptic() }
+          }
+          Text { font: bodyFont; text: "🎲 RAND"; color: cInk; fontSize: 9.5; fontWeight: 900; letterSpacing: 1 }
+        }
+      }
+
+      if flash != "" {
+        Row {
+          fill: width
+          padding: [10, 5]
+          radius: 10 * corners * hubRadius
+          background: alpha(cPri, 0.14)
+          border: 1
+          borderColor: alpha(cHot, 0.45)
+          Text { font: bodyFont; text: flash; color: cHot; fontSize: 10.5; fontWeight: 700; weight: 1; maxLines: 1 }
+          Text {
+            font: bodyFont; text: "✕"; color: cMuted; fontSize: 10.5; fontWeight: 800
+            onTap: { flash = ""; armDel = "" }
+          }
+        }
+      }
+
+      // ── Scrollable Body: Live Forge Builder + All Themes Vault ──
+      Column {
+        weight: 1
+        scroll: true
+        gap: 14
+
+        // ── Live Forge Builder Card ──
+        Column {
+          fill: width
+          padding: 14
+          gap: 12
+          radius: 18 * corners * hubRadius
+          border: 1
+          borderColor: alpha(cPri, 0.42)
+          background: linear(0, 0, 1, 1, [alpha(cDeep, 0.9), alpha(cCard, 0.94)])
+
+          SectionHeader { label: "FORGE BUILDER"; hint: "CUSTOM AMOLED" }
+
+          // Theme Name Input
+          Column {
+            gap: 4
+            Text { font: bodyFont; text: "THEME / CHARACTER NAME"; color: cMuted; fontSize: 9.5; letterSpacing: 1.4; fontWeight: 800 }
+            Box {
+              fill: width
+              padding: [12, 4]
+              radius: 12 * corners * hubRadius
+              border: 1
+              borderColor: alpha(cPri, 0.34)
+              background: alpha(cObs, 0.92)
+              Input { text: tName; placeholder: "e.g. CYBER SHOGUN…"; color: cInk; fontSize: 13.5; underline: false; onChange: tName = value }
+            }
+          }
+
+          // Tagline Input
+          Column {
+            gap: 4
+            Text { font: bodyFont; text: "TAGLINE / VIBE"; color: cMuted; fontSize: 9.5; letterSpacing: 1.4; fontWeight: 800 }
+            Box {
+              fill: width
+              padding: [12, 4]
+              radius: 12 * corners * hubRadius
+              border: 1
+              borderColor: alpha(cPri, 0.28)
+              background: alpha(cObs, 0.92)
+              Input { text: tTag; placeholder: "e.g. NEON OVERDRIVE · VOID OS"; color: cInk; fontSize: 13; underline: false; onChange: tTag = value }
+            }
+          }
+
+          // Primary Accent Swatch Grid (2 rows of 5 neon circles)
+          Column {
+            gap: 6
+            Row {
+              fill: width; align: center
+              Text { font: bodyFont; text: "PRIMARY ACCENT"; color: cMuted; fontSize: 9.5; letterSpacing: 1.4; fontWeight: 800; weight: 1 }
+              Text { font: "mono"; text: upper(tPri); color: tPri; fontSize: 10; fontWeight: 800 }
+            }
+            Grid {
+              columns: 5
+              gap: 8
+              for col in priSwatches key col {
+                let sel = tPri == col
+                Box {
+                  fill: width
+                  height: 40
+                  radius: 12 * corners * hubRadius
+                  background: sel ? alpha(col, 0.22) : alpha(cObs, 0.65)
+                  border: sel ? 1.5 : 1
+                  borderColor: sel ? col : alpha(cPri, 0.18)
+                  onTap: {
+                    tPri = col
+                    if animHaptics { haptic() }
+                  }
+                  Column {
+                    fill: true
+                    justify: center
+                    align: center
+                    Box {
+                      size: 24
+                      radius: 12
+                      background: col
+                      border: sel ? 2 : 1
+                      borderColor: sel ? #ffffff : alpha(#000000, 0.5)
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          // Secondary Accent Row (6 swatches)
+          Column {
+            gap: 6
+            Row {
+              fill: width; align: center
+              Text { font: bodyFont; text: "SECONDARY ACCENT"; color: cMuted; fontSize: 9.5; letterSpacing: 1.4; fontWeight: 800; weight: 1 }
+              Text { font: "mono"; text: upper(tSec); color: tSec; fontSize: 10; fontWeight: 800 }
+            }
+            Grid {
+              columns: 6
+              gap: 6
+              for col in secSwatches key col {
+                let sel = tSec == col
+                Box {
+                  fill: width
+                  height: 36
+                  radius: 10 * corners * hubRadius
+                  background: sel ? alpha(col, 0.22) : alpha(cObs, 0.65)
+                  border: sel ? 1.5 : 1
+                  borderColor: sel ? col : alpha(cPri, 0.18)
+                  onTap: {
+                    tSec = col
+                    if animHaptics { haptic() }
+                  }
+                  Column {
+                    fill: true
+                    justify: center
+                    align: center
+                    Box {
+                      size: 20
+                      radius: 10
+                      background: col
+                      border: sel ? 2 : 1
+                      borderColor: sel ? #ffffff : alpha(#000000, 0.5)
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          // Backdrop Shader Row
+          Column {
+            gap: 6
+            Text { font: bodyFont; text: "BACKDROP SHADER"; color: cMuted; fontSize: 9.5; letterSpacing: 1.4; fontWeight: 800 }
+            Grid {
+              columns: 4
+              gap: 6
+              for bg in bgModes key bg.id {
+                let sel = tBg == bg.id
+                Box {
+                  padding: [4, 7]
+                  radius: 10 * corners * hubRadius
+                  border: 1
+                  borderColor: sel ? cPri : alpha(cPri, 0.24)
+                  background: sel ? alpha(cPri, 0.26) : alpha(cObs, 0.8)
+                  onTap: {
+                    tBg = bg.id
+                    if animHaptics { haptic() }
+                  }
+                  Text { font: bodyFont; text: bg.label; align: center; color: sel ? cInk : cMuted; fontSize: 9.5; fontWeight: 800; letterSpacing: 0.6; maxLines: 1 }
+                }
+              }
+            }
+          }
+
+          // Font Row
+          Column {
+            gap: 6
+            Text { font: bodyFont; text: "DISPLAY FONT"; color: cMuted; fontSize: 9.5; letterSpacing: 1.4; fontWeight: 800 }
+            Grid {
+              columns: 4
+              gap: 6
+              for fn in fontOpts key fn {
+                let sel = tFont == fn
+                Box {
+                  padding: [4, 7]
+                  radius: 10 * corners * hubRadius
+                  border: 1
+                  borderColor: sel ? cSec : alpha(cPri, 0.24)
+                  background: sel ? alpha(cSec, 0.20) : alpha(cObs, 0.8)
+                  onTap: {
+                    tFont = fn
+                    if animHaptics { haptic() }
+                  }
+                  Text { font: bodyFont; text: fn; align: center; color: sel ? cInk : cMuted; fontSize: 9.5; fontWeight: 800; letterSpacing: 0.6; maxLines: 1 }
+                }
+              }
+            }
+          }
+
+          // SVG Archetype Row
+          Column {
+            gap: 6
+            Text { font: bodyFont; text: "HUD ARCHETYPE"; color: cMuted; fontSize: 9.5; letterSpacing: 1.4; fontWeight: 800 }
+            Grid {
+              columns: 5
+              gap: 5
+              for ar in archOpts key ar {
+                let sel = tArch == ar
+                Box {
+                  padding: [2, 7]
+                  radius: 10 * corners * hubRadius
+                  border: 1
+                  borderColor: sel ? cHot : alpha(cPri, 0.24)
+                  background: sel ? alpha(cPri, 0.24) : alpha(cObs, 0.8)
+                  onTap: {
+                    tArch = ar
+                    if animHaptics { haptic() }
+                  }
+                  Text { font: bodyFont; text: ar; align: center; color: sel ? cInk : cMuted; fontSize: 9; fontWeight: 800; letterSpacing: 0.5; maxLines: 1 }
+                }
+              }
+            }
+          }
+
+          // Live Mini Preview Bar
+          Row {
+            fill: width
+            align: center
+            gap: 10
+            padding: [12, 10]
+            radius: 14 * corners * hubRadius
+            border: 1
+            borderColor: alpha(tPri, 0.65)
+            background: linear(0, 0, 1, 1, [alpha(tPri, 0.22), alpha(cObs, 0.95), alpha(tSec, 0.16)])
+
+            // Mini animated forge sigil (animates only when fxActive)
+            Box {
+              size: 32
+              radius: 10 * corners * hubRadius
+              background: alpha(cObs, 0.85)
+              border: 1
+              borderColor: alpha(tPri, 0.5)
+              Canvas {
+                fill: true
+                let cx = width / 2
+                let cy = height / 2
+                let ang = fxActive ? time * 42 : 0
+                circle(cx, cy, 10, stroke: alpha(tPri, 0.6), width: 1.5)
+                rotate(ang, cx, cy) {
+                  path([[cx, cy - 8], [cx + 7, cy], [cx, cy + 8], [cx - 7, cy]], closed: true, stroke: tSec, width: 1.5, fill: alpha(tPri, 0.35))
+                }
+                circle(cx, cy, 2.5, fill: #ffffff)
+              }
+            }
+
+            Column {
+              weight: 1
+              gap: 2
+              Text {
+                font: dispFont
+                text: trim(tName) != "" ? upper(tName) : "PREVIEW THEME"
+                color: tPri
+                fontSize: 13
+                fontWeight: 900
+                letterSpacing: 1.2
+                maxLines: 1
+              }
+              Text {
+                font: bodyFont
+                text: trim(tTag) != "" ? tTag : "${bgLabel} · ${tFont} · ${tArch}"
+                color: cBone
+                fontSize: 10
+                maxLines: 1
+              }
+            }
+
+            Row {
+              align: center
+              gap: 5
+              Box { size: 16; radius: 8; background: tPri; border: 1; borderColor: alpha(#ffffff, 0.55) }
+              Box { size: 16; radius: 8; background: tSec; border: 1; borderColor: alpha(#ffffff, 0.55) }
+            }
+          }
+
+          // Big Glowing Forge & Apply Button
+          Row {
+            fill: width
+            align: center
+            justify: center
+            gap: 8
+            padding: [14, 12]
+            radius: 14 * corners * hubRadius
+            border: 1.5
+            borderColor: tPri
+            background: linear(0, 0, 1, 0, [alpha(tPri, 0.34), alpha(cCard, 0.96), alpha(tSec, 0.28)])
+            onTap: {
+              let fName = trim(tName) != "" ? trim(tName) : "CYBER FORGE"
+              let fTag  = trim(tTag) != "" ? trim(tTag) : "${bgLabel} · ${tFont} · ${tArch}"
+              if trim(tName) == "" { tName = fName }
+              if trim(tTag) == "" { tTag = fTag }
+              armDel = ""
+              run("python3 ~/.local/bin/theme-forge.py create ${sh(fName)} ${sh(fTag)} ${sh(tPri)} ${sh(tSec)} ${sh(tBg)} ${sh(tFont)} ${sh(tArch)}")
+              flash = "FORGED & APPLIED: ${upper(fName)}"
+              if animHaptics { haptic() }
+            }
+            Text { font: dispFont; text: "⚡ FORGE & APPLY THEME"; align: center; color: cInk; fontSize: 13.5; fontWeight: 900; letterSpacing: 1.8 }
+          }
+        }
+
+        // ── ALL THEMES Vault Section ──
+        Column {
+          fill: width
+          gap: 10
+
+          SectionHeader { label: "CORE ORIGINALS"; hint: "${len(coreThemes)} BUILT-IN" }
+
+          if data == null {
+            Box {
+              fill: width
+              padding: [12, 16]
+              radius: 14 * corners * hubRadius
+              border: 1
+              borderColor: alpha(cPri, 0.22)
+              background: alpha(cCard, 0.85)
+              Text { font: bodyFont; text: "connecting to theme forge…"; align: center; color: cMuted; fontSize: 12 }
+            }
+          } else {
+            for t in coreThemes key t.id {
+              ThemeCard { item: t; isCustom: false }
+            }
+          }
+
+          Spacer { height: 2 }
+
+          SectionHeader { label: "FORGED & SIGNATURE VAULT"; hint: "${len(customThemes)} CUSTOM" }
+
+          if data != null && len(customThemes) == 0 {
+            Box {
+              fill: width
+              padding: [12, 16]
+              radius: 14 * corners * hubRadius
+              border: 1
+              borderColor: alpha(cPri, 0.22)
+              background: alpha(cCard, 0.85)
+              Text { font: bodyFont; text: "No custom themes forged yet — build one above!"; align: center; color: cMuted; fontSize: 11.5 }
+            }
+          } else {
+            for t in customThemes key t.id {
+              ThemeCard { item: t; isCustom: true }
+            }
+          }
+        }
+
+        Spacer { height: screenInset + 10 }
+      }
+    }
+  }
+}

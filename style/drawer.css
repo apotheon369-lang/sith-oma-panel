@@ -1,0 +1,1261 @@
+/* ============================================================================
+   INFERNAL OBSIDIAN AMOLED APP DRAWER — EXHIBITION-GRADE CSS3 DESIGN SYSTEM
+   Version: 3.0 (Vault Forge Overhaul)
+   Features:
+     - Cascade Layers (@layer) & Typed @property GPU Animations
+     - 8 Kyber Crystal Themes + Future Mode + Eco Stealth Mode
+     - 4 Zero-Network Procedural Surface Textures (grid / carbon / hex / void)
+     - 4 Card Surface Skins (obsidian / glass / cyber / minimal) + 3 Glow Tiers
+     - Tactile Spring Micro-Interactions, @starting-style Popups, @container Grid
+     - GODLY Optimization: GPU compositor-only motion, CSS containment,
+       content-visibility virtualization, zero layout thrash, reduced-motion a11y
+   ============================================================================ */
+
+@layer tokens, reset, surfaces, layout, components, menus, states, motion, a11y;
+
+/* Typed CSS Custom Properties for GPU-Composited Gradient & Glow Motion */
+@property --glow-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@property --ember-pos {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: -20%;
+}
+
+/* ============================================================================
+   1. DESIGN TOKENS & KYBER CRYSTAL THEME MATRIX
+   ============================================================================ */
+@layer tokens {
+  :root {
+    color-scheme: dark;
+
+    /* Core True-AMOLED Surfaces (#000000 pitch-black floor for 0mW OLED draw) */
+    --bg-amoled: #000000;
+    --bg-chamber: #010204;
+    --bg-deep: #030712;
+    --bg-card: #07090e;
+    --bg-card-hover: #030712;
+    --bg-surface: #030712;
+    --bg-popup: #07090e;
+
+    /* Kyber Crystal Accents (Default: Crimson) */
+    --accent-crimson: #ff1e3c;
+    --accent-blood: #c2001e;
+    --accent-scarlet: #ff3852;
+    --accent-ember: #ff511a;
+    --accent-cyber: #ff003c;
+    --accent-revan: #b517ff;
+    --accent-bane: #ffae00;
+    --accent-venom: #00ff88;
+    --accent-future: #22d1ff;
+    --accent-mask: #1aff5c;
+    --accent-skeletor: #b44aff;
+    --accent-faust: #ff2ae6;
+    --accent-outrun-cyan: #00f0ff;
+    --accent-outrun-sun: #ffaa00;
+    --accent-hulk: #2bff4a;
+    --accent-bruise: #9b30ff;
+
+    --accent-active: #00f0ff;
+    --accent-hot: #f59e0b;
+    --accent-rgb: 0, 240, 255;
+
+    /* Typography & Contrast Hierarchy */
+    --font-display: 'Russo One', sans-serif;
+    --font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+    --text-bright: #ffffff;
+    --text-primary: #f8fafc;
+    --text-secondary: #38bdf8;
+    --text-muted: #94a3b8;
+    --text-accent: var(--accent-active);
+
+    /* Glow & Elevation Multipliers */
+    --glow-mult: 1;
+    --border-subtle: rgba(var(--accent-rgb), 0.22);
+    --border-active: rgba(var(--accent-rgb), 0.78);
+    --border-focused: var(--accent-hot);
+    --specular-top: rgba(255, 255, 255, 0.12);
+
+    --glow-ember: 0 0 calc(14px * var(--glow-mult)) rgba(var(--accent-rgb), 0.42);
+    --glow-strong: 0 0 calc(24px * var(--glow-mult)) rgba(var(--accent-rgb), 0.68),
+                   0 0 calc(6px * var(--glow-mult)) rgba(var(--accent-rgb), 0.45);
+    --glow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.10),
+                  inset 0 0 calc(14px * var(--glow-mult)) rgba(var(--accent-rgb), 0.10);
+
+    /* Geometry & Fluid Sizing */
+    --radius-corner: 13px;
+    --radius-pill: 12px;
+    --radius-icon: 50%;
+    --cell-width: 76px;
+    --icon-size: 48px;
+    --grid-gap: 5px;
+    --card-frost: 0px;
+
+    /* Motion Tokens (GPU-composited springs & crisp curves) */
+    --dur-instant: 90ms;
+    --dur-fast: 160ms;
+    --dur-base: 240ms;
+    --dur-slow: 420ms;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --ease-spring: linear(
+      0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%,
+      1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%,
+      1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%,
+      0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1.004 83.8%, 1
+    );
+  }
+
+  /* Kyber Accent Presets */
+  .app-drawer[data-theme="blood"] {
+    --accent-active: #c2001e;
+    --accent-hot: #ff7a8f;
+    --accent-rgb: 194, 0, 30;
+  }
+
+  .app-drawer[data-theme="scarlet"] {
+    --accent-active: #ff3852;
+    --accent-hot: #ffb0bc;
+    --accent-rgb: 255, 56, 82;
+  }
+
+  .app-drawer[data-theme="ember"] {
+    --accent-active: #ff511a;
+    --accent-hot: #ffaa7a;
+    --accent-rgb: 255, 81, 26;
+    --bg-card: #160802;
+    --bg-deep: #0b0401;
+  }
+
+  .app-drawer[data-theme="cyber"] {
+    --accent-active: #ff003c;
+    --accent-hot: #ff85a2;
+    --accent-rgb: 255, 0, 60;
+  }
+
+  .app-drawer[data-theme="revan"] {
+    --accent-active: #b517ff;
+    --accent-hot: #e2a6ff;
+    --accent-rgb: 181, 23, 255;
+    --bg-card: #0e0418;
+    --bg-deep: #07020c;
+    --bg-popup: #0a0312;
+    --text-primary: #d8b8ff;
+    --text-muted: #7e4ba6;
+  }
+
+  .app-drawer[data-theme="bane"] {
+    --accent-active: #ffae00;
+    --accent-hot: #ffe08a;
+    --accent-rgb: 255, 174, 0;
+    --bg-card: #140d02;
+    --bg-deep: #0a0601;
+    --bg-popup: #0f0902;
+    --text-primary: #ffe4a8;
+    --text-muted: #9c7228;
+  }
+
+  .app-drawer[data-theme="venom"] {
+    --accent-active: #00ff88;
+    --accent-hot: #99ffd1;
+    --accent-rgb: 0, 255, 136;
+    --bg-card: #02140c;
+    --bg-deep: #010a06;
+    --bg-popup: #020e08;
+    --text-primary: #b0ffd8;
+    --text-muted: #358c64;
+  }
+
+  /* Future Mode Cyber-Cyan Override */
+  .app-drawer[data-mode="future"] {
+    --font-display: 'Russo One', 'Orbitron', sans-serif;
+    --accent-active: #22d1ff;
+    --accent-hot: #a8eeff;
+    --accent-rgb: 34, 209, 255;
+    --bg-card: #031016;
+    --bg-deep: #02080c;
+    --bg-popup: #030d12;
+    --text-primary: #a4e4ff;
+    --text-muted: #4a829c;
+  }
+
+  /* Mask Mode Neon Cyber-Mask Green + Toxic Lime + Electric Gold Override */
+  .app-drawer[data-mode="mask"] {
+    --font-display: 'Russo One', 'Orbitron', sans-serif;
+    --accent-active: #1aff5c;
+    --accent-hot: #c6ff3d;
+    --accent-gold: #ffe135;
+    --accent-rgb: 26, 255, 92;
+    --bg-chamber: #010c04;
+    --bg-card: #031a0a;
+    --bg-card-hover: #062b12;
+    --bg-surface: #021408;
+    --bg-deep: #010c04;
+    --bg-popup: #010c04;
+    --text-primary: #d8ffe4;
+    --text-secondary: #34ff72;
+    --text-muted: #0c6e2c;
+  }
+
+  /* Skeletor Mode Royal Ultraviolet + Spectral Bone-Ivory Override */
+  .app-drawer[data-mode="skeletor"] {
+    --font-display: 'Black Ops One', 'Russo One', sans-serif;
+    --accent-active: #b44aff;
+    --accent-hot: #eb9eff;
+    --accent-bone: #f4e6be;
+    --accent-rgb: 180, 74, 255;
+    --bg-chamber: #06010d;
+    --bg-card: #0a0214;
+    --bg-card-hover: #180630;
+    --bg-surface: #110422;
+    --bg-deep: #110422;
+    --bg-popup: #0a0214;
+    --text-primary: #f5ecff;
+    --text-secondary: #c85cff;
+    --text-muted: #b896db;
+  }
+
+  /* Pluto · Doktor Faust Outrun Mode — Deep Synthwave AMOLED + Magenta × Cyan × Solar-Amber Override */
+  .app-drawer[data-mode="pluto-faust"] {
+    --font-display: 'Russo One', 'Orbitron', sans-serif;
+    --accent-active: #ff2ae6;
+    --accent-hot: #ffaa00;
+    --accent-outrun-cyan: #00f0ff;
+    --accent-outrun-sun: #ffaa00;
+    --accent-rgb: 255, 42, 230;
+    --bg-chamber: #070012;
+    --bg-card: #0d021a;
+    --bg-card-hover: #1c0536;
+    --bg-surface: #140426;
+    --bg-deep: #140426;
+    --bg-popup: #0d021a;
+    --text-primary: #f7e8ff;
+    --text-secondary: #ff5cee;
+    --text-muted: #b894d4;
+    --glow-ember: 0 0 calc(16px * var(--glow-mult)) rgba(255, 42, 230, 0.50),
+                  0 0 calc(28px * var(--glow-mult)) rgba(0, 240, 255, 0.24);
+    --glow-strong: 0 0 calc(26px * var(--glow-mult)) rgba(255, 42, 230, 0.72),
+                   0 0 calc(10px * var(--glow-mult)) rgba(255, 170, 0, 0.52),
+                   0 0 calc(34px * var(--glow-mult)) rgba(0, 240, 255, 0.34);
+  }
+
+  /* Hulk Gamma Overload Mode — Smashed Obsidian + Radioactive Lime + Bruised-Purple Override */
+  .app-drawer[data-mode="hulk-gamma"] {
+    --font-display: 'Black Ops One', 'Russo One', sans-serif;
+    --accent-active: #2bff4a;
+    --accent-hot: #c8ff2e;
+    --accent-bruise: #9b30ff;
+    --accent-rgb: 43, 255, 74;
+    --bg-chamber: #030804;
+    --bg-card: #071209;
+    --bg-card-hover: #0f2914;
+    --bg-surface: #0c1f10;
+    --bg-deep: #0c1f10;
+    --bg-popup: #071209;
+    --text-primary: #eefff0;
+    --text-secondary: #5cff72;
+    --text-muted: #7aa382;
+    --glow-ember: 0 0 calc(16px * var(--glow-mult)) rgba(43, 255, 74, 0.48),
+                  0 0 calc(28px * var(--glow-mult)) rgba(155, 48, 255, 0.22);
+    --glow-strong: 0 0 calc(26px * var(--glow-mult)) rgba(43, 255, 74, 0.72),
+                   0 0 calc(10px * var(--glow-mult)) rgba(200, 255, 46, 0.50),
+                   0 0 calc(34px * var(--glow-mult)) rgba(155, 48, 255, 0.30);
+  }
+
+  /* Glow Intensity Tiers */
+  .app-drawer[data-glow="0"],
+  .app-drawer[data-eco="true"] {
+    --glow-mult: 0.4;
+  }
+
+  .app-drawer[data-glow="2"] {
+    --glow-mult: 1.5;
+  }
+
+  /* Density Variants */
+  .app-drawer[data-density="compact"] {
+    --cell-width: 64px;
+    --icon-size: 42px;
+  }
+
+  .app-drawer[data-density="wide"] {
+    --cell-width: 88px;
+    --icon-size: 56px;
+  }
+}
+
+/* ============================================================================
+   2. BASE RESET
+   ============================================================================ */
+@layer reset {
+  .app-drawer,
+  .app-drawer *,
+  .app-drawer *::before,
+  .app-drawer *::after {
+    box-sizing: border-box;
+  }
+}
+
+/* ============================================================================
+   3. PROCEDURAL GPU SURFACE TEXTURES & VOLUMETRIC CHAMBER GLOW
+   ============================================================================ */
+@layer surfaces {
+  .app-drawer {
+    background-color: var(--bg-amoled);
+    color: var(--text-primary);
+    font-family: var(--font-family);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    isolation: isolate;
+    /* Precision left/right plasma bevel rails */
+    box-shadow:
+      inset 1px 0 0 rgba(var(--accent-rgb), 0.35),
+      inset -1px 0 0 rgba(var(--accent-rgb), 0.35),
+      inset 18px 0 36px -18px rgba(var(--accent-rgb), 0.22),
+      inset -18px 0 36px -18px rgba(var(--accent-rgb), 0.22);
+  }
+
+  /* Layer 1: Volumetric Top Chamber Bloom (around Seal & Header) */
+  .app-drawer::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 90% 240px at 26% 0%, rgba(var(--accent-rgb), calc(0.24 * var(--glow-mult))) 0%, transparent 72%),
+      radial-gradient(ellipse 110% 180px at 50% 0%, rgba(var(--accent-rgb), calc(0.14 * var(--glow-mult))) 0%, transparent 70%),
+      radial-gradient(ellipse 80% 140px at 50% 100%, rgba(var(--accent-rgb), calc(0.08 * var(--glow-mult))) 0%, transparent 72%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Layer 2: Procedural Obsidian Surface Texture (Default: Tactical Dot-Grid) */
+  .app-drawer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.72;
+    background-image:
+      radial-gradient(circle, rgba(var(--accent-rgb), 0.34) 1px, transparent 1.2px),
+      radial-gradient(circle, rgba(255, 255, 255, 0.16) 1.2px, transparent 1.5px);
+    background-size: 22px 22px, 88px 88px;
+    background-position: 0 0, 0 0;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.38) 55%, rgba(0, 0, 0, 0.65) 100%);
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.38) 55%, rgba(0, 0, 0, 0.65) 100%);
+  }
+
+  /* Surface Variant: Diagonal Woven Carbon Fiber */
+  .app-drawer[data-surface="carbon"]::after {
+    opacity: 0.55;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(var(--accent-rgb), 0.11) 0 1px, transparent 1px 6px),
+      repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 6px),
+      linear-gradient(135deg, transparent 25%, rgba(var(--accent-rgb), 0.08) 50%, transparent 75%);
+    background-size: 12px 12px, 12px 12px, 100% 100%;
+  }
+
+  /* Surface Variant: Forge Micro-Hex Lattice */
+  .app-drawer[data-surface="hex"]::after {
+    opacity: 0.52;
+    background-image:
+      linear-gradient(30deg, rgba(var(--accent-rgb), 0.14) 12%, transparent 12.5%, transparent 87%, rgba(var(--accent-rgb), 0.14) 87.5%, rgba(var(--accent-rgb), 0.14)),
+      linear-gradient(150deg, rgba(var(--accent-rgb), 0.14) 12%, transparent 12.5%, transparent 87%, rgba(var(--accent-rgb), 0.14) 87.5%, rgba(var(--accent-rgb), 0.14)),
+      linear-gradient(60deg, rgba(var(--accent-rgb), 0.07) 25%, transparent 25.5%, transparent 75%, rgba(var(--accent-rgb), 0.07) 75%, rgba(var(--accent-rgb), 0.07));
+    background-size: 28px 48px;
+    background-position: 0 0, 0 0, 14px 24px;
+  }
+
+  /* Surface Variant: Pure AMOLED Pitch-Black Void */
+  .app-drawer[data-surface="void"]::after {
+    display: none;
+  }
+}
+
+/* ============================================================================
+   4. LAYOUT STRUCTURE & CONTAINER-QUERY GRID
+   ============================================================================ */
+@layer layout {
+  .drawer-header,
+  .filter-tabs,
+  .profile-switcher,
+  .folder-create-bar,
+  .app-grid,
+  .search-ask-row {
+    position: relative;
+    z-index: 1;
+  }
+
+  .drawer-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px 6px;
+    gap: 10px;
+    background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.12) 0%, transparent 100%);
+  }
+
+  .drawer-header .title-group {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .drawer-header .title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .filter-tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 12px 8px;
+  }
+
+  .filter-tabs .spacer {
+    flex: 1;
+  }
+
+  .app-grid {
+    container: drawer-grid / inline-size;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--cell-width), 1fr));
+    gap: var(--grid-gap);
+    padding: 4px 10px 14px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--accent-rgb), 0.45) transparent;
+  }
+
+  @container drawer-grid (inline-size <= 360px) {
+    .app-name {
+      font-size: 9px;
+      letter-spacing: -0.02em;
+    }
+  }
+}
+
+/* ============================================================================
+   5. CORE UI COMPONENTS & 4 CARD MATERIAL SKINS
+   ============================================================================ */
+@layer components {
+  /* Horned Sith Seal Badge */
+  .drawer-header .seal-badge {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(var(--accent-rgb), 0.85);
+    box-shadow: var(--glow-ember), inset 0 0 12px rgba(var(--accent-rgb), 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 38% 35%, rgba(var(--accent-rgb), 0.38) 0%, var(--bg-deep) 78%);
+    flex-shrink: 0;
+  }
+
+  .drawer-header .vault-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: var(--accent-active);
+    text-transform: uppercase;
+    text-shadow: 0 0 12px rgba(var(--accent-rgb), 0.55);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .drawer-header .vault-telemetry {
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--accent-hot);
+    background: rgba(var(--accent-rgb), 0.16);
+    border: 1px solid rgba(var(--accent-rgb), 0.45);
+    white-space: nowrap;
+  }
+
+  .drawer-header .vault-motto {
+    font-family: var(--font-display);
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+
+  /* Filter Pills */
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-display);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: rgba(18, 2, 6, 0.82);
+    background: color-mix(in srgb, var(--bg-card) 82%, transparent);
+    border: 1px solid rgba(var(--accent-rgb), 0.28);
+    color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+    transition:
+      transform var(--dur-fast) var(--ease-spring),
+      background-color var(--dur-fast) var(--ease-out),
+      border-color var(--dur-fast) var(--ease-out),
+      box-shadow var(--dur-fast) var(--ease-out);
+  }
+
+  .filter-chip.active {
+    background: rgba(var(--accent-rgb), 0.26);
+    border-color: var(--accent-hot);
+    color: var(--text-bright);
+    box-shadow: var(--glow-ember), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  .filter-chip .star-icon {
+    color: var(--accent-hot);
+  }
+
+  /* Beveled Action Orbs (≡ Forge & ⚙ Settings) */
+  .drawer-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(155deg, rgba(var(--accent-rgb), 0.14), var(--bg-card) 65%);
+    border: 1px solid rgba(var(--accent-rgb), 0.52);
+    color: var(--accent-hot);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    box-shadow: inset 0 1px 0 var(--specular-top);
+    transition:
+      transform var(--dur-fast) var(--ease-spring),
+      border-color var(--dur-fast) var(--ease-out),
+      box-shadow var(--dur-fast) var(--ease-out),
+      background-color var(--dur-fast) var(--ease-out);
+  }
+
+  .drawer-btn.active {
+    background: rgba(var(--accent-rgb), 0.30);
+    border-color: var(--accent-hot);
+    color: var(--text-bright);
+    box-shadow: var(--glow-ember), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  /* Section Headers & Precision Plasma Ember Beam */
+  .section-header {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 2px 4px;
+    gap: 4px;
+    contain: layout style paint;
+  }
+
+  .section-title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .section-icon {
+    color: var(--accent-hot);
+    font-size: 11px;
+  }
+
+  .section-title {
+    flex: 1;
+    font-family: var(--font-display);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--text-primary);
+    text-transform: uppercase;
+  }
+
+  .section-count-badge {
+    padding: 1.5px 6px;
+    border-radius: 6px;
+    font-size: 9.5px;
+    color: var(--accent-hot);
+    background: rgba(var(--accent-rgb), 0.16);
+    border: 1px solid rgba(var(--accent-rgb), 0.42);
+  }
+
+  .section-ember-bar {
+    width: 100%;
+    height: 1.5px;
+    background: linear-gradient(
+      90deg,
+      rgba(var(--accent-rgb), 0.04) 0%,
+      rgba(var(--accent-rgb), 0.68) 38%,
+      var(--accent-hot) 52%,
+      rgba(var(--accent-rgb), 0.32) 74%,
+      rgba(var(--accent-rgb), 0.02) 100%
+    );
+    position: relative;
+    overflow: hidden;
+  }
+
+  .section-ember-bar::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 28px;
+    background: linear-gradient(90deg, transparent, var(--accent-hot), transparent);
+    transform: translateX(-100%);
+    animation: ember-glide 3.4s var(--ease-in-out) infinite;
+  }
+
+  /* App Tile Cell — Default Skin: Obsidian Recessed Bevel */
+  .app-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 7px 3px;
+    border-radius: var(--radius-corner);
+    border: 1px solid rgba(var(--accent-rgb), 0.18);
+    background: linear-gradient(
+      180deg,
+      rgba(var(--accent-rgb), 0.06) 0%,
+      color-mix(in srgb, var(--bg-card) 64%, transparent) 42%,
+      color-mix(in srgb, var(--bg-deep) 88%, transparent) 100%
+    );
+    box-shadow: var(--glow-inset);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    contain: layout style paint;
+    content-visibility: auto;
+    contain-intrinsic-size: 94px;
+    transition:
+      transform var(--dur-fast) var(--ease-spring),
+      border-color var(--dur-fast) var(--ease-out),
+      box-shadow var(--dur-fast) var(--ease-out),
+      background-color var(--dur-fast) var(--ease-out);
+  }
+
+  /* Top Plasma Rim Highlight on Favorites & Picked Cells */
+  .app-cell.is-favorite::before,
+  .app-cell.picked::before,
+  .app-drawer[data-skin="cyber"] .app-cell::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1.5px;
+    background: linear-gradient(90deg, transparent, var(--accent-hot), transparent);
+    pointer-events: none;
+  }
+
+  .app-cell.is-favorite {
+    border-color: rgba(var(--accent-rgb), 0.45);
+    background: linear-gradient(
+      180deg,
+      rgba(var(--accent-rgb), 0.14) 0%,
+      color-mix(in srgb, var(--bg-card) 80%, transparent) 48%,
+      color-mix(in srgb, var(--bg-deep) 92%, transparent) 100%
+    );
+  }
+
+  .app-cell.picked {
+    border-color: var(--accent-hot);
+    background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.30), color-mix(in srgb, var(--bg-card) 92%, transparent));
+    box-shadow: var(--glow-ember), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+
+  /* Card Skin Variants */
+  .app-drawer[data-skin="glass"] .app-cell,
+  .app-drawer[data-skin="glass"] .folder-cell {
+    --radius-corner: 16px;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-card) 56%, transparent),
+      color-mix(in srgb, var(--bg-deep) 68%, transparent)
+    );
+    backdrop-filter: blur(14px) saturate(135%);
+    -webkit-backdrop-filter: blur(14px) saturate(135%);
+    border-color: rgba(var(--accent-rgb), 0.28);
+  }
+
+  .app-drawer[data-skin="cyber"] .app-cell,
+  .app-drawer[data-skin="cyber"] .folder-cell {
+    --radius-corner: 6px;
+    border-width: 1.4px;
+    border-color: rgba(var(--accent-rgb), 0.34);
+    background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.12), var(--bg-card) 55%, var(--bg-deep));
+  }
+
+  .app-drawer[data-skin="cyber"] .app-cell::before {
+    height: 2px;
+  }
+
+  .app-drawer[data-skin="minimal"] .app-cell {
+    background: transparent;
+    border-color: rgba(var(--accent-rgb), 0.08);
+    box-shadow: none;
+  }
+
+  .app-drawer[data-skin="minimal"] .app-cell.is-favorite {
+    background: color-mix(in srgb, var(--bg-card) 42%, transparent);
+    border-color: rgba(var(--accent-rgb), 0.34);
+  }
+
+  /* Layered Sigil Icon Container */
+  .app-icon-container {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    border-radius: var(--radius-icon);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background: radial-gradient(circle at 42% 38%, rgba(var(--accent-rgb), 0.28) 0%, var(--bg-deep) 74%);
+    border: 1.3px solid rgba(var(--accent-rgb), 0.72);
+    box-shadow:
+      0 0 calc(10px * var(--glow-mult)) rgba(var(--accent-rgb), 0.25),
+      inset 0 0 0 3px var(--bg-deep),
+      inset 0 0 0 4px rgba(var(--accent-rgb), 0.26);
+    transition:
+      transform var(--dur-fast) var(--ease-spring),
+      border-color var(--dur-fast) var(--ease-out),
+      box-shadow var(--dur-fast) var(--ease-out);
+  }
+
+  .app-cell.is-favorite .app-icon-container {
+    border-color: var(--accent-active);
+    box-shadow:
+      0 0 calc(14px * var(--glow-mult)) rgba(var(--accent-rgb), 0.48),
+      inset 0 0 0 3px var(--bg-deep),
+      inset 0 0 0 4px rgba(var(--accent-rgb), 0.42);
+  }
+
+  .favorite-star-badge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--bg-deep);
+    border: 1.2px solid var(--accent-hot);
+    color: var(--accent-hot);
+    font-size: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 calc(8px * var(--glow-mult)) rgba(var(--accent-rgb), 0.72);
+  }
+
+  .notif-dot {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent-hot);
+    border: 2px solid var(--bg-deep);
+    box-shadow: 0 0 6px var(--accent-active);
+  }
+
+  .app-name {
+    font-family: var(--font-display);
+    font-size: 10px;
+    text-transform: uppercase;
+    text-align: center;
+    color: var(--text-primary);
+    line-height: 1.22;
+    letter-spacing: 0.01em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+  }
+
+  .app-cell.is-favorite .app-name {
+    color: var(--accent-hot);
+  }
+
+  .app-cell.picked .app-name {
+    color: var(--text-bright);
+  }
+
+  /* Folder Reliquary Cell */
+  .folder-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 7px 4px;
+    border-radius: var(--radius-corner);
+    background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.16), var(--bg-card) 58%, var(--bg-deep));
+    border: 1.2px solid rgba(var(--accent-rgb), 0.45);
+    box-shadow: var(--glow-inset);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    contain: layout style paint;
+    content-visibility: auto;
+    contain-intrinsic-size: 112px;
+    transition:
+      transform var(--dur-fast) var(--ease-spring),
+      border-color var(--dur-fast) var(--ease-out),
+      box-shadow var(--dur-fast) var(--ease-out);
+  }
+
+  .folder-cell::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent-hot), transparent);
+  }
+
+  .folder-holocron {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .folder-badge {
+    padding: 1.5px 7px;
+    border-radius: 8px;
+    background: rgba(var(--accent-rgb), 0.24);
+    border: 1px solid rgba(var(--accent-rgb), 0.55);
+    color: var(--accent-hot);
+    font-size: 9.5px;
+    font-weight: 700;
+  }
+
+  /* Search / Prompt Ask Bar */
+  .search-ask-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 10px 10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(var(--accent-rgb), 0.38);
+    background: color-mix(in srgb, var(--bg-deep) 90%, transparent);
+    cursor: pointer;
+    transition:
+      transform var(--dur-fast) var(--ease-spring),
+      border-color var(--dur-fast) var(--ease-out),
+      box-shadow var(--dur-fast) var(--ease-out);
+  }
+
+  .search-ask-row.active {
+    border-color: var(--accent-hot);
+    background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.28), color-mix(in srgb, var(--bg-card) 90%, transparent));
+    box-shadow: var(--glow-ember);
+  }
+
+  /* Empty State Card */
+  .empty-state-card {
+    margin: auto;
+    padding: 22px 24px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--bg-card) 86%, transparent), color-mix(in srgb, var(--bg-deep) 94%, transparent));
+    border: 1px solid rgba(var(--accent-rgb), 0.40);
+    text-align: center;
+    box-shadow: var(--glow-inset);
+  }
+}
+
+/* ============================================================================
+   6. CUSTOM MENUS — VAULT FORGE POPUP & LONG-PRESS CONTEXT MENU
+   ============================================================================ */
+@layer menus {
+  .customization-popup,
+  .context-menu {
+    position: absolute;
+    background: var(--bg-popup);
+    border: 1.4px solid var(--border-active);
+    box-shadow:
+      0 14px 40px rgba(0, 0, 0, 0.92),
+      var(--glow-ember),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    border-radius: 15px;
+    overflow: hidden;
+    z-index: 100;
+    contain: layout style paint;
+    transition:
+      opacity var(--dur-base) var(--ease-out),
+      transform var(--dur-base) var(--ease-spring),
+      display var(--dur-base) allow-discrete;
+  }
+
+  .customization-popup {
+    width: 276px;
+    padding: 0;
+  }
+
+  .context-menu {
+    width: 256px;
+  }
+
+  /* Animated Conic Plasma Accent Strip at top of menus */
+  .customization-popup::before,
+  .context-menu::before {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 2.5px;
+    background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.1), var(--accent-hot), rgba(var(--accent-rgb), 0.1));
+  }
+
+  .customization-title {
+    font-family: var(--font-display);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: var(--text-bright);
+    text-transform: uppercase;
+    padding: 10px 12px 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .customization-tabs,
+  .customization-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 12px 8px;
+  }
+
+  .customization-btn {
+    flex: 1;
+    text-align: center;
+    padding: 7px 4px;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-card) 75%, transparent);
+    border: 1px solid rgba(var(--accent-rgb), 0.22);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition:
+      transform var(--dur-instant) var(--ease-spring),
+      background-color var(--dur-fast) var(--ease-out),
+      border-color var(--dur-fast) var(--ease-out),
+      color var(--dur-fast) var(--ease-out);
+  }
+
+  .customization-btn.active {
+    background: rgba(var(--accent-rgb), 0.30);
+    border-color: var(--accent-hot);
+    color: var(--text-bright);
+    font-weight: 700;
+    box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.35);
+  }
+
+  .kyber-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin: 0 auto 3px;
+    box-shadow: 0 0 8px currentColor;
+  }
+
+  .context-menu-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.18), color-mix(in srgb, var(--bg-card) 85%, transparent));
+    border-bottom: 1px solid rgba(var(--accent-rgb), 0.28);
+  }
+
+  .context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    font-size: 12px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background-color var(--dur-instant) var(--ease-out), color var(--dur-instant) var(--ease-out);
+  }
+
+  .context-menu-item.active {
+    background: rgba(var(--accent-rgb), 0.20);
+    color: var(--text-bright);
+  }
+}
+
+/* ============================================================================
+   7. TACTILE MICRO-INTERACTIONS, HOVER ISOLATION & FOCUS STATES
+   ============================================================================ */
+@layer states {
+  /* Hover elevation strictly isolated to fine pointers (no sticky mobile hover) */
+  @media (hover: hover) and (pointer: fine) {
+    .app-cell:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent-hot);
+      box-shadow: var(--glow-ember), var(--glow-inset);
+    }
+
+    .app-cell:hover .app-icon-container {
+      transform: scale(1.07);
+      border-color: var(--accent-hot);
+      box-shadow: var(--glow-strong);
+    }
+
+    .folder-cell:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent-hot);
+      box-shadow: var(--glow-ember), var(--glow-inset);
+    }
+
+    .filter-chip:hover,
+    .drawer-btn:hover,
+    .customization-btn:hover {
+      border-color: var(--accent-hot);
+      box-shadow: var(--glow-ember);
+    }
+
+    .context-menu-item:hover {
+      background: rgba(var(--accent-rgb), 0.16);
+      color: var(--text-bright);
+    }
+  }
+
+  /* Universal Tactile Press Response (Touch & Pointer) */
+  .app-cell:active,
+  .folder-cell:active,
+  .filter-chip:active,
+  .drawer-btn:active,
+  .customization-btn:active,
+  .search-ask-row:active {
+    transform: scale(0.95);
+    transition-duration: var(--dur-instant);
+  }
+
+  /* High-Contrast Keyboard / Gamepad Focus Rings */
+  .app-cell:focus-visible,
+  .folder-cell:focus-visible,
+  .filter-chip:focus-visible,
+  .drawer-btn:focus-visible,
+  .customization-btn:focus-visible,
+  .context-menu-item:focus-visible,
+  .search-ask-row:focus-visible {
+    outline: 2px solid var(--accent-hot);
+    outline-offset: 2px;
+    box-shadow: var(--glow-strong);
+  }
+
+  /* Discrete Enter Motion for Popups (Progressive Enhancement) */
+  @supports (transition-behavior: allow-discrete) {
+    .customization-popup[hidden],
+    .context-menu[hidden] {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.96);
+      pointer-events: none;
+    }
+
+    @starting-style {
+      .customization-popup:not([hidden]),
+      .context-menu:not([hidden]) {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.96);
+      }
+    }
+  }
+}
+
+/* ============================================================================
+   8. GPU-COMPOSITED KEYFRAME ANIMATIONS
+   ============================================================================ */
+@layer motion {
+  @keyframes ember-glide {
+    0% {
+      transform: translateX(-40px);
+      opacity: 0;
+    }
+    15% {
+      opacity: 1;
+    }
+    85% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(460px);
+      opacity: 0;
+    }
+  }
+
+  @keyframes plasma-spin {
+    to {
+      --glow-angle: 360deg;
+    }
+  }
+
+  /* Optional animated conic glow border for overdrive mode (preserves border-radius via border-box!) */
+  .app-drawer[data-glow="2"] .app-cell.picked,
+  .app-drawer[data-glow="2"] .customization-popup {
+    border: 1.5px solid transparent;
+    background:
+      linear-gradient(135deg, var(--bg-card), var(--bg-deep)) padding-box,
+      conic-gradient(from var(--glow-angle), var(--accent-active), var(--accent-hot), var(--accent-active)) border-box;
+    animation: plasma-spin 4.5s linear infinite;
+  }
+
+  /* Hulk Gamma Overdrive — Dual Gamma-Lime × Bruised-Purple Fractured Plasma Rim (GPU-composited) */
+  @keyframes gamma-pulse {
+    0%, 100% {
+      opacity: 0.72;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.015);
+    }
+  }
+
+  .app-drawer[data-mode="hulk-gamma"] {
+    box-shadow:
+      inset 2px 0 0 rgba(43, 255, 74, 0.45),
+      inset -2px 0 0 rgba(155, 48, 255, 0.42),
+      inset 22px 0 40px -18px rgba(43, 255, 74, 0.26),
+      inset -22px 0 40px -18px rgba(155, 48, 255, 0.24);
+  }
+
+  .app-drawer[data-mode="hulk-gamma"][data-glow="2"] .app-cell.picked,
+  .app-drawer[data-mode="hulk-gamma"][data-glow="2"] .customization-popup {
+    border: 1.5px solid transparent;
+    background:
+      linear-gradient(135deg, #071209, #0c1f10) padding-box,
+      conic-gradient(from var(--glow-angle), #2bff4a, #c8ff2e, #9b30ff, #2bff4a) border-box;
+    animation: plasma-spin 3.2s linear infinite;
+  }
+
+  .app-drawer[data-mode="hulk-gamma"]:not([data-eco="true"]):not([data-motion="still"]) .app-cell.picked .app-icon-container {
+    animation: gamma-pulse 2.6s var(--ease-in-out) infinite;
+  }
+
+  /* Pluto · Doktor Faust Outrun — Dual-Horizon Side Plasma Rails (Magenta Left × Cyan Right) + 3-Color Sunset Overdrive */
+  @keyframes outrun-pulse {
+    0%, 100% {
+      opacity: 0.76;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.018);
+    }
+  }
+
+  .app-drawer[data-mode="pluto-faust"] {
+    box-shadow:
+      inset 2px 0 0 rgba(255, 42, 230, 0.52),
+      inset -2px 0 0 rgba(0, 240, 255, 0.48),
+      inset 22px 0 42px -18px rgba(255, 42, 230, 0.30),
+      inset -22px 0 42px -18px rgba(0, 240, 255, 0.28);
+  }
+
+  .app-drawer[data-mode="pluto-faust"]::before {
+    background:
+      radial-gradient(ellipse 75% 220px at 16% 0%, rgba(255, 42, 230, calc(0.24 * var(--glow-mult))) 0%, transparent 72%),
+      radial-gradient(ellipse 75% 220px at 84% 0%, rgba(0, 240, 255, calc(0.18 * var(--glow-mult))) 0%, transparent 72%),
+      radial-gradient(ellipse 90% 130px at 50% 100%, rgba(255, 170, 0, calc(0.10 * var(--glow-mult))) 0%, transparent 72%);
+  }
+
+  .app-drawer[data-mode="pluto-faust"][data-glow="2"] .app-cell.picked,
+  .app-drawer[data-mode="pluto-faust"][data-glow="2"] .customization-popup {
+    border: 1.5px solid transparent;
+    background:
+      linear-gradient(135deg, #0d021a, #140426) padding-box,
+      conic-gradient(from var(--glow-angle), #ffaa00, #ff2ae6, #00f0ff, #ffaa00) border-box;
+  }
+
+  .app-drawer[data-mode="pluto-faust"][data-glow="2"]:not([data-eco="true"]):not([data-motion="still"]) .app-cell.picked,
+  .app-drawer[data-mode="pluto-faust"][data-glow="2"]:not([data-eco="true"]):not([data-motion="still"]) .customization-popup {
+    animation: plasma-spin 3.4s linear infinite;
+  }
+
+  .app-drawer[data-mode="pluto-faust"]:not([data-eco="true"]):not([data-motion="still"]) .app-cell.picked .app-icon-container {
+    animation: outrun-pulse 2.8s var(--ease-in-out) infinite;
+  }
+
+  /* Eco / Still Mode disables ambient animation loops */
+  .app-drawer[data-motion="still"] .section-ember-bar::after,
+  .app-drawer[data-eco="true"] .section-ember-bar::after,
+  .app-drawer[data-motion="still"] .app-cell.picked,
+  .app-drawer[data-eco="true"] .app-cell.picked,
+  .app-drawer[data-motion="still"] .customization-popup,
+  .app-drawer[data-eco="true"] .customization-popup,
+  .app-drawer[data-mode="pluto-faust"][data-glow="2"][data-motion="still"] .app-cell.picked,
+  .app-drawer[data-mode="pluto-faust"][data-glow="2"][data-eco="true"] .app-cell.picked,
+  .app-drawer[data-mode="pluto-faust"][data-glow="2"][data-motion="still"] .customization-popup,
+  .app-drawer[data-mode="pluto-faust"][data-glow="2"][data-eco="true"] .customization-popup {
+    animation: none;
+  }
+  .app-drawer[data-motion="still"] .section-ember-bar::after,
+  .app-drawer[data-eco="true"] .section-ember-bar::after {
+    display: none;
+  }
+}
+
+/* ============================================================================
+   9. ACCESSIBILITY — REDUCED MOTION
+   ============================================================================ */
+@layer a11y {
+  @media (prefers-reduced-motion: reduce) {
+    .app-drawer *,
+    .app-drawer *::before,
+    .app-drawer *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+    }
+
+    .app-cell,
+    .folder-cell,
+    .filter-chip,
+    .drawer-btn,
+    .customization-btn,
+    .customization-popup,
+    .context-menu {
+      transition-property: opacity, border-color, background-color;
+      transition-duration: 120ms;
+      transform: none !important;
+    }
+
+    .section-ember-bar::after {
+      display: none;
+    }
+  }
+}

@@ -1,13 +1,13 @@
 {
-  "master": false,
-  "deck_shader": false,
-  "deck_scanlines": false,
-  "infernal_void": false,
-  "infernal_fx": false,
-  "infernal_glitch_dock": false,
-  "player_shader": false,
-  "player_visualizer": false,
-  "drawer_fx": false,
+  "master": true,
+  "deck_shader": true,
+  "deck_scanlines": true,
+  "infernal_void": true,
+  "infernal_fx": true,
+  "infernal_glitch_dock": true,
+  "player_shader": true,
+  "player_visualizer": true,
+  "drawer_fx": true,
   "haptics": true,
   "speed": 1
 }

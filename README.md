@@ -1,20 +1,41 @@
-# Sith OMA ☠ panel for omalauncher
+# Sith OMA ☠ Panel for Omalauncher
 
-Red/black AMOLED Sith theme for [omalauncher](https://github.com/SimonSchubert/omalauncher):
-Sith Calendar · Obsidian Command Deck · Infernal face · Lord Maul swipe-down music panel · Sith drawer, keybar, controls · 5 synth pads (try 1-3-5-1-3-5).
+High-performance, pure AMOLED black (`#000000` / `#050002`) Sith theme & workspace suite for [omalauncher](https://github.com/SimonSchubert/omalauncher).
 
-## 1. Get omalauncher
-Download the latest omalauncher APK from the official releases:
-**https://github.com/SimonSchubert/omalauncher/releases/latest**
-Install it, set it as your home app, and finish its Linux setup.
+## Features
+- **00-Infernal Main Hub**: Pure black AMOLED zero-milliwatt power floor, zero-loop AGSL tactile hex texture, interactive voice telemetry & system reckoning.
+- **Cardboard App (`widgets/cardboard.owl`)**: Standalone app (`kind app "cardboard"`) featuring an AMOLED Sith icon, multi-size card engine (S/M/L), Obsidian markdown bridge, tables, and native drawer registration.
+- **Full Sith Widget Suite**:
+  - `00-infernal.owl` (Main AMOLED hub face)
+  - `10-sith-calendar.owl` (Chrono spectra & agenda)
+  - `25-sith-command-deck.owl` & `cardboard.owl` (Obsidian canvas & card workspace)
+  - `27-sith-menu.owl` (Tactical launcher quick menu)
+  - `abaddon-ultron.owl` (AI entity interface & voice telemetry)
+  - `cyber-range.owl` (Offensive/defensive simulation interface)
+  - `downloads.owl` (Local package & download manager)
+  - `drawer.owl` & `drawer.css` (Glassmorphic AMOLED app drawer)
+  - `fleet-graph.owl` (Multi-agent mesh network graph)
+  - `keybar.owl` (Ergonomic thumb-accessible navigation bar)
+  - `nexus.owl` (Central coordination deck)
+  - `notifs-board.owl` (Integrated notifications aggregator)
+  - `sith-music-panel.owl` (Lord Maul swipe-down music panel)
+  - `theme-forge.owl` (Dynamic live token & theme editor)
+- **Backend Automation Scripts**: Complete Python automation suite in `bin/` (`owl-hub`, `abaddon-ultron.py`, `chaos-media.py`, `sith-theme.py`, `theme-forge.py`, etc.).
+- **Themes & Palettes**: Curated themes in `themes/` (`aether-prism`, `hulk-gamma`, `pluto-faust`) with bespoke SVG icons.
+- **Audio Synthesizer**: 5 tactile low-latency synth pads and Abaddon/Ultron SFX audio in `share/`.
 
-## 2. Install the Sith panel
-In the omalauncher terminal:
+## Installation
 
-    curl -LO https://github.com/apotheon369-lang/sith-oma-panel/releases/latest/download/sith-oma-panel.zip
-    unzip sith-oma-panel.zip && cd sith-oma-panel && sh install.sh
+Inside the Omalauncher Linux terminal:
 
-The installer pulls dependencies (python, mpv, btop), backs up your current setup, then installs.
-FX ship OFF for battery. Turn them on in Forge (⚙).
+```bash
+git clone https://github.com/apotheon369-lang/sith-oma-panel.git
+cd sith-oma-panel
+sh install.sh
+```
 
-> The hidden vault on the Infernal face stores anything you type as plain text on your device. Don't put real passwords or card numbers in it.
+The installer backs up your existing configuration to `~/.config/omalauncher.backup-<timestamp>`, copies all widgets, backend scripts, themes, and audio assets, and configures the pure AMOLED interface.
+
+## Customization
+- Switch themes via the **Forge** widget or `owl-hub`.
+- FX can be toggled in `~/.config/omalauncher/animations.json` or through the HUD controls.
