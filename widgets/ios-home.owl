@@ -1,0 +1,554 @@
+face "ios home" {
+  meta {
+    owl: 22
+    description: "iOS-Style AMOLED Glassmorphism Home Face: Status & Dynamic Island widget header, 4xN squircle app grid, blurred frosted glass bottom dock, wallpaper switcher, and Quick Settings modal."
+    version: "1.0"
+    category: "home"
+  }
+  page: 0
+  edge: true
+  statusBar: false
+  padding: 0
+
+  // ── SOURCES & LIVE TELEMETRY ──
+  source now      = clock every 10s
+  source bat      = android.battery every 30s
+  source modes    = android.modes
+  source d        = android.drawer
+  source notifs   = android.notifications
+  source hub      = file("~/.config/omalauncher/hub.json") json optional
+
+  // ── PERSISTENT & UI STATES ──
+  state wallpaper     = "amoled" persist   // "amoled" | "hex" | "nebula" | "carbon"
+  state showModal     = false
+  state dndOn         = false persist
+  state fxOn          = true persist
+  state hapticsOn     = true persist
+  state torchOn       = false
+  state tapBounce     = ""
+  state animT         = 0.0
+
+  // ── THEME & COLOR ENGINE (Hub Adaptive + AMOLED High-Contrast Fallbacks) ──
+  let T          = hub.tok ?? {}
+  let ecoOn      = (hub.eco ?? false) == true
+  let cPri       = ecoOn ? (T.ecoPri != null ? rgb(T.ecoPri[0], T.ecoPri[1], T.ecoPri[2]) : #b8263a) : (T.pri != null ? rgb(T.pri[0], T.pri[1], T.pri[2]) : #ff1e3c)
+  let cMid       = T.mid   != null ? rgb(T.mid[0],   T.mid[1],   T.mid[2])   : #ff3850
+  let cHot       = ecoOn ? (T.ecoHot != null ? rgb(T.ecoHot[0], T.ecoHot[1], T.ecoHot[2]) : #d94c5e) : (T.hot != null ? rgb(T.hot[0], T.hot[1], T.hot[2]) : #ff8596)
+  let cSec       = T.sec   != null ? rgb(T.sec[0],   T.sec[1],   T.sec[2])   : #00f0ff
+  let cBone      = ecoOn ? (T.ecoBone != null ? rgb(T.ecoBone[0], T.ecoBone[1], T.ecoBone[2]) : #c7a3a8) : (T.bone != null ? rgb(T.bone[0], T.bone[1], T.bone[2]) : #fff0f2)
+  let cDim       = ecoOn ? (T.ecoDim != null ? rgb(T.ecoDim[0], T.ecoDim[1], T.ecoDim[2]) : #4d0c18) : (T.dim != null ? rgb(T.dim[0], T.dim[1], T.dim[2]) : #6b0918)
+  let cDeep      = T.deep  != null ? rgb(T.deep[0],  T.deep[1],  T.deep[2])  : #170206
+  let cCard      = T.card  != null ? rgb(T.card[0],  T.card[1],  T.card[2])  : #0c0104
+  let cObs       = T.obs   != null ? rgb(T.obs[0],   T.obs[1],   T.obs[2])   : #050002
+  let cInk       = T.ink   != null ? rgb(T.ink[0],   T.ink[1],   T.ink[2])   : #ffffff
+  let cMuted     = T.muted != null ? rgb(T.muted[0], T.muted[1], T.muted[2]) : #8e8e93
+  let uiFont     = T.fontPath ?? "sans"
+  let dispFont   = T.displayFontPath ?? uiFont
+
+  // Battery & Clock formatting
+  let batLvl   = clamp(round(bat.level ?? 100), 0, 100)
+  let batChg   = (bat.charging ?? false) == true
+  let timeStr  = fmtTime(now, "HH:mm")
+  let dateStr  = fmtTime(now, "EEEE, MMMM d")
+
+  // Apps from drawer: pick launchable apps, prioritizing user favorites/owl apps
+  let allApps   = d.apps ?? []
+  let gridApps  = allApps.filter(a => a.kind == "owl" || a.kind == "android").take(16)
+
+  // ── FRAME RATE & ANIMATION ──
+  fps: fxOn ? 24 : 1
+
+  every frame {
+    if fxOn { animT = animT + dt }
+  }
+
+  // ── ROOT CONTAINER ──
+  Box {
+    fill: true
+
+    // ── 1. WALLPAPERS (AMOLED Pure Black / Tactical Hex / Crimson Nebula / Void Carbon) ──
+    if wallpaper == "amoled" {
+      Box {
+        fill: true
+        background: #000000
+      }
+    } else if wallpaper == "hex" {
+      Box {
+        fill: true
+        background: #000000
+        Canvas {
+          fill: true
+          let w = width
+          let h = height
+          let sz = 38
+          for row in range(round(h / (sz * 1.5)) + 1) {
+            for col in range(round(w / (sz * 1.732)) + 1) {
+              let cx = col * sz * 1.732 + (row % 2 == 1 ? sz * 0.866 : 0)
+              let cy = row * sz * 1.5
+              circle(cx, cy, 1.2, fill: alpha(cHot, 0.22))
+            }
+          }
+        }
+      }
+    } else if wallpaper == "nebula" {
+      Box {
+        fill: true
+        background: linear(0, 0, 1, 1, [#000000, alpha(cDeep, 0.95), #050004, #000000])
+        Canvas {
+          fill: true
+          let cx1 = width * 0.25
+          let cy1 = height * 0.35
+          let cx2 = width * 0.8
+          let cy2 = height * 0.65
+          circle(cx1, cy1, width * 0.45, fill: radial(cx1, cy1, width * 0.45, [alpha(cPri, 0.20), alpha(cMid, 0.08), alpha(#000000, 0)]))
+          circle(cx2, cy2, width * 0.50, fill: radial(cx2, cy2, width * 0.50, [alpha(cSec, 0.16), alpha(cHot, 0.06), alpha(#000000, 0)]))
+        }
+      }
+    } else {
+      // Void Carbon
+      Box {
+        fill: true
+        background: #040404
+        Canvas {
+          fill: true
+          for r in range(round(height / 14)) {
+            line(0, r * 14, width, r * 14 + width * 0.4, stroke: alpha(#ffffff, 0.025), width: 1.5)
+          }
+        }
+      }
+    }
+
+    // ── 2. FOREGROUND CONTENT ──
+    Column {
+      fill: true
+      padding: [16, (screenTop ?? 28) + 8, 16, 0]
+      gap: 16
+
+      // ── TOP HEADER / DYNAMIC STATUS & WIDGET ──
+      Row {
+        fill: width
+        align: center
+        justify: spaceBetween
+
+        // Top Date & Greeting
+        Column {
+          gap: 2
+          Text { font: uiFont; text: upper(dateStr); fontSize: 11; fontWeight: 700; color: cMuted; letterSpacing: 1.2 }
+          Text { font: dispFont; text: timeStr; fontSize: 38; fontWeight: 900; color: cInk; letterSpacing: -0.5 }
+        }
+
+        // Top Right: Battery pill & Control Center Trigger
+        Row {
+          gap: 8
+          align: center
+
+          // Battery Capsule
+          Row {
+            padding: [8, 4]
+            radius: 12
+            background: alpha(cCard, 0.85)
+            border: 1
+            borderColor: alpha(cMid, 0.4)
+            gap: 4
+            align: center
+            Text { font: uiFont; text: "${batLvl}%"; fontSize: 10.5; fontWeight: 800; color: batChg ? #2bff8c : cInk }
+            Canvas {
+              size: [18, 9]
+              let bw = 15
+              let bh = 9
+              rect(0, 0, bw, bh, radius: 2.5, stroke: alpha(cInk, 0.7), width: 1)
+              rect(1.5, 1.5, max(1, (bw - 3) * (batLvl / 100)), bh - 3, radius: 1.2, fill: batChg ? #2bff8c : (batLvl < 20 ? cPri : cInk))
+              line(bw + 1, 2.5, bw + 1, bh - 2.5, stroke: alpha(cInk, 0.7), width: 1.2, cap: round)
+            }
+          }
+
+          // Quick Settings Trigger Button
+          Box {
+            size: 34
+            radius: 12
+            align: center
+            background: linear(0, 0, 1, 1, [alpha(cMid, 0.28), alpha(cDeep, 0.92)])
+            border: 1
+            borderColor: alpha(cHot, 0.5)
+            onTap: {
+              if hapticsOn { haptic() }
+              showModal = !showModal
+            }
+            Text { font: uiFont; text: "⚙"; fontSize: 16; color: cHot }
+          }
+        }
+      }
+
+      // ── SEARCH / ASSESS GLASSPHONE BAR ──
+      Row {
+        fill: width
+        height: 42
+        radius: 14
+        padding: [12, 0]
+        align: center
+        gap: 10
+        background: alpha(cCard, 0.75)
+        border: 1
+        borderColor: alpha(cPri, 0.35)
+        onTap: {
+          if hapticsOn { haptic() }
+          launcher("drawer")
+        }
+        Text { font: uiFont; text: "⌕"; fontSize: 16; color: cHot }
+        Text { font: uiFont; text: "Search apps, cards, or commands…"; fontSize: 12.5; color: alpha(cInk, 0.5); weight: 1 }
+        Box {
+          padding: [6, 2]
+          radius: 6
+          background: alpha(cPri, 0.2)
+          border: 0.8
+          borderColor: alpha(cMid, 0.4)
+          Text { font: uiFont; text: "DRAWER"; fontSize: 9; fontWeight: 800; color: cHot; letterSpacing: 0.8 }
+        }
+      }
+
+      // ── 3. DYNAMIC 4xN APP GRID WITH SQUIRCLE ICONS ──
+      Column {
+        weight: 1
+        fill: width
+        scroll: true
+        gap: 18
+        padding: [4, 4, 4, 12]
+
+        // Rows of 4 apps each
+        for row in range(ceil(len(gridApps) / 4)) {
+          Row {
+            fill: width
+            align: start
+            justify: spaceBetween
+
+            for col in range(4) {
+              let idx = row * 4 + col
+              if idx < len(gridApps) {
+                let appItem = gridApps[idx]
+                Column {
+                  width: 64
+                  align: center
+                  gap: 6
+                  onTap: {
+                    if hapticsOn { haptic() }
+                    open(appItem.key)
+                  }
+
+                  // Squircle Icon Container
+                  Box {
+                    size: 58
+                    radius: 20
+                    align: center
+                    clip: true
+                    background: linear(0, 0, 1, 1, [alpha(cCard, 0.92), alpha(cDeep, 0.98), #000000])
+                    border: 1.2
+                    borderColor: alpha(cMid, 0.38)
+
+                    if appItem.icon != null {
+                      Image { src: appItem.icon; size: 36; tint: null; label: appItem.name }
+                    } else {
+                      Text { font: dispFont; text: appItem.initials ?? "APP"; fontSize: 16; fontWeight: 900; color: cHot }
+                    }
+                  }
+
+                  // App Label
+                  Text {
+                    font: uiFont
+                    text: appItem.name ?? "App"
+                    fontSize: 10.5
+                    fontWeight: 600
+                    color: cInk
+                    align: center
+                    maxLines: 1
+                    fill: width
+                  }
+                }
+              } else {
+                Box { width: 64; height: 1 }
+              }
+            }
+          }
+        }
+
+        Spacer { height: screenInset + 88 }
+      }
+    }
+
+    // ── 4. PINNED BOTTOM GLASS DOCK (Phone, Nexus, Cardboard, Drawer) ──
+    Column {
+      fill: width
+      align: center
+      padding: [16, 0, 16, max(12, screenInset + 8)]
+
+      // Frosted Glass Pill Dock
+      Row {
+        fill: width
+        height: 80
+        radius: 28
+        padding: [16, 0]
+        align: center
+        justify: spaceAround
+        background: linear(0, 0, 0, 1, [alpha(cCard, 0.88), alpha(cDeep, 0.94), alpha(#000000, 0.96)])
+        border: 1.4
+        borderColor: alpha(cHot, 0.45)
+
+        // Dock Item 1: Phone
+        Column {
+          width: 58
+          align: center
+          gap: 2
+          onTap: {
+            if hapticsOn { haptic() }
+            terminal("bash", "TERMINAL CALL")
+          }
+          Box {
+            size: 50
+            radius: 17
+            align: center
+            background: linear(0, 0, 1, 1, [alpha(#2bff8c, 0.28), alpha(cDeep, 0.95)])
+            border: 1.2
+            borderColor: alpha(#2bff8c, 0.6)
+            Text { font: uiFont; text: "📞"; fontSize: 22 }
+          }
+        }
+
+        // Dock Item 2: Nexus Messenger
+        Column {
+          width: 58
+          align: center
+          gap: 2
+          onTap: {
+            if hapticsOn { haptic() }
+            open("o:nexus.owl")
+          }
+          Box {
+            size: 50
+            radius: 17
+            align: center
+            background: linear(0, 0, 1, 1, [alpha(cSec, 0.26), alpha(cDeep, 0.95)])
+            border: 1.2
+            borderColor: alpha(cSec, 0.6)
+            Text { font: uiFont; text: "💬"; fontSize: 22 }
+          }
+        }
+
+        // Dock Item 3: Cardboard / Command Deck
+        Column {
+          width: 58
+          align: center
+          gap: 2
+          onTap: {
+            if hapticsOn { haptic() }
+            open("o:cardboard.owl")
+          }
+          Box {
+            size: 50
+            radius: 17
+            align: center
+            background: linear(0, 0, 1, 1, [alpha(cPri, 0.35), alpha(cDeep, 0.95)])
+            border: 1.2
+            borderColor: alpha(cPri, 0.7)
+            Text { font: uiFont; text: "🗃"; fontSize: 22 }
+          }
+        }
+
+        // Dock Item 4: App Drawer
+        Column {
+          width: 58
+          align: center
+          gap: 2
+          onTap: {
+            if hapticsOn { haptic() }
+            launcher("drawer")
+          }
+          Box {
+            size: 50
+            radius: 17
+            align: center
+            background: linear(0, 0, 1, 1, [alpha(cHot, 0.28), alpha(cDeep, 0.95)])
+            border: 1.2
+            borderColor: alpha(cHot, 0.6)
+            Text { font: uiFont; text: "▦"; fontSize: 22; color: cHot; fontWeight: 900 }
+          }
+        }
+      }
+    }
+
+    // ── 5. QUICK SETTINGS MODAL / CONTROL CENTER ──
+    if showModal {
+      Box {
+        fill: true
+        background: alpha(#000000, 0.85)
+        onTap: showModal = false
+
+        Column {
+          fill: width
+          padding: [20, (screenTop ?? 28) + 16, 20, 24]
+          gap: 16
+          onTap: {} // prevent dismiss on content tap
+
+          // Header
+          Row {
+            fill: width
+            align: center
+            justify: spaceBetween
+            Text { font: dispFont; text: "CONTROL CENTER"; fontSize: 16; fontWeight: 900; color: cHot; letterSpacing: 1.4 }
+            Box {
+              size: 32; radius: 10; align: center; background: alpha(cCard, 0.9); border: 1; borderColor: alpha(cMuted, 0.4)
+              onTap: { if hapticsOn { haptic() }; showModal = false }
+              Text { font: uiFont; text: "✕"; fontSize: 14; color: cInk }
+            }
+          }
+
+          // 2x2 Toggle Grid: Torch, DND, FX, Haptics
+          Column {
+            fill: width
+            gap: 12
+
+            Row {
+              fill: width
+              gap: 12
+
+              // Toggle 1: Torch
+              Box {
+                weight: 1
+                height: 60
+                radius: 16
+                padding: [14, 0]
+                align: center
+                background: torchOn ? linear(0, 0, 1, 1, [#ffffff, #d8d8d8]) : alpha(cCard, 0.9)
+                border: 1.2
+                borderColor: torchOn ? #ffffff : alpha(cMid, 0.35)
+                onTap: {
+                  if hapticsOn { haptic() }
+                  torchOn = !torchOn
+                }
+                Row {
+                  gap: 10
+                  align: center
+                  Text { font: uiFont; text: "🔦"; fontSize: 20 }
+                  Column {
+                    gap: 1
+                    Text { font: uiFont; text: "TORCH"; fontSize: 11; fontWeight: 800; color: torchOn ? #000000 : cInk }
+                    Text { font: uiFont; text: torchOn ? "ON" : "OFF"; fontSize: 9; color: torchOn ? #333333 : cMuted }
+                  }
+                }
+              }
+
+              // Toggle 2: DND
+              Box {
+                weight: 1
+                height: 60
+                radius: 16
+                padding: [14, 0]
+                align: center
+                background: dndOn ? linear(0, 0, 1, 1, [alpha(#a24bff, 0.45), alpha(cDeep, 0.95)]) : alpha(cCard, 0.9)
+                border: 1.2
+                borderColor: dndOn ? #a24bff : alpha(cMid, 0.35)
+                onTap: {
+                  if hapticsOn { haptic() }
+                  dndOn = !dndOn
+                }
+                Row {
+                  gap: 10
+                  align: center
+                  Text { font: uiFont; text: "🌙"; fontSize: 20 }
+                  Column {
+                    gap: 1
+                    Text { font: uiFont; text: "DND"; fontSize: 11; fontWeight: 800; color: dndOn ? #a24bff : cInk }
+                    Text { font: uiFont; text: dndOn ? "ACTIVE" : "OFF"; fontSize: 9; color: dndOn ? #a24bff : cMuted }
+                  }
+                }
+              }
+            }
+
+            Row {
+              fill: width
+              gap: 12
+
+              // Toggle 3: FX Toggle
+              Box {
+                weight: 1
+                height: 60
+                radius: 16
+                padding: [14, 0]
+                align: center
+                background: fxOn ? linear(0, 0, 1, 1, [alpha(cHot, 0.35), alpha(cDeep, 0.95)]) : alpha(cCard, 0.9)
+                border: 1.2
+                borderColor: fxOn ? cHot : alpha(cMid, 0.35)
+                onTap: {
+                  if hapticsOn { haptic() }
+                  fxOn = !fxOn
+                }
+                Row {
+                  gap: 10
+                  align: center
+                  Text { font: uiFont; text: "⚡"; fontSize: 20 }
+                  Column {
+                    gap: 1
+                    Text { font: uiFont; text: "FX SHADER"; fontSize: 11; fontWeight: 800; color: fxOn ? cHot : cInk }
+                    Text { font: uiFont; text: fxOn ? "60 FPS" : "1 FPS ECO"; fontSize: 9; color: fxOn ? cHot : cMuted }
+                  }
+                }
+              }
+
+              // Toggle 4: Haptics
+              Box {
+                weight: 1
+                height: 60
+                radius: 16
+                padding: [14, 0]
+                align: center
+                background: hapticsOn ? linear(0, 0, 1, 1, [alpha(cSec, 0.35), alpha(cDeep, 0.95)]) : alpha(cCard, 0.9)
+                border: 1.2
+                borderColor: hapticsOn ? cSec : alpha(cMid, 0.35)
+                onTap: {
+                  haptic()
+                  hapticsOn = !hapticsOn
+                }
+                Row {
+                  gap: 10
+                  align: center
+                  Text { font: uiFont; text: "📳"; fontSize: 20 }
+                  Column {
+                    gap: 1
+                    Text { font: uiFont; text: "HAPTICS"; fontSize: 11; fontWeight: 800; color: hapticsOn ? cSec : cInk }
+                    Text { font: uiFont; text: hapticsOn ? "ENABLED" : "MUTED"; fontSize: 9; color: hapticsOn ? cSec : cMuted }
+                  }
+                }
+              }
+            }
+          }
+
+          // Wallpaper Switcher
+          Column {
+            fill: width
+            gap: 8
+            Text { font: uiFont; text: "WALLPAPER SELECTION"; fontSize: 10.5; fontWeight: 800; color: cMuted; letterSpacing: 1.2 }
+            Row {
+              fill: width
+              gap: 8
+              for wp in ["amoled", "hex", "nebula", "carbon"] {
+                let wpSel = wallpaper == wp
+                Box {
+                  weight: 1
+                  height: 38
+                  radius: 10
+                  align: center
+                  background: wpSel ? linear(0, 0, 1, 1, [alpha(cPri, 0.45), alpha(cDeep, 0.95)]) : alpha(cCard, 0.8)
+                  border: 1
+                  borderColor: wpSel ? cHot : alpha(cMid, 0.3)
+                  onTap: {
+                    if hapticsOn { haptic() }
+                    wallpaper = wp
+                  }
+                  Text { font: uiFont; text: upper(wp); fontSize: 9.5; fontWeight: 800; color: wpSel ? cHot : cInk }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
